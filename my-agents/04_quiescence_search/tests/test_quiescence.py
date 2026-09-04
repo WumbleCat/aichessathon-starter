@@ -190,6 +190,20 @@ def test_finds_mate_in_one() -> None:
     move, score, _ = _root(MATE_IN_ONE, 2)
     assert move.uci() == "h5f7", move
     assert score >= agent.MATE_BOUND, score
+    # The mated side is one ply from the root, so the score is exactly MATE - 1.
+    assert score == agent.MATE_SCORE - 1, score
+
+
+def test_quiescence_mate_distance_is_measured_from_the_root() -> None:
+    # The same forced mate found three plies into the tree must score as a mate that
+    # is three plies further away, so a real mate in one at the root always wins.
+    board = chess.Board(CHECK_ONLY_EVASION_LOSES)
+    searcher = agent.Searcher(None)
+    at_root = searcher.quiescence(board, -INF, INF, 0)
+    deeper = searcher.quiescence(board, -INF, INF, 3)
+    assert at_root == -(agent.MATE_SCORE - 2), at_root
+    assert deeper == -(agent.MATE_SCORE - 5), deeper
+    assert board.fen() == CHECK_ONLY_EVASION_LOSES
 
 
 def test_promotions_are_tactical_moves() -> None:

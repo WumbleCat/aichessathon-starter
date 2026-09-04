@@ -258,16 +258,20 @@ class Searcher:
 
     # -- quiescence --------------------------------------------------------
 
-    def quiescence(self, board: chess.Board, alpha: int, beta: int, ply: int = 0) -> int:
+    def quiescence(
+        self, board: chess.Board, alpha: int, beta: int, ply: int = 0, qply: int = 0
+    ) -> int:
         """Resolve captures and promotions until the position is quiet.
 
-        alpha/beta are from the mover's point of view. Returns a fail-hard score in
-        [alpha, beta] except for mate scores, which are exact.
+        alpha/beta are from the mover's point of view. `ply` is the distance from the
+        root, shared with negamax so mate scores compare correctly across the whole
+        tree; `qply` counts quiescence plies only and drives the depth cap. Returns a
+        fail-hard score in [alpha, beta] except for mate scores, which are exact.
         """
         self.qnodes += 1
         self._check_time()
-        if ply > self.max_qply:
-            self.max_qply = ply
+        if qply > self.max_qply:
+            self.max_qply = qply
 
         in_check = board.is_check()
 
@@ -277,7 +281,7 @@ class Searcher:
             moves = ordered_moves(board)
             if not moves:
                 return -(MATE_SCORE - ply)
-            if ply >= QS_MAX_PLY:
+            if qply >= QS_MAX_PLY:
                 # Depth cap reached while still in check. Evasions exist, so the position
                 # is at least not mate; fall back to the static score.
                 return evaluate(board)
@@ -287,13 +291,13 @@ class Searcher:
                 return beta
             if stand_pat > alpha:
                 alpha = stand_pat
-            if ply >= QS_MAX_PLY:
+            if qply >= QS_MAX_PLY:
                 return alpha
             moves = tactical_moves(board)
 
         for move in moves:
             board.push(move)
-            score = -self.quiescence(board, -beta, -alpha, ply + 1)
+            score = -self.quiescence(board, -beta, -alpha, ply + 1, qply + 1)
             board.pop()
             if score >= beta:
                 return beta
@@ -314,7 +318,7 @@ class Searcher:
 
         if depth <= 0:
             if self.use_quiescence:
-                return self.quiescence(board, alpha, beta, 0)
+                return self.quiescence(board, alpha, beta, ply)
             return evaluate(board)
 
         moves = ordered_moves(board)
