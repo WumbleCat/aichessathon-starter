@@ -31,8 +31,9 @@ observable in tests and in the per-depth log the bot prints to stderr.
 - quiescence search over captures and promotions, with checkmate detection
 - iterative deepening on a wall-clock budget; depth 1 always completes
 - move ordering: TT move, promotions, MVV-LVA captures, two killers per ply, history
-- transposition table keyed by python-chess's polyglot Zobrist hash, mate scores normalised
-  by ply, principal variation reconstructed from TT best moves
+- transposition table keyed by python-chess's transposition key (bitboards, side to move,
+  castling and en-passant state; ~25x cheaper than a polyglot Zobrist hash), mate scores
+  normalised by ply, principal variation reconstructed from TT best moves
 - two-fold repetition, fifty-move and insufficient-material draws inside the search, plus
   positions already seen in the game (module state survives between moves)
 

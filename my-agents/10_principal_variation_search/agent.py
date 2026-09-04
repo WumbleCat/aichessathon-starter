@@ -8,7 +8,7 @@ prerequisites that spec assumes are already in place:
 - quiescence search at the leaves
 - iterative deepening with a wall-clock budget
 - move ordering: TT move, promotions, MVV-LVA captures, killers, history
-- transposition table keyed by python-chess's polyglot Zobrist hash
+- transposition table keyed by python-chess's transposition key
 
 PVS itself lives in `Searcher.negamax` and `Searcher.search_root`: the first
 (best-ordered) move is searched with the full (alpha, beta) window and every
@@ -26,10 +26,10 @@ Interface required by the platform: `get_move(fen, time_left_ms) -> str` (UCI).
 from __future__ import annotations
 
 import time
+from collections.abc import Hashable
 from dataclasses import dataclass
 
 import chess
-import chess.polyglot
 
 # ---------------------------------------------------------------------------
 # Evaluation
@@ -157,11 +157,21 @@ def evaluate(board: chess.Board) -> int:
         non_pawn += PIECE_VALUE[piece_type] * chess.popcount(board.pieces_mask(piece_type, False))
     tables = PST_END if non_pawn <= ENDGAME_MATERIAL else PST_MIDDLE
 
-    score = 0
     mover = board.turn
-    for square, piece in board.piece_map().items():
-        value = tables[piece.color][piece.piece_type][square]
-        score += value if piece.color == mover else -value
+    score = 0
+    for colour, sign in ((mover, 1), (not mover, -1)):
+        own = board.occupied_co[colour]
+        colour_tables = tables[colour]
+        for piece_type, mask in (
+            (chess.PAWN, board.pawns),
+            (chess.KNIGHT, board.knights),
+            (chess.BISHOP, board.bishops),
+            (chess.ROOK, board.rooks),
+            (chess.QUEEN, board.queens),
+            (chess.KING, board.kings),
+        ):
+            table = colour_tables[piece_type]
+            score += sign * sum(table[square] for square in chess.scan_forward(mask & own))
     return score
 
 
@@ -214,21 +224,32 @@ class TTEntry:
 
 TT_MAX_ENTRIES = 1_000_000  # a few hundred MB of Python objects at most
 
+# python-chess keeps a tuple of the bitboards plus side to move, castling and
+# en-passant state for exactly this purpose. It is ~25x cheaper to obtain than a
+# polyglot Zobrist hash and distinguishes everything the legal-move state depends on.
+PositionKey = Hashable
+
+
+def position_key(board: chess.Board) -> PositionKey:
+    return board._transposition_key()
+
 
 class TranspositionTable:
-    """Dictionary keyed by Zobrist hash. Deeper entries win; equal depth is replaced."""
+    """Dictionary keyed by position. Deeper entries win; equal depth is replaced."""
 
     def __init__(self) -> None:
-        self.table: dict[int, TTEntry] = {}
+        self.table: dict[PositionKey, TTEntry] = {}
         self.hits = 0
 
-    def probe(self, key: int) -> TTEntry | None:
+    def probe(self, key: PositionKey) -> TTEntry | None:
         entry = self.table.get(key)
         if entry is not None:
             self.hits += 1
         return entry
 
-    def store(self, key: int, depth: int, score: int, flag: int, move: chess.Move | None) -> None:
+    def store(
+        self, key: PositionKey, depth: int, score: int, flag: int, move: chess.Move | None
+    ) -> None:
         existing = self.table.get(key)
         if existing is not None and existing.depth > depth:
             return
@@ -286,7 +307,7 @@ class Searcher:
         # history[colour * 4096 + from * 64 + to]
         self.history: list[int] = [0] * (2 * 64 * 64)
         # positions already seen in the game (outside the search tree); a repeat is a draw
-        self.game_history: set[int] = set()
+        self.game_history: set[PositionKey] = set()
         self.nodes = 0
         self.qnodes = 0
         self.null_window_searches = 0
@@ -296,8 +317,10 @@ class Searcher:
     # -- bookkeeping ------------------------------------------------------
 
     def _tick(self) -> None:
+        # Check the clock every 256 nodes: Python manages tens of thousands of nodes a
+        # second, so a coarser check can overshoot a small budget by a whole move's worth.
         self.nodes += 1
-        if self.nodes & 1023 == 0 and time.monotonic() > self.deadline:
+        if self.nodes & 255 == 0 and time.monotonic() > self.deadline:
             raise OutOfTime
 
     @staticmethod
@@ -351,6 +374,17 @@ class Searcher:
         moves.sort(key=lambda move: self._priority(board, move, tt_move, ply), reverse=True)
         return moves
 
+    def tactical_moves(self, board: chess.Board, ply: int) -> list[chess.Move]:
+        """Captures and promotions only, best victim first. Much cheaper than all legal moves."""
+        moves = list(board.generate_legal_captures())
+        seventh = chess.BB_RANK_7 if board.turn == chess.WHITE else chess.BB_RANK_2
+        promoting = board.pawns & board.occupied_co[board.turn] & seventh
+        if promoting:
+            moves.extend(board.generate_legal_moves(promoting, ~board.occupied))
+        if self.config.use_ordering:
+            moves.sort(key=lambda move: self._priority(board, move, None, ply), reverse=True)
+        return moves
+
     # -- quiescence -------------------------------------------------------
 
     def quiescence(self, board: chess.Board, alpha: int, beta: int, ply: int) -> int:
@@ -368,9 +402,7 @@ class Searcher:
             alpha = stand_pat
 
         best = stand_pat
-        for move in self.ordered_moves(board, None, ply):
-            if not board.is_capture(move) and not move.promotion:
-                continue
+        for move in self.tactical_moves(board, ply):
             board.push(move)
             score = -self.quiescence(board, -beta, -alpha, ply + 1)
             board.pop()
@@ -403,7 +435,7 @@ class Searcher:
             if alpha >= beta:
                 return alpha
 
-        key = chess.polyglot.zobrist_hash(board)
+        key = position_key(board)
         if ply > 0 and key in self.game_history:
             return 0
 
@@ -470,7 +502,7 @@ class Searcher:
 
     def search_root(self, board: chess.Board, depth: int) -> tuple[chess.Move, int]:
         """PVS at the root. Returns the best move and its score."""
-        key = chess.polyglot.zobrist_hash(board)
+        key = position_key(board)
         tt_move: chess.Move | None = None
         if self.config.use_tt:
             entry = self.tt.probe(key)
@@ -513,15 +545,15 @@ class Searcher:
         if not self.config.use_tt:
             return line
         board.push(first)
-        seen = {chess.polyglot.zobrist_hash(board)}
+        seen = {position_key(board)}
         try:
             while len(line) < MAX_PLY:
-                entry = self.tt.probe(chess.polyglot.zobrist_hash(board))
+                entry = self.tt.probe(position_key(board))
                 if entry is None or entry.move is None or entry.move not in board.legal_moves:
                     break
                 line.append(entry.move)
                 board.push(entry.move)
-                key = chess.polyglot.zobrist_hash(board)
+                key = position_key(board)
                 if key in seen:
                     break
                 seen.add(key)
@@ -561,7 +593,7 @@ def choose_move(
     time_left_ms: int,
     config: Config = DEFAULT_CONFIG,
     tt: TranspositionTable | None = None,
-    game_history: set[int] | None = None,
+    game_history: set[PositionKey] | None = None,
 ) -> chess.Move:
     """Deepen one ply at a time until the budget runs out; keep the last finished depth."""
     started = time.monotonic()
@@ -601,14 +633,14 @@ def choose_move(
 
 # Module state survives between moves of one game (the process is per game).
 _TT = TranspositionTable()
-_GAME_HISTORY: set[int] = set()
+_GAME_HISTORY: set[PositionKey] = set()
 
 
 def get_move(fen: str, time_left_ms: int) -> str:
     """Entry point required by the platform. Return a legal move in UCI."""
     board = chess.Board(fen)
     move = choose_move(board, time_left_ms, tt=_TT, game_history=_GAME_HISTORY)
-    _GAME_HISTORY.add(chess.polyglot.zobrist_hash(board))
+    _GAME_HISTORY.add(position_key(board))
     board.push(move)
-    _GAME_HISTORY.add(chess.polyglot.zobrist_hash(board))
+    _GAME_HISTORY.add(position_key(board))
     return move.uci()

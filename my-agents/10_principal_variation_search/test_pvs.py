@@ -124,7 +124,7 @@ def test_tt_move_is_searched_first() -> None:
     board = chess.Board(POSITIONS[1])
     searcher = Searcher()
     searcher.search_root(board, 2)
-    entry = searcher.tt.probe(chess.polyglot.zobrist_hash(board))
+    entry = searcher.tt.probe(agent.position_key(board))
     assert entry is not None and entry.move is not None
     ordered = searcher.ordered_moves(board, entry.move, 0)
     assert ordered[0] == entry.move
