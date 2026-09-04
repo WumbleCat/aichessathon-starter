@@ -916,6 +916,7 @@ def choose_move(
     if len(legal) == 1:
         return legal[0], searcher
 
+    root_stack = len(board.move_stack)
     best_move, best_score = searcher.search_root(board, 1)
     for depth in range(2, max_depth + 1):
         elapsed = time.monotonic() - started
@@ -927,6 +928,10 @@ def choose_move(
             if score <= alpha or score >= beta:
                 move, score = searcher.search_root(board, depth, -INF, INF)
         except OutOfTime:
+            # The abort can fire anywhere in the tree; unwind whatever is still pushed.
+            while len(board.move_stack) > root_stack:
+                board.pop()
+            searcher.path.clear()
             break
         best_move, best_score = move, score
         if verbose:

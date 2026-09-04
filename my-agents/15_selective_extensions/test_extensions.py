@@ -225,6 +225,17 @@ class InterfaceTests(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 0.5)
         self.assertTrue(chess.Move.from_uci(move))
 
+    def test_board_is_restored_after_timeout(self) -> None:
+        # A deadline in the past aborts the search on the first clock check, which can
+        # land anywhere in the tree, including inside quiescence. Everything pushed
+        # must be popped before the move is returned.
+        fen = "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
+        for _ in range(20):
+            board = chess.Board(fen)
+            move, _ = agent.choose_move(board, 200, max_depth=6, verbose=False)
+            self.assertEqual(board.fen(), fen)
+            self.assertIn(move, board.legal_moves)
+
     def test_board_is_restored_after_search(self) -> None:
         board = chess.Board(MATE_IN_TWO)
         before = board.fen()
