@@ -50,7 +50,9 @@ def value_target(score: np.ndarray, result: np.ndarray, result_weight: float) ->
     return (1.0 - result_weight) * v + result_weight * result.astype(np.float32)
 
 
-def evaluate(model: Chessformer, x: np.ndarray, move: np.ndarray, vt: np.ndarray, bs: int) -> dict[str, float]:
+def evaluate(
+    model: Chessformer, x: np.ndarray, move: np.ndarray, vt: np.ndarray, bs: int
+) -> dict[str, float]:
     model.eval()
     total = 0
     correct = 0
@@ -112,7 +114,12 @@ def main() -> None:
     parser.add_argument("--value-weight", type=float, default=1.0)
     parser.add_argument("--result-weight", type=float, default=0.3)
     parser.add_argument("--val-frac", type=float, default=0.05)
-    parser.add_argument("--threads", type=int, default=1, help="torch threads; >1 is 10x SLOWER on the shared dev box")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="torch threads; >1 is 10x SLOWER on the shared dev box",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-positions", type=int, default=0)
     args = parser.parse_args()
@@ -211,7 +218,10 @@ def main() -> None:
                     "epochs": epoch + 1,
                     "history": history,
                     "args": vars(args),
-                    "data_shards": sorted(os.path.basename(f) for f in glob.glob(os.path.join(args.data, args.pattern))),
+                    "data_shards": sorted(
+                        os.path.basename(f)
+                        for f in glob.glob(os.path.join(args.data, args.pattern))
+                    ),
                 },
             },
             args.out,

@@ -12,7 +12,6 @@ import time
 from collections.abc import Callable
 
 import chess
-
 from cf_eval import MATE, MATE_BOUND, PIECE_VALUE_MG, evaluate, material_only
 
 INF = MATE + 1
@@ -189,9 +188,13 @@ class Searcher:
                 if i == 0:
                     score = -self._negamax(board, depth - 1, -beta, -alpha, 1, True, gives_check)
                 else:
-                    score = -self._negamax(board, depth - 1, -alpha - 1, -alpha, 1, True, gives_check)
+                    score = -self._negamax(
+                        board, depth - 1, -alpha - 1, -alpha, 1, True, gives_check
+                    )
                     if alpha < score < beta:
-                        score = -self._negamax(board, depth - 1, -beta, -alpha, 1, True, gives_check)
+                        score = -self._negamax(
+                            board, depth - 1, -beta, -alpha, 1, True, gives_check
+                        )
             finally:
                 self.path.pop()
                 board.pop()
@@ -295,7 +298,7 @@ class Searcher:
                         self.path.pop()
                         board.pop()
                     if score >= beta:
-                        return beta if abs(score) < MATE_BOUND else beta
+                        return beta
 
         moves = list(board.legal_moves)
         if not moves:
@@ -326,10 +329,18 @@ class Searcher:
             self.path.append(board._transposition_key())
             try:
                 if searched == 0:
-                    score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1, True, gives_check)
+                    score = -self._negamax(
+                        board, depth - 1, -beta, -alpha, ply + 1, True, gives_check
+                    )
                 else:
                     reduction = 0
-                    if depth >= 3 and is_quiet and not in_check and not gives_check and searched >= 2:
+                    if (
+                        depth >= 3
+                        and is_quiet
+                        and not in_check
+                        and not gives_check
+                        and searched >= 2
+                    ):
                         reduction = 1
                         if searched >= 6:
                             reduction += 1
@@ -433,7 +444,9 @@ class Searcher:
         captures = list(board.generate_legal_captures())
         if not captures and qply == 0:
             # queen promotions are worth a look even when they do not capture
-            for move in board.generate_legal_moves(board.pawns & chess.BB_RANK_7 | board.pawns & chess.BB_RANK_2):
+            for move in board.generate_legal_moves(
+                board.pawns & chess.BB_RANK_7 | board.pawns & chess.BB_RANK_2
+            ):
                 if move.promotion == chess.QUEEN:
                     captures.append(move)
         captures.sort(key=lambda m: self._mvv_lva(board, m), reverse=True)
@@ -459,13 +472,17 @@ class Searcher:
 
     # ------------------------------------------------------------------ ordering
 
-    _priors_cache: dict[chess.Move, float] = {}
+    _priors_cache: dict[chess.Move, float] = {}  # noqa: RUF012 (reassigned per node, never mutated)
     _priors_valid_key: object = None
 
     @staticmethod
     def _mvv_lva(board: chess.Board, move: chess.Move) -> int:
         victim = board.piece_type_at(move.to_square)
-        v = PIECE_VALUE_MG[victim] if victim is not None else (82 if board.is_en_passant(move) else 0)
+        v = (
+            PIECE_VALUE_MG[victim]
+            if victim is not None
+            else (82 if board.is_en_passant(move) else 0)
+        )
         attacker = board.piece_type_at(move.from_square)
         a = PIECE_VALUE_MG[attacker] if attacker is not None else 0
         s = v * 16 - a // 8

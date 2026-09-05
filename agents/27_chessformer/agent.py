@@ -14,7 +14,7 @@ os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 
-import chess  # noqa: E402
+import chess
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
@@ -99,7 +99,8 @@ def get_move(fen: str, time_left_ms: int) -> str:
         print(
             f"move {_move_count} {move.uci()} depth {result.depth}/{result.seldepth} score "
             f"{result.score} nodes {result.nodes} q {result.qnodes} nps {result.nps:.0f} "
-            f"policy_calls {_searcher.policy_calls} budget {budget * 1000:.0f}ms took {elapsed:.0f}ms"
+            f"policy_calls {_searcher.policy_calls} budget {budget * 1000:.0f}ms "
+            f"took {elapsed:.0f}ms"
         )
         return move.uci()
     except Exception as exc:

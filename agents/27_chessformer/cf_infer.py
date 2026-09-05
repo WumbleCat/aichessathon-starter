@@ -16,7 +16,6 @@ import math
 
 import chess
 import numpy as np
-
 from cf_encode import NUM_MOVES, encode, geometry_tables, move_index, promo_tables
 
 _LN_EPS = 1e-5
@@ -44,7 +43,9 @@ def _normalize(x: np.ndarray) -> np.ndarray:
     return centred
 
 
-def _fold_ln(w_ln: np.ndarray, b_ln: np.ndarray, w: np.ndarray, b: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _fold_ln(
+    w_ln: np.ndarray, b_ln: np.ndarray, w: np.ndarray, b: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """LN(x) @ w + b  ==  norm(x) @ (diag(w_ln) w) + (b_ln @ w + b)."""
     return (w_ln[:, None] * w).astype(np.float32), (b_ln @ w + b).astype(np.float32)
 

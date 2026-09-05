@@ -110,8 +110,12 @@ def main() -> None:
     parser.add_argument("--b", default="none")
     parser.add_argument("--pairs", type=int, default=20)
     parser.add_argument("--nodes", type=int, default=4000)
-    parser.add_argument("--min-depth", type=int, default=3, help="policy_min_depth for engines with a model")
-    parser.add_argument("--policy-cost", type=int, default=-1, help="nodes charged per network call (-1: measure)")
+    parser.add_argument(
+        "--min-depth", type=int, default=3, help="policy_min_depth for engines with a model"
+    )
+    parser.add_argument(
+        "--policy-cost", type=int, default=-1, help="nodes charged per network call (-1: measure)"
+    )
     parser.add_argument("--max-plies", type=int, default=200)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--out", default=None, help="append the summary to this file")
@@ -135,8 +139,11 @@ def main() -> None:
             for _ in range(20):
                 model.priors(board)
             latency = (time.process_time() - c0) / 20
-            policy_cost = int(round(latency * nps))
-            print(f"engine {nps:.0f} nodes/s (cpu), network {latency * 1000:.1f} ms -> policy cost {policy_cost} nodes")
+            policy_cost = round(latency * nps)
+            print(
+                f"engine {nps:.0f} nodes/s (cpu), network {latency * 1000:.1f} ms "
+                f"-> policy cost {policy_cost} nodes"
+            )
 
     eng_a, _ = make_engine(args.a, args.min_depth, policy_cost)
     eng_b, _ = make_engine(args.b, args.min_depth, policy_cost)
@@ -170,6 +177,7 @@ def main() -> None:
     # binomial-ish error bar on the score -> elo interval
     sd = math.sqrt(max(1e-9, score * (1 - score) / n))
     lo, hi = elo(score - 1.96 * sd), elo(score + 1.96 * sd)
+
     def mean(xs: list[float]) -> float:
         return sum(xs) / len(xs) if xs else 0.0
 
@@ -180,9 +188,10 @@ def main() -> None:
         )
 
     summary = (
-        f"A={args.a} B={args.b} nodes={args.nodes} min_depth={args.min_depth} policy_cost={policy_cost} "
-        f"pairs={args.pairs} seed={args.seed}\n"
-        f"A: +{wins} ={draws} -{losses} score {score:.1%} elo {elo(score):+.0f} [{lo:+.0f}, {hi:+.0f}]\n"
+        f"A={args.a} B={args.b} nodes={args.nodes} min_depth={args.min_depth} "
+        f"policy_cost={policy_cost} pairs={args.pairs} seed={args.seed}\n"
+        f"A: +{wins} ={draws} -{losses} score {score:.1%} "
+        f"elo {elo(score):+.0f} [{lo:+.0f}, {hi:+.0f}]\n"
         + per_move("A", stats_a)
         + per_move("B", stats_b)
     )

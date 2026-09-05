@@ -34,7 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 
-from cf_encode import COMPACT_SIZE, compact, move_index  # noqa: E402
+from cf_encode import compact, move_index  # noqa: E402
 from cf_eval import MATE_BOUND  # noqa: E402
 from cf_search import Searcher  # noqa: E402
 
@@ -102,10 +102,7 @@ def play_game(
                 (compact(b2), move_index(mv, not b2.turn), _clip_score(score), hdepth, b2.turn)
             )
         searcher.harvest = None
-        if rng.random() < epsilon:
-            move = rng.choice(list(board.legal_moves))
-        else:
-            move = result.move
+        move = rng.choice(list(board.legal_moves)) if rng.random() < epsilon else result.move
         board.push(move)
         plies += 1
     outcome = board.outcome(claim_draw=True)
@@ -113,8 +110,16 @@ def play_game(
         # adjudicate long games on material like the harness does
         if plies >= max_plies:
             bal = 0
-            for pt, val in ((chess.PAWN, 1), (chess.KNIGHT, 3), (chess.BISHOP, 3), (chess.ROOK, 5), (chess.QUEEN, 9)):
-                bal += val * (len(board.pieces(pt, chess.WHITE)) - len(board.pieces(pt, chess.BLACK)))
+            for pt, val in (
+                (chess.PAWN, 1),
+                (chess.KNIGHT, 3),
+                (chess.BISHOP, 3),
+                (chess.ROOK, 5),
+                (chess.QUEEN, 9),
+            ):
+                bal += val * (
+                    len(board.pieces(pt, chess.WHITE)) - len(board.pieces(pt, chess.BLACK))
+                )
             game_result = 1 if bal > 0 else (-1 if bal < 0 else 0)
         else:
             game_result = 0
@@ -183,7 +188,16 @@ def main() -> None:
         if os.path.exists(path):
             continue
         jobs.append(
-            (seed, args.chunk, path, args.depth, args.budget, args.epsilon, args.harvest_depth, args.max_plies)
+            (
+                seed,
+                args.chunk,
+                path,
+                args.depth,
+                args.budget,
+                args.epsilon,
+                args.harvest_depth,
+                args.max_plies,
+            )
         )
     print(f"{len(jobs)} shards to generate with {args.workers} workers", flush=True)
     t0 = time.time()

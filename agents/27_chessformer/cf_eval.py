@@ -36,7 +36,11 @@ def _build_tables() -> tuple[list[list[int]], list[list[int]]]:
         # pawns: advance, centre files, penalise unmoved central pawns a little
         adv = r - 1  # 0 on rank 2
         centre = 1.0 if f in (3, 4) else (0.5 if f in (2, 5) else 0.0)
-        p_mg = int(4 * adv + 10 * centre * (1 if 2 <= r <= 4 else 0) - (8 if (r == 1 and f in (3, 4)) else 0))
+        p_mg = int(
+            4 * adv
+            + 10 * centre * (1 if 2 <= r <= 4 else 0)
+            - (8 if (r == 1 and f in (3, 4)) else 0)
+        )
         p_eg = int(10 * adv + (20 if r >= 5 else 0) + (25 if r == 6 else 0))
         mg[chess.PAWN][sq] = p_mg
         eg[chess.PAWN][sq] = p_eg
@@ -51,7 +55,9 @@ def _build_tables() -> tuple[list[list[int]], list[list[int]]]:
         mg[chess.BISHOP][sq] = b_c + diag - (10 if r == 0 and f in (2, 5) else 0)
         eg[chess.BISHOP][sq] = int(12 - 4 * cd) + diag
         # rooks: 7th rank, central files in mg
-        mg[chess.ROOK][sq] = (12 if r == 6 else 0) + (6 if f in (3, 4) else 0) - (4 if f in (0, 7) else 0)
+        mg[chess.ROOK][sq] = (
+            (12 if r == 6 else 0) + (6 if f in (3, 4) else 0) - (4 if f in (0, 7) else 0)
+        )
         eg[chess.ROOK][sq] = (8 if r == 6 else 0) + int(4 - md // 2)
         # queen: mild centralisation, discourage early development squares slightly
         mg[chess.QUEEN][sq] = int(8 - 3 * cd) - (5 if r >= 4 else 0)

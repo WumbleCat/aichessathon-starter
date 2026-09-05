@@ -63,7 +63,7 @@ def test_delivers_mate_kq_vs_k_without_stalemating():
             break
         board.push(legal(board.fen(), 1000))
         if not board.is_game_over():
-            board.push(list(board.legal_moves)[0])
+            board.push(next(iter(board.legal_moves)))
     assert board.is_checkmate(), board.fen()
 
 

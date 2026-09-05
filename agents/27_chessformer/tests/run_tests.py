@@ -33,7 +33,7 @@ def _install_fake_pytest() -> None:
 
             return deco
 
-    def approx(x, rel=1e-6, abs=1e-9):  # noqa: A002
+    def approx(x, rel=1e-6, abs=1e-9):
         class _A:
             def __eq__(self, other):
                 return abs(other - x) <= max(abs, rel * abs(x))
@@ -79,14 +79,15 @@ def main(argv: list[str]) -> int:
                         params = (mark.args[0], mark.args[1])
             cases = [((), "")]
             if params is not None:
-                names, values = params
+                _names, values = params
                 cases = [((v,) if not isinstance(v, tuple) else v, f"[{v}]") for v in values]
             for args, label in cases:
                 t0 = time.perf_counter()
                 try:
                     fn(*args)
                     passed += 1
-                    print(f"PASS {os.path.basename(path)}::{name}{label} ({time.perf_counter() - t0:.2f}s)")
+                    took = time.perf_counter() - t0
+                    print(f"PASS {os.path.basename(path)}::{name}{label} ({took:.2f}s)")
                 except Exception:
                     failed += 1
                     print(f"FAIL {os.path.basename(path)}::{name}{label}")
