@@ -77,6 +77,8 @@ expected outcome; a clearly negative one would mean a bug. 100 games give roughl
 | late move reductions (`P_LMR`) | +42 =27 -31 | 55.5 % | +38 (-20..+99) | |
 | futility pruning (`P_FUTILITY`) | +38 =29 -33 | 52.5 % | +17 (-40..+76) | |
 | reverse futility pruning (`P_RFP`) | +46 =19 -35 | 55.5 % | +38 (-23..+102) | 841 s wall / 135 s cpu |
+| razoring (`P_RAZOR`) | +36 =28 -36 | 50.0 % | 0 (-59..+59) | neutral at fixed nodes; kept for the node saving |
+| late move pruning (`P_LMP`) | +38 =24 -38 | 50.0 % | 0 (-60..+60) | neutral at fixed nodes; kept for the node saving |
 
 The sweep continues over the other toggles in `results/selfplay/off_<P_NAME>.log`.
 
