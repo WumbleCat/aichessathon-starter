@@ -66,9 +66,14 @@ numba compile the function three times over. The current layout, all arrays in o
 `ctx` tuple (`CTX_FIELDS`), two recursive call sites, helpers for move scoring and
 selection, no literal arguments, compiles `search` in 19 s and everything in ~60 s.
 `agent.py` compiles the engine in a daemon thread and joins it for what is left of a 70 s
-budget measured from the start of the import; if the compile is not done the python
-engine plays (with a quarter of the time budget while the thread shares the GIL) and the
-compiled engine takes over at the first `get_move` after it is ready.
+budget measured from the start of the import. If the compile is still running when a move
+is requested, searching in Python is pointless (the compiler holds the GIL almost
+continuously; a probe measured one search node in 3 s), so `get_move` waits on the thread
+for the move's hard budget (20 s on a fresh clock above 100 s) and answers with the
+one-ply static pick only if it is still not ready; the compiled engine takes over with a
+fresh budget from the next move. Where the directory is writable numba's disk cache is on
+for every kernel (`NUMBA_CACHE` in `dc_engine.py`), so local processes after the first
+load the engine in ~2.6 s CPU; the platform's read-only filesystem leaves it off.
 
 numba caches compiled kernels on disk when the agent directory is writable
 (`_NUMBA_CACHE` in `agent.py`): the local harness starts a fresh process per game and,

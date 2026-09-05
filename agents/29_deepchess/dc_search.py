@@ -33,6 +33,7 @@ from dc_engine import (
     MATE_BOUND,
     MAX_MOVES,
     MAX_PLY,
+    NUMBA_CACHE,
     PIECE_VALUE,
     S_CASTLING,
     S_EP,
@@ -133,19 +134,19 @@ CTX = types.Tuple([t for _, t in CTX_FIELDS])
 # ---------------------------------------------------------------------- thin wrappers
 
 
-@njit((CTX, int32), cache=False, nogil=True)
+@njit((CTX, int32), cache=NUMBA_CACHE, nogil=True)
 def make(ctx, move):
     make_move(ctx[C_BOARD], ctx[C_STATE], ctx[C_HASH], move, ctx[C_UNDO], ctx[C_ACC], ctx[C_W1],
               ctx[C_B1], ctx[C_ZOBRIST], ctx[C_ZCASTLE], ctx[C_ZEP], Z_SIDE, ctx[C_CASTLE_MASK],
               ctx[C_HIST])
 
 
-@njit((CTX,), cache=False, nogil=True)
+@njit((CTX,), cache=NUMBA_CACHE, nogil=True)
 def unmake(ctx):
     unmake_move(ctx[C_BOARD], ctx[C_STATE], ctx[C_HASH], ctx[C_UNDO])
 
 
-@njit(boolean(CTX, int64), cache=False, nogil=True)
+@njit(boolean(CTX, int64), cache=NUMBA_CACHE, nogil=True)
 def king_attacked(ctx, side):
     """Is `side`'s king attacked (by the other side)?"""
     state = ctx[C_STATE]
@@ -154,7 +155,7 @@ def king_attacked(ctx, side):
                        ctx[C_ROOK], ctx[C_PAWN])
 
 
-@njit(int64(CTX, int64, boolean), cache=False, nogil=True)
+@njit(int64(CTX, int64, boolean), cache=NUMBA_CACHE, nogil=True)
 def generate(ctx, start, captures_only):
     return gen_moves(ctx[C_BOARD], ctx[C_STATE], ctx[C_MOVES], start, captures_only,
                      ctx[C_KNIGHT], ctx[C_KING], ctx[C_BISHOP], ctx[C_ROOK], ctx[C_PAWN])
@@ -166,7 +167,7 @@ _mark("wrappers")
 # ------------------------------------------------------------------------- repetition
 
 
-@njit(int64(int64[:], uint64[:]), cache=False, nogil=True)
+@njit(int64(int64[:], uint64[:]), cache=NUMBA_CACHE, nogil=True)
 def is_repetition(state, hist):
     """1 if the current position occurred before in the search path or game history.
 
@@ -204,7 +205,7 @@ _mark("is_repetition")
 # ------------------------------------------------------------------------- null move
 
 
-@njit((CTX,), cache=False, nogil=True)
+@njit((CTX,), cache=NUMBA_CACHE, nogil=True)
 def make_null(ctx):
     state = ctx[C_STATE]
     hash_arr = ctx[C_HASH]
@@ -236,7 +237,7 @@ def make_null(ctx):
     state[S_HIST_LEN] += 1
 
 
-@njit((CTX,), cache=False, nogil=True)
+@njit((CTX,), cache=NUMBA_CACHE, nogil=True)
 def unmake_null(ctx):
     state = ctx[C_STATE]
     undo = ctx[C_UNDO]
@@ -256,7 +257,7 @@ _mark("null move")
 # ------------------------------------------------------------------------ evaluation
 
 
-@njit(int64(int8[:], int64, int32[:, :]), cache=False, nogil=True)
+@njit(int64(int8[:], int64, int32[:, :]), cache=NUMBA_CACHE, nogil=True)
 def hand_eval(board, turn, pst):
     """Material + piece-square evaluation, side to move perspective (mirrors agent.py)."""
     phase = 0
@@ -304,7 +305,7 @@ def hand_eval(board, turn, pst):
     return score if turn == 0 else -score
 
 
-@njit(int64(CTX), cache=False, nogil=True, fastmath=True)  # fastmath: vectorised sums
+@njit(int64(CTX), cache=NUMBA_CACHE, nogil=True, fastmath=True)  # fastmath: vectorised sums
 def evaluate_pos(ctx):
     """Static evaluation in centipawns from the side to move's perspective."""
     state = ctx[C_STATE]
@@ -400,7 +401,7 @@ def evaluate_pos(ctx):
 _mark("evaluate_pos")
 
 
-@njit(boolean(int8[:], int64), cache=False, nogil=True)
+@njit(boolean(int8[:], int64), cache=NUMBA_CACHE, nogil=True)
 def has_non_pawn_material(board, turn):
     lo = 2 if turn == 0 else 8
     hi = 5 if turn == 0 else 11
@@ -411,7 +412,7 @@ def has_non_pawn_material(board, turn):
     return False
 
 
-@njit(int64(int8[:], int32), cache=False, nogil=True)
+@njit(int64(int8[:], int32), cache=NUMBA_CACHE, nogil=True)
 def mvv_lva(board, move):
     """Capture ordering score: victim value first, cheapest attacker first."""
     frm = move & 63
@@ -433,7 +434,7 @@ def mvv_lva(board, move):
 # ---------------------------------------------------------------------- move ordering
 
 
-@njit((CTX, int64, int64, int32, int64, int64), cache=False, nogil=True)
+@njit((CTX, int64, int64, int32, int64, int64), cache=NUMBA_CACHE, nogil=True)
 def score_moves(ctx, start, end, tt_move, ply, turn):
     """Ordering scores: TT move, captures/promotions by MVV-LVA, killers, history."""
     board = ctx[C_BOARD]
@@ -457,7 +458,7 @@ def score_moves(ctx, start, end, tt_move, ply, turn):
             mscore[i] = history[turn, m & 63, (m >> 6) & 63]
 
 
-@njit(int32(CTX, int64, int64), cache=False, nogil=True)
+@njit(int32(CTX, int64, int64), cache=NUMBA_CACHE, nogil=True)
 def pick_move(ctx, i, end):
     """Selection sort step: swap the best remaining move into slot i and return it."""
     moves = ctx[C_MOVES]
@@ -483,7 +484,7 @@ _mark("ordering")
 # ------------------------------------------------------------------------- quiescence
 
 
-@njit(int64(CTX, int64, int64, int64), cache=False, nogil=True)
+@njit(int64(CTX, int64, int64, int64), cache=NUMBA_CACHE, nogil=True)
 def quiesce(ctx, alpha, beta, ply):
     stats = ctx[C_STATS]
     stats[ST_NODES] += 1
@@ -555,7 +556,7 @@ _mark("quiesce")
 # ------------------------------------------------------------------------ main search
 
 
-@njit(int64(CTX, int64, int64, int64, int64), cache=False, nogil=True)
+@njit(int64(CTX, int64, int64, int64, int64), cache=NUMBA_CACHE, nogil=True)
 def search(ctx, depth, alpha, beta, ply):
     stats = ctx[C_STATS]
     stats[ST_NODES] += 1

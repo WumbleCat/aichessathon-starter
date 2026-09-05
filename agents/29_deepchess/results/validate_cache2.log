@@ -1,0 +1,22 @@
+agent import returned after 11.2s wall (compiled ready: True)
+import + compile: 11.2s wall, 2.6s cpu, engine=numba, error=None
+perft rnbqkbnr/pppppppp/8/8/8/ d4: 197281 ok
+perft r3k2r/p1ppqpb1/bn2pnp1/3 d3: 97862 ok
+perft 8/2p5/3p4/KP5r/1R3p1k/8/ d5: 674624 ok
+perft r3k2r/Pppp1ppp/1b3nbN/nP d4: 422333 ok
+perft r2q1rk1/pP1p2pp/Q4n2/bbp d3: 9467 ok
+incremental eval: worst |diff| = 0 cp, hash mismatches = 0
+mate test 6k1/5ppp/8/8/8/8/5PPP/R5K1 w - -> a1a8 depth 4 score 99999 ok
+mate test 8/4P3/3k4/1P6/1PP5/7B/8/K3R3 w -> e7e8n depth 4 score 99999 ok
+mate test r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2 -> h5f7 depth 4 score 99999 ok
+mate test 7k/5Q2/6K1/8/8/8/8/8 w - - 0 1 -> f7f8 depth 4 score 99999 ok
+  numba depth 1: d1c2 -462 nodes 191
+  numba depth 2: d1c2 -461 nodes 720
+  numba depth 3: d4c5 -484 nodes 5312
+  numba depth 4: d4c5 -457 nodes 9006
+  numba depth 5: d4c5 -476 nodes 21949
+  numba depth 6: d4c5 -443 nodes 45175
+  numba depth 7: a1c1 -466 nodes 137956
+numba search: depth 7, 300000 nodes, 1.50s cpu -> 200,000 nps (wall 3.1s)
+python search: depth 5, 30000 nodes, 2.16s cpu -> 13,913 nps
+done

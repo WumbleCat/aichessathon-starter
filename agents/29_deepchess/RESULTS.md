@@ -39,7 +39,9 @@ bit-identical to the python path after both changes (`tools/validate_numba.py`).
 mates (mate in 1, knight-promotion mate, scholar's mate, stalemate avoidance).
 `tests/test_agent.py`: 28/28 pass on the current build (legality in castling, promotion,
 en passant, check evasion, mate and stalemate positions; clocks 50 ms to 120 s never use
-more than 45 % of the clock; repeated calls keep state valid; model sanity checks).
+more than 45 % of the clock; repeated calls keep state valid; model sanity checks). Under
+the load of this session the compiled engine reached depth 2 on a 500 ms clock, depth 4
+on 5 s, depth 7 on 30 s and depth 10 on 120 s (7.5 s used).
 
 ## Import / compile budget
 
@@ -56,7 +58,10 @@ roughly twice as fast):
 
 The agent compiles in a thread and joins it for what remains of a 70 s budget from the
 start of the import; the python engine plays until the compiled one is ready, so init can
-never be lost. Locally, the three small python-path kernels are also cached on disk.
+never be lost. Where the agent directory is writable (local runs; the platform's
+filesystem is read-only) numba's disk cache is on for all kernels: the second process
+imported in 11.2 s wall / 2.6 s CPU with the compiled engine ready at import, all
+validation checks identical, no crash (`results/validate_cache1.log`, `validate_cache2.log`).
 
 ## Matches
 
@@ -82,6 +87,27 @@ plays them):
 | baselines/greedy (before the compile thread) | 4 | +2 =0 -2 | 2 losses "by init": cold numba compile > 90 s wall under load |
 | baselines/greedy | 4 | +3 =1 -0 | checkmate 3, threefold 1; no init, flag, crash or illegal move |
 | baselines/minimax | 4 | +4 =0 -0 | all four by the opponent flagging under the load; our agent never flagged |
+| baselines/numba (run by the resume session) | 6 | +5 =0 -1 | five opponent flags, one checkmate loss as Black in game 2, most likely inside the compile window where the python engine plays with a quarter budget |
+| baselines/random (run by the resume session) | 4 | +3 =1 -0 | checkmate 3, one threefold repetition: the fallback engine shuffling during the compile window; no init, flag, crash or illegal move |
+
+## Per-move time at the real clock (README item 6)
+
+Measured by the resume session through the unmodified referee at 120 s + 0.5 s, one game
+at a time, under the usual load (agent.py of 09:50, before the compile-window fix below):
+
+| opponent | games | our moves | median | p90 | p99 | max | max share of clock | init |
+|---|---|---|---|---|---|---|---|---|
+| greedy | 2 (=2) | 80 | 2.73 s | 3.25 s | 3.57 s | 3.97 s | 7.4 % | 77.0 s, 70.8 s |
+| minimax | 2 (-2) | 62 | 2.85 s | 3.36 s | 5.25 s | 5.71 s | 12.7 % | 72.7 s, 70.8 s |
+
+No flag, illegal move or crash. The results themselves were bad: under this load the
+compile thread outlives a whole 4-5 minute game, the compiler holds the GIL almost
+continuously (a probe saw one search node in 3 s), and a bug then made every move fall
+through to the one-ply static pick after spending its budget (a queen hang, a K+Q+B vs K
+draw). Since fixed: while compiling, `get_move` waits on the compile thread for the hard
+budget (20 s on a fresh clock) and only then answers with the static pick; the compiled
+engine takes over the next move. On the platform's idle core the compile is expected to
+finish inside the import join, so this window should not exist there.
 
 ## Submission check
 

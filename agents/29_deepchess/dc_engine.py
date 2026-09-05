@@ -23,6 +23,11 @@ import numpy as np
 from numba import boolean, float32, int8, int32, int64, njit, uint64
 
 _TIMING = bool(_os.environ.get("DEEPCHESS_COMPILE_TIMING"))
+# numba's on-disk cache: only where the directory is writable (local runs), so a fresh
+# process loads the engine in seconds instead of recompiling for ~50 s CPU. The platform's
+# read-only filesystem leaves it off, and the compile then runs inside the import budget.
+NUMBA_CACHE = bool(_os.environ.get("NUMBA_CACHE_DIR")) or _os.access(
+    _os.path.dirname(_os.path.abspath(__file__)), _os.W_OK)
 _t_last = _time.process_time()
 
 
@@ -150,14 +155,14 @@ Z_SIDE = np.uint64(_zrng.integers(0, 2**63 - 1, dtype=np.int64))
 # ------------------------------------------------------------------------------- helpers
 
 
-@njit(int64(int64), cache=False, nogil=True, inline="always")
+@njit(int64(int64), cache=NUMBA_CACHE, nogil=True, inline="always")
 def piece_color(p):
     return 0 if p <= 6 else 1
 
 
 _mark("piece_color")
 
-@njit(int64(int64), cache=False, nogil=True, inline="always")
+@njit(int64(int64), cache=NUMBA_CACHE, nogil=True, inline="always")
 def piece_type(p):
     """0 pawn .. 5 king (p must be non-empty)."""
     return (p - 1) % 6
@@ -165,7 +170,7 @@ def piece_type(p):
 
 _mark("piece_type")
 
-@njit(int32(int64, int64, int64, int64), cache=False, nogil=True, inline="always")
+@njit(int32(int64, int64, int64, int64), cache=NUMBA_CACHE, nogil=True, inline="always")
 def make_move_code(frm, to, promo, flags):
     return int32(frm | (to << 6) | (promo << 12) | (flags << 16))
 
@@ -173,7 +178,7 @@ def make_move_code(frm, to, promo, flags):
 _mark("make_move_code")
 
 @njit(boolean(int8[:], int64, int64, int64[:, :], int64[:, :], int64[:, :, :], int64[:, :, :],
-              int64[:, :, :]), cache=False, nogil=True)
+              int64[:, :, :]), cache=NUMBA_CACHE, nogil=True)
 def is_attacked(board, sq, by_color, knight_t, king_t, bishop_rays, rook_rays, pawn_attackers):
     """True if `sq` is attacked by any piece of `by_color`."""
     base = 6 * by_color
@@ -224,7 +229,7 @@ def is_attacked(board, sq, by_color, knight_t, king_t, bishop_rays, rook_rays, p
 _mark("is_attacked")
 
 @njit(int64(int8[:], int64[:], int32[:], int64, boolean, int64[:, :], int64[:, :],
-            int64[:, :, :], int64[:, :, :], int64[:, :, :]), cache=False, nogil=True)
+            int64[:, :, :], int64[:, :, :], int64[:, :, :]), cache=NUMBA_CACHE, nogil=True)
 def gen_moves(board, state, out, start, captures_only, knight_t, king_t, bishop_rays,
               rook_rays, pawn_attackers):
     """Pseudo-legal moves for the side to move written to out[start:], returns the end."""
@@ -373,7 +378,7 @@ _mark("gen_moves")
 # ---------------------------------------------------------------- accumulator (NN layer 1)
 
 
-@njit(int64(int64, int64, int64), cache=False, nogil=True, inline="always")
+@njit(int64(int64, int64, int64), cache=NUMBA_CACHE, nogil=True, inline="always")
 def feature_index(piece, sq, perspective):
     """DeepChess feature index of `piece` on `sq` seen from `perspective` (0 white)."""
     pt = piece_type(piece)
@@ -384,7 +389,7 @@ def feature_index(piece, sq, perspective):
 
 _mark("feature_index")
 
-@njit((float32[:, :], float32[:, :], float32[:], int64, int64), cache=False, nogil=True,
+@njit((float32[:, :], float32[:, :], float32[:], int64, int64), cache=NUMBA_CACHE, nogil=True,
       inline="always")
 def acc_add(acc, w1, b1, piece, sq):
     n = acc.shape[1]
@@ -397,7 +402,7 @@ def acc_add(acc, w1, b1, piece, sq):
 
 _mark("acc_add")
 
-@njit((float32[:, :], float32[:, :], float32[:], int64, int64), cache=False, nogil=True,
+@njit((float32[:, :], float32[:, :], float32[:], int64, int64), cache=NUMBA_CACHE, nogil=True,
       inline="always")
 def acc_sub(acc, w1, b1, piece, sq):
     n = acc.shape[1]
@@ -410,7 +415,7 @@ def acc_sub(acc, w1, b1, piece, sq):
 
 _mark("acc_sub")
 
-@njit((int8[:], float32[:, :], float32[:, :], float32[:]), cache=False, nogil=True)
+@njit((int8[:], float32[:, :], float32[:, :], float32[:]), cache=NUMBA_CACHE, nogil=True)
 def acc_refresh(board, acc, w1, b1):
     n = acc.shape[1]
     for j in range(n):
@@ -433,7 +438,7 @@ UNDO_SIZE = 6
 
 @njit((int8[:], int64[:], uint64[:], int32, int64[:, :], float32[:, :, :], float32[:, :],
        float32[:], uint64[:, :], uint64[:], uint64[:], uint64, int64[:], uint64[:]),
-      cache=False, nogil=True)
+      cache=NUMBA_CACHE, nogil=True)
 def make_move(board, state, hash_arr, move, undo, acc_stack, w1, b1, zobrist, z_castle,
               z_ep, z_side, castle_mask, hist):
     ply = state[S_PLY]
@@ -557,7 +562,7 @@ def make_move(board, state, hash_arr, move, undo, acc_stack, w1, b1, zobrist, z_
 
 _mark("make_move")
 
-@njit((int8[:], int64[:], uint64[:], int64[:, :]), cache=False, nogil=True)
+@njit((int8[:], int64[:], uint64[:], int64[:, :]), cache=NUMBA_CACHE, nogil=True)
 def unmake_move(board, state, hash_arr, undo):
     ply = state[S_PLY] - 1
     move = undo[ply, U_MOVE]
@@ -604,7 +609,7 @@ def unmake_move(board, state, hash_arr, undo):
 _mark("unmake_move")
 
 @njit(boolean(int8[:], int64[:], int64[:, :], int64[:, :], int64[:, :, :], int64[:, :, :],
-              int64[:, :, :]), cache=False, nogil=True, inline="always")
+              int64[:, :, :]), cache=NUMBA_CACHE, nogil=True, inline="always")
 def in_check(board, state, knight_t, king_t, bishop_rays, rook_rays, pawn_attackers):
     turn = state[S_TURN]
     ksq = state[S_KING_W] if turn == 0 else state[S_KING_B]
@@ -615,7 +620,7 @@ def in_check(board, state, knight_t, king_t, bishop_rays, rook_rays, pawn_attack
 _mark("in_check")
 
 @njit(boolean(int8[:], int64[:], int64[:, :], int64[:, :], int64[:, :, :], int64[:, :, :],
-              int64[:, :, :]), cache=False, nogil=True, inline="always")
+              int64[:, :, :]), cache=NUMBA_CACHE, nogil=True, inline="always")
 def left_king_in_check(board, state, knight_t, king_t, bishop_rays, rook_rays,
                        pawn_attackers):
     """After make_move: is the side that just moved leaving its king attacked?"""
@@ -630,7 +635,7 @@ _mark("left_king_in_check")
 # ------------------------------------------------------------------------------- perft
 
 
-@njit(cache=False, nogil=True)  # no signature: perft is a test tool, compiled on first use
+@njit(cache=NUMBA_CACHE, nogil=True)  # no signature: perft is a test tool, compiled on first use
 def perft(board, state, hash_arr, undo, moves, acc_stack, w1, b1, zobrist, z_castle, z_ep,
           z_side, castle_mask, hist, depth, knight_t, king_t, bishop_rays, rook_rays,
           pawn_attackers):
