@@ -1,0 +1,21 @@
+{
+ "a": "numba:blend:0.75",
+ "b": "numba:hand",
+ "nodes": 3000,
+ "cpu_ms": 300.0,
+ "games": 30,
+ "a_wins": 12,
+ "draws": 11,
+ "a_losses": 7,
+ "a_score": 0.5833,
+ "elo_a_minus_b": 58.5,
+ "elo_95_half_width": 132.7,
+ "terminations": {
+  "checkmate": 19,
+  "threefold_repetition": 10,
+  "fifty_moves": 1
+ },
+ "mean_depth_a": 6.49,
+ "mean_depth_b": 7.19,
+ "elapsed_s": 2661.0
+}

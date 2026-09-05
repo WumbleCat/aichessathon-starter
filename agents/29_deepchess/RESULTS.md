@@ -73,10 +73,10 @@ by threefold/50-move/insufficient material, 300 plies to material adjudication.
 | numba:net | python:net | 300 ms CPU | 20 | +16 =4 -0 | 90 % | same evaluation, compiled search reaches depth 5.2 on average vs 3.1; ~+380 Elo |
 | numba:net | numba:hand | 20,000 nodes | 30 | +14 =7 -9 | 58 % | DeepChess scalar vs material + PST at equal nodes: ~+60 Elo (95 % interval +-130) |
 | numba:net | numba:hand | 300 ms CPU | 30 | +6 =7 -17 | 32 % | before the evaluation speedup (93k nodes/s): the cheaper PST eval searched 1.7 plies deeper (7.4 vs 5.7) and won |
-| numba:net | numba:hand | 300 ms CPU | (running, v2) | | | after the speedup (209k nodes/s) |
+| numba:net | numba:hand | 300 ms CPU | 30 | +15 =5 -10 | 58 % | after the speedup (209k nodes/s): depth 6.5 vs 7.2 and the network's knowledge now wins out, ~+60 Elo (+-130) |
 | numba:blend:0.75 | numba:net | 20,000 nodes | 30 | +14 =9 -7 | 62 % | 75 % network + 25 % PST fixes the saturation in won positions: ~+80 Elo (+-135); now the default |
 | numba:blend:0.75 | numba:hand | 300 ms CPU | 13 (stopped) | +3 =4 -6 | 38 % | before the speedup, stopped when the faster evaluation landed |
-| numba:blend:0.75 | numba:hand | 300 ms CPU | (running, v2) | | | after the speedup |
+| numba:blend:0.75 | numba:hand | 300 ms CPU | 30 | +12 =11 -7 | 58 % | after the speedup: same score as net with fewer losses (blend is the shipped default) |
 
 Harness games (`harness.arena`, 10 s + 0.1 s, protocol and robustness only under this
 load; the compiled engine is usually not ready for the first moves and the python engine
@@ -89,11 +89,14 @@ plays them):
 | baselines/minimax | 4 | +4 =0 -0 | all four by the opponent flagging under the load; our agent never flagged |
 | baselines/numba (run by the resume session) | 6 | +5 =0 -1 | five opponent flags, one checkmate loss as Black in game 2, most likely inside the compile window where the python engine plays with a quarter budget |
 | baselines/random (run by the resume session) | 4 | +3 =1 -0 | checkmate 3, one threefold repetition: the fallback engine shuffling during the compile window; no init, flag, crash or illegal move |
+| baselines/minimax at 120 s + 0.5 s, after the compile-window fix and with the engine cache | 2 | +2 =0 -0 | both by checkmate; the same pair before the fix was 0-2 |
 
 ## Per-move time at the real clock (README item 6)
 
 Measured by the resume session through the unmodified referee at 120 s + 0.5 s, one game
-at a time, under the usual load (agent.py of 09:50, before the compile-window fix below):
+at a time, under the usual load (agent.py of 09:50, before the compile-window fix below;
+scripts, per-move records and the probe trace are on branch `worktree-agent-29-bench`
+under `reports/agent-29-timing-2026-09-05/`):
 
 | opponent | games | our moves | median | p90 | p99 | max | max share of clock | init |
 |---|---|---|---|---|---|---|---|---|

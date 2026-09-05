@@ -1,0 +1,20 @@
+{
+ "a": "numba:net",
+ "b": "numba:hand",
+ "nodes": 3000,
+ "cpu_ms": 300.0,
+ "games": 30,
+ "a_wins": 15,
+ "draws": 5,
+ "a_losses": 10,
+ "a_score": 0.5833,
+ "elo_a_minus_b": 58.5,
+ "elo_95_half_width": 132.7,
+ "terminations": {
+  "threefold_repetition": 5,
+  "checkmate": 25
+ },
+ "mean_depth_a": 6.5,
+ "mean_depth_b": 7.16,
+ "elapsed_s": 2450.4
+}
