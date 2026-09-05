@@ -28,8 +28,10 @@ function Write-Log($message) {
 }
 
 function Get-Played {
+    # -ReadCount 0 hands the whole file down the pipeline as one array, which Measure-Object
+    # counts as a single line, so count the array itself instead
     if (Test-Path "$results\games.jsonl") {
-        return (Get-Content "$results\games.jsonl" -ReadCount 0 | Measure-Object -Line).Lines
+        return @(Get-Content -LiteralPath "$results\games.jsonl").Count
     }
     return 0
 }
