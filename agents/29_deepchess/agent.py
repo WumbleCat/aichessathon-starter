@@ -757,6 +757,40 @@ def _move_code(board: chess.Board, move: chess.Move) -> int:
     return move.from_square | (move.to_square << 6) | (promo << 12) | (flags << 16)
 
 
+ADAPTIVE_BLEND = os.environ.get("DEEPCHESS_ADAPTIVE_BLEND", "1") != "0"
+BLEND_MG = float(os.environ.get("DEEPCHESS_BLEND_MG", "0.80"))
+BLEND_EG = float(os.environ.get("DEEPCHESS_BLEND_EG", "0.40"))
+
+
+def _game_phase(board: chess.Board) -> int:
+    """0 in a bare pawn ending, 24 with all the pieces on, as the handcrafted taper counts."""
+    def count(piece: int) -> int:
+        return len(board.pieces(piece, chess.WHITE)) + len(board.pieces(piece, chess.BLACK))
+
+    phase = (
+        count(chess.KNIGHT)
+        + count(chess.BISHOP)
+        + 2 * count(chess.ROOK)
+        + 4 * count(chess.QUEEN)
+    )
+    return min(24, phase)
+
+
+def _blend_weight(board: chess.Board) -> int:
+    """The network's share of the blended evaluation, in percent.
+
+    The network was trained on positions from real games and saturates outside that range:
+    every move in a won K+2R+2P ending scores about +835, so it cannot tell a conversion from
+    a shuffle. The handcrafted material and piece-square terms stay meaningful there, so the
+    network's share falls with the material on the board. Set as one value per search, since
+    the phase barely moves inside one tree.
+    """
+    if not ADAPTIVE_BLEND or EVAL_MODE != "blend":
+        return round(BLEND_NET_WEIGHT * 100)
+    phase = _game_phase(board)
+    return round(100 * (BLEND_EG + (BLEND_MG - BLEND_EG) * phase / 24.0))
+
+
 class NumbaSearcher:
     """Owns the arrays of one compiled search and runs the root move loop."""
 
@@ -796,7 +830,7 @@ class NumbaSearcher:
         self.pos.set_board(board, m["w1"], m["b1"], self.game_hashes)
         self.game_hashes.append(int(self.pos.hash[0]))
         self.params[dc_search.P_MODE] = _MODE_CODE.get(EVAL_MODE, 0)
-        self.params[dc_search.P_BLEND] = round(BLEND_NET_WEIGHT * 100)
+        self.params[dc_search.P_BLEND] = _blend_weight(board)
         self.killers[:] = 0
         self.history //= 2
         self.stats[:] = 0
@@ -808,16 +842,20 @@ class NumbaSearcher:
         m = self.model
         self.pos.set_board(board, m["w1"], m["b1"], None)
         self.params[dc_search.P_MODE] = _MODE_CODE.get(EVAL_MODE, 0)
-        self.params[dc_search.P_BLEND] = round(BLEND_NET_WEIGHT * 100)
+        self.params[dc_search.P_BLEND] = _blend_weight(board)
         return int(dc_search.evaluate_pos(self._args()))
 
     def search_root(self, depth: int, root_moves: list[tuple[int, chess.Move]],
+                    alpha: int = -INF, beta: int = INF,
                     ) -> tuple[int, chess.Move, list[tuple[int, chess.Move]]]:
-        """One iteration: (score, best move, root moves ordered best first)."""
+        """One iteration: (score, best move, root moves ordered best first).
+
+        ``alpha``/``beta`` are the aspiration window.  A returned score at or outside the
+        window is a bound, not the true score: the caller has to widen and search again.
+        """
         args = self._args()
         p = self.pos
         m = self.model
-        alpha, beta = -INF, INF
         best = -INF
         best_move = root_moves[0][1]
         scored: list[tuple[int, int, chess.Move]] = []
@@ -836,7 +874,7 @@ class NumbaSearcher:
                 score = child(code, alpha, beta)
             else:
                 score = child(code, alpha, alpha + 1)
-                if score > alpha and stats[dc_search.ST_ABORT] == 0:
+                if score > alpha and score < beta and stats[dc_search.ST_ABORT] == 0:
                     score = child(code, alpha, beta)
             if stats[dc_search.ST_ABORT] != 0:
                 raise OutOfTime()
@@ -1029,6 +1067,33 @@ def get_move(fen: str, time_left_ms: int) -> str:
     return best.uci()
 
 
+ASPIRATION = os.environ.get("DEEPCHESS_ASPIRATION", "1") != "0"
+EXTEND_UNSTABLE = os.environ.get("DEEPCHESS_EXTEND_UNSTABLE", "1") != "0"
+ASPIRATION_WINDOW = int(os.environ.get("DEEPCHESS_ASPIRATION_WINDOW", "30"))
+
+
+def _aspirate(ns: NumbaSearcher, depth: int, root_moves: list[tuple[int, chess.Move]],
+              prev: int) -> tuple[int, chess.Move, list[tuple[int, chess.Move]]]:
+    """One iteration inside a window around the previous score, widening on a fail.
+
+    Most iterations land inside a narrow window, and the tighter bounds cut the tree; the
+    cost is an occasional re-search, so the window widens fast (x4) rather than creeping.
+    """
+    window = ASPIRATION_WINDOW
+    alpha, beta = prev - window, prev + window
+    while True:
+        score, move, ordered = ns.search_root(depth, root_moves, alpha, beta)
+        if score <= alpha and alpha > -INF:  # fail low: the position is worse than we thought
+            alpha = max(-INF, score - window)
+            beta = (alpha + beta) // 2  # keep the upper bound tight, the score only fell
+        elif score >= beta and beta < INF:  # fail high
+            beta = min(INF, score + window)
+        else:
+            return score, move, ordered
+        window *= 4
+        root_moves = ordered  # a failed search still improves the move order
+
+
 def _get_move_numba(board: chess.Board, moves: list[chess.Move], start: float,
                     soft: float, hard: float) -> chess.Move:
     """Iterative deepening on the compiled engine with a timer-driven stop flag."""
@@ -1048,18 +1113,30 @@ def _get_move_numba(board: chess.Board, moves: list[chess.Move], start: float,
     timer = threading.Timer(remaining_s, ns.stop.__setitem__, (0, 1))
     timer.daemon = True
     timer.start()
+    unstable = 0.0  # extra share of the soft budget bought by an unsettled root
     try:
         for depth in range(1, dc_engine.MAX_PLY - 4):
             try:
-                score, move, root_moves = ns.search_root(depth, root_moves)
+                if ASPIRATION and depth >= 4 and abs(best_score) < MATE_BOUND:
+                    score, move, root_moves = _aspirate(ns, depth, root_moves, best_score)
+                else:
+                    score, move, root_moves = ns.search_root(depth, root_moves)
             except OutOfTime:
                 break
+            changed = depth_reached > 0 and move != best
+            dropped = depth_reached > 0 and score < best_score - 30
             best, best_score = move, score
             depth_reached = depth
             elapsed = (time.perf_counter() - start) * 1000.0
             if abs(score) > MATE_BOUND and depth >= 4:
                 break
-            if elapsed > soft:
+            # a root that just changed its mind, or fell, is worth more time: the extra is
+            # capped by the hard budget below, so this spends the move's reserve, not the game's
+            if EXTEND_UNSTABLE and (changed or dropped):
+                unstable = 0.6 if dropped else 0.35
+            else:
+                unstable *= 0.5
+            if elapsed > soft * (1.0 + unstable):
                 break
             if elapsed * 2.5 > hard:
                 break

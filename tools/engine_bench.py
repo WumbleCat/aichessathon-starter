@@ -191,6 +191,25 @@ class Job:
     agent: AgentEntry
     game: int  # 0-based; even = agent plays white
     elo: int
+    start_fen: str = chess.STARTING_FEN
+
+
+def load_openings(path: Path | None) -> list[str]:
+    """Opening positions, one FEN per line.
+
+    Games are played in pairs from the same opening with the colours swapped, which removes
+    most of the variance caused by the opening itself. Rated games on the platform also start
+    from curated positions rather than the initial one, so this is the more representative
+    measurement as well as the more sensitive one.
+    """
+    if path is None:
+        return [chess.STARTING_FEN]
+    fens = [
+        line.strip()
+        for line in path.read_text().splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+    return fens or [chess.STARTING_FEN]
 
 
 def game_key(job: Job) -> str:
@@ -209,7 +228,9 @@ def play_one(job: Job, engine_path: Path, args: argparse.Namespace) -> dict[str,
     white, black = (agent_side, engine) if plays_white else (engine, agent_side)
     started = time.monotonic()
     try:
-        outcome = play_match(white, black, args.base_ms, args.increment_ms)  # type: ignore[arg-type]
+        outcome = play_match(  # type: ignore[arg-type]
+            white, black, args.base_ms, args.increment_ms, start_fen=job.start_fen
+        )
         result, termination, plies = outcome.result, outcome.termination, plies_of(outcome.pgn)
     except Exception as error:  # a broken agent must not stop the benchmark
         result, termination, plies = ("black" if plays_white else "white"), f"error:{error!r}", 0
@@ -344,6 +365,14 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--agents", type=int, nargs="*", default=None, help="agent numbers")
+    parser.add_argument(
+        "--extra",
+        nargs="*",
+        default=[],
+        metavar="NUMBER:LABEL:PATH",
+        help="an agent directory outside my-agents/ and agents/, e.g. a variant built to A/B "
+        "test a change: '90:dc_base:agents/29_deepchess/variants/base'",
+    )
     parser.add_argument("--games", type=int, default=100, help="games per agent per Elo level")
     parser.add_argument("--elo", type=int, nargs="*", default=[1320], help="Stockfish UCI_Elo")
     parser.add_argument("--movetime", type=int, default=100, help="engine ms per move")
@@ -351,6 +380,12 @@ def main() -> None:
     parser.add_argument("--increment-ms", type=int, default=100)
     parser.add_argument("--workers", type=int, default=4, help="games in parallel")
     parser.add_argument("--engine", default=None, help="path to the Stockfish binary")
+    parser.add_argument(
+        "--openings",
+        type=Path,
+        default=None,
+        help="file of opening FENs, one per line; each is played twice, colours swapped",
+    )
     parser.add_argument("--out", type=Path, default=DEFAULT_RESULTS)
     parser.add_argument(
         "--max-games",
@@ -379,6 +414,12 @@ def main() -> None:
     if args.agents:
         wanted = set(args.agents)
         agents = [a for a in agents if a.number in wanted]
+    for item in args.extra:
+        number, label, path = item.split(":", 2)
+        directory = Path(path)
+        if not (directory / "agent.py").is_file():
+            raise SystemExit(f"no agent.py in {directory}")
+        agents.append(AgentEntry(int(number), label, directory.resolve()))
     if not agents:
         raise SystemExit("no agents matched")
 
@@ -397,8 +438,9 @@ def main() -> None:
         # round-robin ordering: one game per agent, then the next game.  An interrupted run
         # therefore leaves every agent with a comparable number of games instead of leaving
         # the last agents with none.
+        openings = load_openings(args.openings)
         pending = [
-            Job(agent, game, elo)
+            Job(agent, game, elo, openings[(game // 2) % len(openings)])
             for elo in args.elo
             for game in range(args.games)
             for agent in agents

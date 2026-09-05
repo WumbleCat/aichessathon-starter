@@ -216,6 +216,11 @@ def main() -> None:
     parser.add_argument("--keep-check", action="store_true")
     parser.add_argument("--keep-capture", action="store_true")
     parser.add_argument("--val-fraction", type=float, default=0.05)
+    parser.add_argument(
+        "--init",
+        default=None,
+        help="a .pt checkpoint to fine-tune from (default: random initialisation)",
+    )
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -240,6 +245,12 @@ def main() -> None:
     va = torch.from_numpy(np.nonzero(is_val)[0])
 
     model = DeepChessNet(hidden1=args.hidden)
+    if args.init:
+        # fine-tune: start from a trained checkpoint instead of random weights, so a run on a
+        # smaller, targeted dataset sharpens the model rather than relearning it from nothing
+        state = torch.load(args.init, map_location="cpu", weights_only=True)
+        model.load_state_dict(state)
+        print(f"initialised from {args.init}", flush=True)
     n_params = sum(p.numel() for p in model.parameters()) - model.embed.weight[PAD].numel()
     print(f"parameters: {n_params}", flush=True)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)

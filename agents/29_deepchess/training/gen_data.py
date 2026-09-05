@@ -20,11 +20,10 @@ from __future__ import annotations
 
 import argparse
 import random
+import subprocess
 import sys
 import time
 from pathlib import Path
-
-import subprocess
 
 import chess
 import numpy as np
@@ -113,9 +112,47 @@ class Teacher:
         self.proc.wait(timeout=5)
 
 
+# pieces a random endgame is built from: pawns and rooks dominate real endings
+ENDGAME_PIECES = (
+    [chess.PAWN] * 5 + [chess.ROOK] * 3 + [chess.KNIGHT, chess.BISHOP] * 2 + [chess.QUEEN]
+)
+
+
+def random_endgame(rng: random.Random, max_per_side: int = 4) -> chess.Board:
+    """A random legal position with few pieces.
+
+    The self-play games start from the initial position and stop a few plies after the score
+    runs away, so simplified positions are rare in the data and the network saturates in them
+    (every move in a won K+2R+2P ending scored about +835). Sampling endgames directly is the
+    cheapest way to cover that range.
+    """
+    for _ in range(400):
+        board = chess.Board.empty()
+        free = list(range(64))
+        rng.shuffle(free)
+        white_king, black_king = free.pop(), free.pop()
+        if chess.square_distance(white_king, black_king) < 2:
+            continue
+        board.set_piece_at(white_king, chess.Piece(chess.KING, chess.WHITE))
+        board.set_piece_at(black_king, chess.Piece(chess.KING, chess.BLACK))
+        for color in (chess.WHITE, chess.BLACK):
+            for _ in range(rng.randint(1, max_per_side)):
+                piece = rng.choice(ENDGAME_PIECES)
+                square = free.pop()
+                if piece == chess.PAWN and chess.square_rank(square) in (0, 7):
+                    piece = chess.KNIGHT  # a pawn cannot stand on the back ranks
+                board.set_piece_at(square, chess.Piece(piece, color))
+        board.turn = rng.choice([chess.WHITE, chess.BLACK])
+        board.clear_stack()
+        if board.is_valid() and not board.is_game_over(claim_draw=True):
+            return board
+    return chess.Board()
+
+
 def play_game(engine: Teacher, rng: random.Random, depth: int,
-              random_plies: int, random_prob: float, max_plies: int) -> list[tuple]:
-    board = chess.Board()
+              random_plies: int, random_prob: float, max_plies: int,
+              start: chess.Board | None = None, lopsided_limit: int = 6) -> list[tuple]:
+    board = chess.Board() if start is None else start
     rows: list[tuple] = []
     for _ in range(random_plies):
         moves = list(board.legal_moves)
@@ -126,9 +163,10 @@ def play_game(engine: Teacher, rng: random.Random, depth: int,
     lopsided = 0
     while not board.is_game_over(claim_draw=True) and ply < max_plies:
         cp, best_uci = engine.analyse(board.fen(), depth)
-        # stop once the game is decided; long won-position tails add little
+        # stop once the game is decided; long won-position tails add little, except when the
+        # point of the game is the conversion (endgame starts), which is what we lack
         lopsided = lopsided + 1 if abs(cp) >= 1500 else 0
-        if lopsided >= 6:
+        if lopsided >= lopsided_limit:
             break
         best = chess.Move.from_uci(best_uci) if best_uci else None
         if best is not None and best not in board.legal_moves:
@@ -156,7 +194,8 @@ def play_game(engine: Teacher, rng: random.Random, depth: int,
     return [(s, m, cp, result, ply) for (s, m, cp, ply) in rows]
 
 
-def worker(worker_id: int, positions: int, depth: int, seed: int, chunk: int) -> None:
+def worker(worker_id: int, positions: int, depth: int, seed: int, chunk: int,
+           endgame_frac: float = 0.0, tag: str = "chunk") -> None:
     rng = random.Random(seed * 1000 + worker_id)
     engine = Teacher(TEACHER)
     DATA.mkdir(exist_ok=True)
@@ -172,9 +211,16 @@ def worker(worker_id: int, positions: int, depth: int, seed: int, chunk: int) ->
     started = time.time()
     try:
         while total < positions:
-            random_plies = rng.randint(2, 8)
-            random_prob = rng.choice([0.0, 0.05, 0.1, 0.2])
-            rows = play_game(engine, rng, depth, random_plies, random_prob, 240)
+            if rng.random() < endgame_frac:
+                # an endgame start: no random opening plies, and let the conversion play out
+                rows = play_game(
+                    engine, rng, depth, 0, rng.choice([0.0, 0.05]), 160,
+                    start=random_endgame(rng), lopsided_limit=40,
+                )
+            else:
+                random_plies = rng.randint(2, 8)
+                random_prob = rng.choice([0.0, 0.05, 0.1, 0.2])
+                rows = play_game(engine, rng, depth, random_plies, random_prob, 240)
             for squares, meta, cp, result, ply in rows:
                 buf_b.append(squares)
                 buf_m.append(meta)
@@ -185,7 +231,7 @@ def worker(worker_id: int, positions: int, depth: int, seed: int, chunk: int) ->
             game_id += 1
             total += len(rows)
             if len(buf_s) >= chunk or total >= positions:
-                out = DATA / f"chunk_{worker_id:02d}_{chunk_id:04d}.npz"
+                out = DATA / f"{tag}_{worker_id:02d}_{chunk_id:04d}.npz"
                 np.savez_compressed(
                     out,
                     boards=np.stack(buf_b), meta=np.stack(buf_m),
@@ -211,9 +257,20 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=29)
     parser.add_argument("--chunk", type=int, default=50_000)
     parser.add_argument("--worker-id", type=int, default=None, help="internal")
+    parser.add_argument(
+        "--endgame-frac",
+        type=float,
+        default=0.0,
+        help="share of games started from a random legal endgame instead of the initial "
+        "position, and played until the conversion is over",
+    )
+    parser.add_argument(
+        "--tag", default="chunk", help="chunk filename prefix; use a new one to keep old data"
+    )
     args = parser.parse_args()
     if args.worker_id is not None:
-        worker(args.worker_id, args.positions, args.depth, args.seed, args.chunk)
+        worker(args.worker_id, args.positions, args.depth, args.seed, args.chunk,
+               args.endgame_frac, args.tag)
         return
     import subprocess
 
@@ -221,7 +278,8 @@ def main() -> None:
     for w in range(args.workers):
         cmd = [sys.executable, str(Path(__file__).resolve()), "--worker-id", str(w),
                "--positions", str(args.positions), "--depth", str(args.depth),
-               "--seed", str(args.seed), "--chunk", str(args.chunk)]
+               "--seed", str(args.seed), "--chunk", str(args.chunk),
+               "--endgame-frac", str(args.endgame_frac), "--tag", args.tag]
         procs.append(subprocess.Popen(cmd))
     for p in procs:
         p.wait()
