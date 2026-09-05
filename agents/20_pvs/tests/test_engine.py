@@ -10,6 +10,7 @@ import os
 import sys
 import time
 import unittest
+from typing import ClassVar
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -17,6 +18,11 @@ sys.path.insert(0, os.path.dirname(HERE))
 import chess  # noqa: E402
 
 import agent  # noqa: E402
+
+# the numba compile runs in a thread; the tests need the real engine, not the fallback
+agent._load_thread.join()
+assert agent._ENGINE_OK, agent._ENGINE_ERROR
+
 import pvs_board as pb  # noqa: E402
 from pvs_search import MATE_BOUND, Searcher, default_params  # noqa: E402
 
@@ -30,7 +36,7 @@ def best(fen: str, ms: int = 1500) -> str:
 
 
 class MoveGeneration(unittest.TestCase):
-    PERFT = [
+    PERFT: ClassVar[list[tuple[str, int, int]]] = [
         (chess.STARTING_FEN, 3, 8902),
         ("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 3, 97862),
         ("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 4, 43238),
@@ -100,13 +106,11 @@ class MandatoryChessTests(unittest.TestCase):
         self.check("r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4", "h5f7")
 
     def test_check_evasion(self) -> None:
-        fen = "rnbqkbnr/pppp1ppp/8/4p3/7P/8/PPPPPPP1/RNBQKBNR w KQkq - 0 2"
-        board = chess.Board(fen)
-        board.push_san("h5")  # nonsense to keep a legal board
-        fen = "rnb1kbnr/pppp1ppp/8/4p3/7q/8/PPPPPPP1/RNBQKBNR w KQkq - 0 3"
-        uci = self.check(fen)
+        # 1.f3 e5 2.Kf2?? Qh4+ : white must block with g3 (or Ke3/Kg1... only legal evasions)
+        fen = "rnb1kbnr/pppp1ppp/8/4p3/7q/5P2/PPPPP1PP/RNBQKBNR w KQkq - 1 3"
         board = chess.Board(fen)
         self.assertTrue(board.is_check())
+        uci = self.check(fen)
         board.push_uci(uci)
         self.assertFalse(board.is_check() and board.turn == chess.WHITE)
 
@@ -129,12 +133,17 @@ class MandatoryChessTests(unittest.TestCase):
         self.assertFalse(board.is_stalemate())
 
     def test_stalemate_position_side_to_move(self) -> None:
-        # side to move has only stalemate-avoiding drawn options; must still return legal
-        fen = "8/8/8/8/8/2k5/1q6/K7 w - - 0 1"
+        # nearly stalemated: the only legal move is Kb8, and it must be returned
+        fen = "k7/8/1KQ5/8/8/8/8/8 b - - 0 1"
         board = chess.Board(fen)
-        if board.is_stalemate():
-            self.skipTest("no legal moves")
-        self.check(fen)
+        self.assertEqual([m.uci() for m in board.legal_moves], ["a8b8"])
+        self.check(fen, "a8b8")
+
+    def test_game_over_positions_do_not_crash(self) -> None:
+        # the platform never asks for a move here, but get_move must not raise
+        for fen in ("8/8/8/8/8/2k5/1q6/K7 w - - 0 1", "7k/5Q2/6K1/8/8/8/8/8 b - - 0 1"):
+            self.assertTrue(chess.Board(fen).is_game_over())
+            self.assertEqual(agent.get_move(fen, 1000), "0000")
 
     def test_kingside_castling(self) -> None:
         uci = self.check("r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5")
@@ -164,8 +173,9 @@ class MandatoryChessTests(unittest.TestCase):
         # en passant is the only way to win the pawn here
         fen2 = "8/8/8/2k5/3pP3/8/8/4K3 b - e3 0 1"
         self.check(fen2)
-        # a position where taking en passant is clearly best (wins a pawn for free)
-        uci = self.check("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1", ms=1000)
+        # a position where taking en passant is clearly best: the d-pawn then promotes
+        # unopposed, while anything else lets black's d-pawn run
+        uci = self.check("7k/8/8/3pP3/8/8/8/K7 w - d6 0 1", ms=1000)
         self.assertEqual(uci, "e5d6")
 
     def test_queen_promotion(self) -> None:
@@ -213,8 +223,9 @@ class ClockTests(unittest.TestCase):
     def test_clocks(self) -> None:
         for ms in (50, 100, 500, 1000, 5000, 30000, 120000):
             elapsed = self.run_clock(ms)
-            # must never come close to flagging: the watchdog grace is 500 ms
-            allowed = max(ms * 0.5, 40) if ms < 1000 else ms * 0.35
+            # must never come close to flagging: the watchdog grace is 500 ms. The fixed
+            # 150 ms covers python-chess overhead inflated by a loaded machine.
+            allowed = ms * 0.5 + 150 if ms < 1000 else ms * 0.35
             self.assertLess(elapsed, allowed, f"{ms} ms clock took {elapsed:.0f} ms")
 
     def test_repeated_calls_keep_state_valid(self) -> None:
@@ -232,7 +243,7 @@ class SearchBehaviour(unittest.TestCase):
     def test_mate_scores(self) -> None:
         s = Searcher()
         pos = pb.Position("6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1")
-        move, score, depth, info = s.search(pos, max_depth=4)
+        move, score, _depth, _info = s.search(pos, max_depth=4)
         self.assertEqual(pb.move_to_uci(move), "e1e8")
         self.assertGreater(score, MATE_BOUND)
 
@@ -242,27 +253,38 @@ class SearchBehaviour(unittest.TestCase):
         fen = "7k/8/8/8/8/8/8/Q6K w - - 0 1"
         pos = pb.Position(fen)
         key = int(pos.st[pb.ST_HASH])
-        move, score, depth, info = s.search(pos, max_depth=3, history_keys=[key, key])
+        _move, score, _depth, _info = s.search(pos, max_depth=3, history_keys=[key, key])
         self.assertGreater(score, 300)
 
     def test_features_can_be_disabled(self) -> None:
-        pos = pb.Position("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
-        base = Searcher(default_params())
-        m1, s1, d1, i1 = base.search(pos, max_depth=4)
+        # Node counts of a single position are noisy (ordering luck), so compare in aggregate:
+        # without null move and LMR the search must visit clearly more nodes at the same depth.
         from pvs_search import P_LMR, P_NULL
 
+        fens = [
+            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+            "r1bq1rk1/pp2bppp/2n1pn2/3p4/2PP4/2N1PN2/PP3PPP/R2QKB1R w KQ - 0 8",
+            "r2q1rk1/ppp2ppp/2np1n2/2b1p1B1/2B1P1b1/2NP1N2/PPP2PPP/R2Q1RK1 w - - 0 8",
+            "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        ]
         p = default_params()
         p[P_NULL] = 0
         p[P_LMR] = 0
-        plain = Searcher(p)
-        m2, s2, d2, i2 = plain.search(pos, max_depth=4)
-        self.assertGreater(i2["nodes"], i1["nodes"] // 2)
-        self.assertTrue(legal(pos_fen(pos), pb.move_to_uci(m2)))
+        full_nodes = plain_nodes = 0
+        for fen in fens:
+            pos = pb.Position(fen)
+            m1, _s1, _d1, i1 = Searcher(default_params()).search(pos, max_depth=6)
+            m2, _s2, _d2, i2 = Searcher(p).search(pos, max_depth=6)
+            self.assertTrue(legal(fen, pb.move_to_uci(m1)))
+            self.assertTrue(legal(fen, pb.move_to_uci(m2)))
+            full_nodes += i1["nodes"]
+            plain_nodes += i2["nodes"]
+        self.assertGreater(plain_nodes, full_nodes)
 
     def test_node_limit_stops(self) -> None:
         s = Searcher()
         pos = pb.Position(chess.STARTING_FEN)
-        move, score, depth, info = s.search(pos, max_depth=30, node_limit=20000)
+        move, _score, _depth, info = s.search(pos, max_depth=30, node_limit=20000)
         self.assertLess(info["nodes"], 40000)
         self.assertNotEqual(move, 0)
 

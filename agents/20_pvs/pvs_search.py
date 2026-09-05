@@ -24,34 +24,28 @@ import time
 
 import numpy as np
 from numba import boolean, float64, int64, njit, objmode, void
-
 from pvs_board import (
-    EMPTY,
-    FLAG_CAPTURE,
+    A1,
+    A2,
     FLAG_EP,
     KING,
     MAX_PLY,
     MOVE_BUF,
     PAWN,
     QUEEN,
-    ST_EP,
     ST_HALF,
     ST_HASH,
     ST_PLY,
     ST_SIDE,
-    A1,
-    A2,
     Position,
     attacked,
     attackers_to,
-    bishop_attacks,
     gen_moves,
     king_square,
     lsb,
     make_move,
     make_null,
     move_to_uci,
-    rook_attacks,
     unmake_move,
     unmake_null,
 )
@@ -284,10 +278,14 @@ def score_moves(
                     scores[i] = SCORE_BAD_CAPTURE - 1000 + victim
                     continue
             attacker = (m >> 20) & 15
-            if params[P_SEE_ORDER] and captured and SEE_VALUE[captured] < SEE_VALUE[attacker]:
-                if see(tab, bb, occ, sq, m, gain) < 0:
-                    scores[i] = SCORE_BAD_CAPTURE + victim
-                    continue
+            if (
+                params[P_SEE_ORDER]
+                and captured
+                and SEE_VALUE[captured] < SEE_VALUE[attacker]
+                and see(tab, bb, occ, sq, m, gain) < 0
+            ):
+                scores[i] = SCORE_BAD_CAPTURE + victim
+                continue
             scores[i] = SCORE_GOOD_CAPTURE + victim * 16 - ((attacker - 1) % 6)
         elif params[P_KILLERS] and m == k0:
             scores[i] = SCORE_KILLER
@@ -393,9 +391,12 @@ def qsearch(
         if not checked:
             captured = (m >> 24) & 15
             promo = (m >> 12) & 7
-            if params[P_DELTA] and promo == 0:
-                if best + SEE_VALUE[captured] + params[P_DELTA_MARGIN] <= alpha:
-                    continue
+            if (
+                params[P_DELTA]
+                and promo == 0
+                and best + SEE_VALUE[captured] + params[P_DELTA_MARGIN] <= alpha
+            ):
+                continue
             if params[P_SEE_PRUNE_Q] and scores[base + i] < 0 and promo == 0:
                 continue  # losing capture (SEE < 0) or under-promotion
         make_move(tab, bb, occ, sq, st, undo, m)
@@ -524,14 +525,13 @@ def negamax(
     static_eval = 0
     if not checked:
         static_eval = evaluate(tab, etab, bb, occ, st)
-        if tt_hit:
-            # a bound from the table refines the static estimate
-            if tt_flag == FLAG_EXACT:
-                static_eval = tt_score
-            elif tt_flag == FLAG_LOWER and tt_score > static_eval:
-                static_eval = tt_score
-            elif tt_flag == FLAG_UPPER and tt_score < static_eval:
-                static_eval = tt_score
+        # a bound from the table refines the static estimate
+        if tt_hit and (
+            tt_flag == FLAG_EXACT
+            or (tt_flag == FLAG_LOWER and tt_score > static_eval)
+            or (tt_flag == FLAG_UPPER and tt_score < static_eval)
+        ):
+            static_eval = tt_score
 
     if not pv_node and not checked and abs(beta) < MATE_BOUND:
         # reverse futility pruning: far above beta at low depth
@@ -810,10 +810,12 @@ class Searcher:
             pos.st[ST_PLY] = 0  # a timeout unwinds without popping
             if sinfo[S_STOP]:
                 # take a root move only if it was fully searched and beat the old best
-                if sinfo[S_ROOT_BEST] != 0 and sinfo[S_ROOT_SCORE] > -INF:
-                    if completed == 0 or sinfo[S_ROOT_BEST] != best_move:
-                        best_move = int(sinfo[S_ROOT_BEST])
-                        best_score = int(sinfo[S_ROOT_SCORE])
+                root_best = int(sinfo[S_ROOT_BEST])
+                if root_best != 0 and sinfo[S_ROOT_SCORE] > -INF and (
+                    completed == 0 or root_best != best_move
+                ):
+                    best_move = root_best
+                    best_score = int(sinfo[S_ROOT_SCORE])
                 break
             if self.params[P_ASPIRATION] and depth >= 4 and (score <= alpha or score >= beta):
                 # aspiration failure: widen and repeat the same depth

@@ -366,9 +366,7 @@ def attacked(tab, bb, occ_all: int, s: int, by: int) -> bool:
     if bq and bishop_attacks(tab, s, occ_all) & bq:
         return True
     rq = bb[base + ROOK] | bb[base + QUEEN]
-    if rq and rook_attacks(tab, s, occ_all) & rq:
-        return True
-    return False
+    return bool(rq and rook_attacks(tab, s, occ_all) & rq)
 
 
 @njit(int64(A1, A1, int64, int64), cache=False)

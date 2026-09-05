@@ -16,10 +16,9 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import numpy as np  # noqa: E402
-
-import pvs_search as ps  # noqa: E402
-from pvs_board import Position, move_to_uci  # noqa: E402
+import numpy as np
+import pvs_search as ps
+from pvs_board import Position, move_to_uci
 
 POSITIONS = [
     ("start", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
@@ -42,10 +41,12 @@ def run(params: np.ndarray, depth: int | None, seconds: float | None, verbose: b
             pos, time_budget=seconds, max_depth=depth or 64, verbose=verbose
         )
         cpu, wall = time.process_time() - c0, time.perf_counter() - w0
+        qpct = 100 * info["qnodes"] // max(1, info["nodes"])
+        knps = info["nodes"] / max(cpu, 1e-6) / 1000
         print(
             f"{name:12s} depth {d:2d}/{info['seldepth']:2d} score {score:6d} "
-            f"move {move_to_uci(move):6s} nodes {info['nodes']:9d} q% {100 * info['qnodes'] // max(1, info['nodes']):3d} "
-            f"cpu {cpu:6.2f}s ({info['nodes'] / max(cpu, 1e-6) / 1000:6.0f} knps) wall {wall:6.2f}s "
+            f"move {move_to_uci(move):6s} nodes {info['nodes']:9d} q% {qpct:3d} "
+            f"cpu {cpu:6.2f}s ({knps:6.0f} knps) wall {wall:6.2f}s "
             f"tt {info['tt_hits']} cut1 {100 * info['first_cuts'] // max(1, info['beta_cuts'])}% "
             f"null {info['null_cuts']} lmr_re {info['lmr_research']}"
         )
@@ -57,9 +58,11 @@ def run(params: np.ndarray, depth: int | None, seconds: float | None, verbose: b
         totals["cpu"] += cpu
         totals["wall"] += wall
     n = len(POSITIONS)
+    qpct = 100 * totals["qnodes"] // max(1, totals["nodes"])
+    knps = totals["nodes"] / max(totals["cpu"], 1e-6) / 1000
     print(
-        f"TOTAL nodes {totals['nodes']} q% {100 * totals['qnodes'] // max(1, totals['nodes'])} "
-        f"cpu {totals['cpu']:.2f}s knps(cpu) {totals['nodes'] / max(totals['cpu'], 1e-6) / 1000:.0f} "
+        f"TOTAL nodes {totals['nodes']} q% {qpct} "
+        f"cpu {totals['cpu']:.2f}s knps(cpu) {knps:.0f} "
         f"avg depth {totals['depth'] / n:.1f} avg seldepth {totals['seldepth'] / n:.1f} "
         f"cut1 {100 * totals['first_cuts'] // max(1, totals['beta_cuts'])}%"
     )

@@ -21,8 +21,8 @@ import math
 
 import numpy as np
 from numba import int64, njit
-
 from pvs_board import (
+    A1,
     BISHOP,
     KING,
     KNIGHT,
@@ -35,10 +35,8 @@ from pvs_board import (
     ST_PHASE,
     ST_SIDE,
     T_FILE,
-    T_KING,
     T_KNIGHT,
     WHITE,
-    A1,
     bishop_attacks,
     lsb,
     popcount,
