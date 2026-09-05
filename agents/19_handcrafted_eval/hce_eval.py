@@ -31,9 +31,20 @@ import numpy as np
 # Compiled code is cached on disk so the second process (the next arena game, or the platform
 # container after validation) skips the compile. The platform allows writes only under /tmp,
 # which is also where its HOME points, so the system temp dir is always a legal location.
-os.environ.setdefault(
-    "NUMBA_CACHE_DIR", os.path.join(tempfile.gettempdir(), "hce19_numba_cache")
+# numba does not create a user-provided cache directory itself: with a missing directory the
+# compile itself succeeds and then crashes while saving the index, which would leave the agent
+# on the material-only fallback for the whole game. Create it here, and compile without a
+# cache when that is impossible (or when HCE_NO_CACHE is set, which `agent.py` uses to retry).
+_CACHE_DIR = os.environ.get("NUMBA_CACHE_DIR") or os.path.join(
+    tempfile.gettempdir(), "hce19_numba_cache"
 )
+CACHE = not os.environ.get("HCE_NO_CACHE")
+if CACHE:
+    try:
+        os.makedirs(_CACHE_DIR, exist_ok=True)
+        os.environ["NUMBA_CACHE_DIR"] = _CACHE_DIR
+    except OSError:
+        CACHE = False
 
 try:
     if os.environ.get("HCE_NO_NUMBA"):
@@ -240,7 +251,7 @@ for _sq in range(64):
 # ---------------------------------------------------------------------------------------------
 
 
-@njit(SIG_I_U, cache=True)
+@njit(SIG_I_U, cache=CACHE)
 def popcount(bb):  # type: ignore[no-untyped-def]
     n = 0
     while bb:
@@ -249,7 +260,7 @@ def popcount(bb):  # type: ignore[no-untyped-def]
     return n
 
 
-@njit(SIG_I_U, cache=True)
+@njit(SIG_I_U, cache=CACHE)
 def lsb(bb):  # type: ignore[no-untyped-def]
     """Index of the lowest set bit; bb must be non-zero."""
     n = 0
@@ -273,7 +284,7 @@ def lsb(bb):  # type: ignore[no-untyped-def]
     return n
 
 
-@njit(SIG_U_U, cache=True)
+@njit(SIG_U_U, cache=CACHE)
 def flip_vertical(bb):  # type: ignore[no-untyped-def]
     out = ZERO
     for _ in range(8):
@@ -282,7 +293,7 @@ def flip_vertical(bb):  # type: ignore[no-untyped-def]
     return out
 
 
-@njit(SIG_SLIDER, cache=True)
+@njit(SIG_SLIDER, cache=CACHE)
 def slider_attacks(sq, occupied, first_dir, last_dir):  # type: ignore[no-untyped-def]
     """Attack set of a sliding piece on `sq` over the directions [first_dir, last_dir)."""
     att = ZERO
@@ -297,27 +308,27 @@ def slider_attacks(sq, occupied, first_dir, last_dir):  # type: ignore[no-untype
     return att
 
 
-@njit(SIG_ATT, cache=True)
+@njit(SIG_ATT, cache=CACHE)
 def bishop_attacks(sq, occupied):  # type: ignore[no-untyped-def]
     return slider_attacks(sq, occupied, 0, 4)
 
 
-@njit(SIG_ATT, cache=True)
+@njit(SIG_ATT, cache=CACHE)
 def rook_attacks(sq, occupied):  # type: ignore[no-untyped-def]
     return slider_attacks(sq, occupied, 4, 8)
 
 
-@njit(SIG_U_U, cache=True)
+@njit(SIG_U_U, cache=CACHE)
 def white_pawn_attacks(pawns):  # type: ignore[no-untyped-def]
     return ((pawns << U64(7)) & NOT_FILE_H) | ((pawns << U64(9)) & NOT_FILE_A)
 
 
-@njit(SIG_U_U, cache=True)
+@njit(SIG_U_U, cache=CACHE)
 def black_pawn_attacks(pawns):  # type: ignore[no-untyped-def]
     return ((pawns >> U64(9)) & NOT_FILE_H) | ((pawns >> U64(7)) & NOT_FILE_A)
 
 
-@njit(SIG_I_II, cache=True)
+@njit(SIG_I_II, cache=CACHE)
 def chebyshev(a, b):  # type: ignore[no-untyped-def]
     dr = (a >> 3) - (b >> 3)
     df = (a & 7) - (b & 7)
@@ -333,7 +344,7 @@ def chebyshev(a, b):  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------------------------
 
 
-@njit(SIG_SIDE, cache=True)
+@njit(SIG_SIDE, cache=CACHE)
 def _side_terms(  # type: ignore[no-untyped-def]
     p, n, b, r, q, k,  # our pieces (white frame)
     ep, en, eb, er, eq, ek,  # their pieces (white frame)
@@ -529,7 +540,7 @@ def _side_terms(  # type: ignore[no-untyped-def]
     return mg, eg
 
 
-@njit(SIG_EVAL, cache=True)
+@njit(SIG_EVAL, cache=CACHE)
 def evaluate(pawns, knights, bishops, rooks, queens, kings, white, black, turn):  # type: ignore[no-untyped-def]
     """Centipawns from White's point of view.
 

@@ -16,6 +16,7 @@ is available; every call to `get_move` checks again.
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -34,13 +35,23 @@ _compiled = threading.Event()
 
 
 def _build_fast_evaluation() -> None:
+    """Import (and so compile) the fast evaluation; on failure retry once without the on-disk
+    numba cache, since a broken or unwritable cache is the one failure that is recoverable."""
     global _fast_evaluate, _compile_error
     try:
-        import hce_eval
+        for attempt in range(2):
+            try:
+                import hce_eval
 
-        _fast_evaluate = hce_eval.evaluate_stm
-    except BaseException as error:  # any failure means "keep the fallback"
-        _compile_error = error
+                _fast_evaluate = hce_eval.evaluate_stm
+                _compile_error = None
+                return
+            except BaseException as error:  # any failure means "keep the fallback"
+                _compile_error = error
+                sys.modules.pop("hce_eval", None)
+                if attempt == 0:
+                    print(f"compiled evaluation failed ({error!r}); retrying uncached", flush=True)
+                    os.environ["HCE_NO_CACHE"] = "1"
     finally:
         _compiled.set()
 
