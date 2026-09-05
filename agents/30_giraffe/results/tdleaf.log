@@ -1,0 +1,5 @@
+tdleaf start init=models\giraffe_boot.npz iterations=2 depth=1 plies=6 lam=0.7
+tdleaf start init=models\giraffe.npz iterations=1 depth=2 plies=6 lam=0.7
+iter 1: 26 td samples (replay 26, anchor 13) mean |td error| 97 cp, self-play 28s, total 35s
+gate iter 1: candidate vs accepted +2 =0 -2 (50.0%) -> accepted
+tdleaf done; accepted weights at C:\Users\USER\AppData\Local\Temp\claude\E--sourcecode-ai-chess-original-aichessathon-starter\fc904277-d90f-4934-9473-6668eb8115b3\scratchpad\td_smoke.npz

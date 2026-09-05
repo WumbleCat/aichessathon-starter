@@ -1,0 +1,1 @@
+A=C:/Users/USER/AppData/Local/Temp/claude/E--sourcecode-ai-chess-original-aichessathon-starter/fc904277-d90f-4934-9473-6668eb8115b3/scratchpad/res_wd0.0001.npz vs B=hce: +12 =3 -5  +127 elo (score 67.5% over 20 games, +/- 83)  [1656s]

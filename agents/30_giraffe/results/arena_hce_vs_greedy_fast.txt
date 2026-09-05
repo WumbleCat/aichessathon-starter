@@ -1,0 +1,15 @@
+your agent failed to finish a game: init 3, flag 1
+game 1/10: white by checkmate
+game 2/10: white by init
+game 3/10: white by checkmate
+game 4/10: black by checkmate
+game 5/10: white by checkmate
+game 6/10: black by checkmate
+game 7/10: white by checkmate
+game 8/10: white by flag
+game 9/10: black by init
+game 10/10: white by init
+
+agents\30_giraffe vs baselines\greedy over 10 games
++6 =0 -4, score 60.0%
+terminations: checkmate 6, init 3, flag 1

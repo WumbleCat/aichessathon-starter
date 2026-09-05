@@ -1,0 +1,25 @@
+10/240 chunks, 7147 quiet positions saved, 777s
+20/240 chunks, 14281 quiet positions saved, 1554s
+30/240 chunks, 21445 quiet positions saved, 2902s
+40/240 chunks, 28573 quiet positions saved, 3503s
+50/240 chunks, 35825 quiet positions saved, 3960s
+60/240 chunks, 42920 quiet positions saved, 4332s
+70/240 chunks, 50232 quiet positions saved, 4549s
+80/240 chunks, 57354 quiet positions saved, 4785s
+90/240 chunks, 64584 quiet positions saved, 5059s
+100/240 chunks, 71688 quiet positions saved, 5430s
+110/240 chunks, 78791 quiet positions saved, 5866s
+120/240 chunks, 86072 quiet positions saved, 6157s
+130/240 chunks, 93307 quiet positions saved, 6466s
+140/240 chunks, 100387 quiet positions saved, 6904s
+150/240 chunks, 107656 quiet positions saved, 7293s
+160/240 chunks, 114796 quiet positions saved, 7846s
+170/240 chunks, 121903 quiet positions saved, 8247s
+180/240 chunks, 128968 quiet positions saved, 8740s
+190/240 chunks, 136201 quiet positions saved, 9222s
+200/240 chunks, 143238 quiet positions saved, 9516s
+210/240 chunks, 150474 quiet positions saved, 9765s
+220/240 chunks, 157672 quiet positions saved, 9979s
+230/240 chunks, 164718 quiet positions saved, 10268s
+240/240 chunks, 171890 quiet positions saved, 10627s
+wrote 171890 of 240000 positions to E:\sourcecode\ai-chess-original\aichessathon-starter\agents\30_giraffe\training\data\search_d2.npz in 10686s; residual mean 43.0 std 209.4 |residual|>200: 11.8%

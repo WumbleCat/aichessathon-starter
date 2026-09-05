@@ -1,0 +1,22 @@
+240000 positions, label std 795 cp
+epoch 1/20 train 0.01530 val 0.00715 (~93 cp mean abs err) * 6s
+epoch 2/20 train 0.00626 val 0.00535 (~75 cp mean abs err) * 5s
+epoch 3/20 train 0.00486 val 0.00439 (~71 cp mean abs err) * 5s
+epoch 4/20 train 0.00381 val 0.00350 (~66 cp mean abs err) * 6s
+epoch 5/20 train 0.00310 val 0.00283 (~56 cp mean abs err) * 6s
+epoch 6/20 train 0.00275 val 0.00270 (~53 cp mean abs err) * 6s
+epoch 7/20 train 0.00242 val 0.00248 (~50 cp mean abs err) * 6s
+epoch 8/20 train 0.00225 val 0.00216 (~47 cp mean abs err) * 5s
+epoch 9/20 train 0.00208 val 0.00216 (~46 cp mean abs err)  5s
+epoch 10/20 train 0.00194 val 0.00215 (~48 cp mean abs err) * 5s
+epoch 11/20 train 0.00177 val 0.00196 (~43 cp mean abs err) * 5s
+epoch 12/20 train 0.00169 val 0.00187 (~40 cp mean abs err) * 5s
+epoch 13/20 train 0.00156 val 0.00188 (~41 cp mean abs err)  5s
+epoch 14/20 train 0.00146 val 0.00185 (~41 cp mean abs err) * 5s
+epoch 15/20 train 0.00136 val 0.00176 (~38 cp mean abs err) * 5s
+epoch 16/20 train 0.00129 val 0.00175 (~39 cp mean abs err) * 5s
+epoch 17/20 train 0.00122 val 0.00171 (~37 cp mean abs err) * 5s
+epoch 18/20 train 0.00117 val 0.00167 (~36 cp mean abs err) * 5s
+epoch 19/20 train 0.00113 val 0.00166 (~36 cp mean abs err) * 5s
+epoch 20/20 train 0.00111 val 0.00165 (~36 cp mean abs err) * 5s
+best checkpoint written to models\giraffe_boot.npz

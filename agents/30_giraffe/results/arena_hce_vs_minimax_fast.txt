@@ -1,0 +1,15 @@
+your agent failed to finish a game: init 2, flag 8
+game 1/10: black by init
+game 2/10: white by init
+game 3/10: white by flag
+game 4/10: black by flag
+game 5/10: white by flag
+game 6/10: black by flag
+game 7/10: white by flag
+game 8/10: black by flag
+game 9/10: white by flag
+game 10/10: black by flag
+
+agents\30_giraffe vs baselines\minimax over 10 games
++8 =0 -2, score 80.0%
+terminations: init 2, flag 8
