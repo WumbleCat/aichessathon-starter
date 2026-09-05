@@ -26,8 +26,10 @@ from __future__ import annotations
 
 import numpy as np
 from llvmlite import ir
-from numba import njit, types
+from numba import types
 from numba.extending import intrinsic
+
+from jitconf import jit
 
 # ----------------------------------------------------------------------------- constants
 
@@ -109,7 +111,7 @@ def popcount64(typingctx, x):  # type: ignore[no-untyped-def]
 
 
 def _u(x: int) -> np.int64:
-    return np.array([x & 0xFFFFFFFFFFFFFFFF], dtype=np.uint64).view(np.int64)[0]
+    return np.int64(np.array([x & 0xFFFFFFFFFFFFFFFF], dtype=np.uint64).view(np.int64)[0])
 
 
 def _sq_bb(sq: int) -> int:
@@ -159,7 +161,7 @@ def _build_tables() -> tuple[np.ndarray, ...]:
     # between[a, b]: squares strictly between a and b on a line, else 0
     between = np.zeros((64, 64), dtype=np.int64)
     for a in range(64):
-        for d, (df, dr) in enumerate(dirs):
+        for df, dr in dirs:
             f, r = a % 8 + df, a // 8 + dr
             acc = 0
             while 0 <= f < 8 and 0 <= r < 8:
@@ -169,13 +171,30 @@ def _build_tables() -> tuple[np.ndarray, ...]:
                 f += df
                 r += dr
     rng = np.random.default_rng(20260904)
-    zob = rng.integers(np.iinfo(np.int64).min, np.iinfo(np.int64).max, size=(13, 64), dtype=np.int64)
-    zob_side = np.int64(rng.integers(np.iinfo(np.int64).min, np.iinfo(np.int64).max, dtype=np.int64))
-    zob_castle = rng.integers(np.iinfo(np.int64).min, np.iinfo(np.int64).max, size=16, dtype=np.int64)
+    zob = rng.integers(
+        np.iinfo(np.int64).min, np.iinfo(np.int64).max, size=(13, 64), dtype=np.int64
+    )
+    zob_side = np.int64(
+        rng.integers(np.iinfo(np.int64).min, np.iinfo(np.int64).max, dtype=np.int64)
+    )
+    zob_castle = rng.integers(
+        np.iinfo(np.int64).min, np.iinfo(np.int64).max, size=16, dtype=np.int64
+    )
     zob_ep = rng.integers(np.iinfo(np.int64).min, np.iinfo(np.int64).max, size=8, dtype=np.int64)
     zob[0, :] = 0
     zob_castle[0] = 0
-    return knight, king, pawn_att, rays, castle_mask, between, zob, np.array([zob_side]), zob_castle, zob_ep
+    return (
+        knight,
+        king,
+        pawn_att,
+        rays,
+        castle_mask,
+        between,
+        zob,
+        np.array([zob_side]),
+        zob_castle,
+        zob_ep,
+    )
 
 
 (
@@ -203,68 +222,68 @@ BQ_EMPTY = _u((1 << B8) | (1 << C8) | (1 << D8))
 # ----------------------------------------------------------------------------- bit helpers
 
 
-@njit(cache=True)
+@jit
 def bit(sq):  # type: ignore[no-untyped-def]
     return np.int64(1) << np.int64(sq)
 
 
-@njit(cache=True)
+@jit
 def lsb(bb):  # type: ignore[no-untyped-def]
-    return ctz64(bb)
+    return ctz64(bb)  # type: ignore[call-arg]
 
 
-@njit(cache=True)
+@jit
 def msb(bb):  # type: ignore[no-untyped-def]
-    return 63 - clz64(bb)
+    return 63 - clz64(bb)  # type: ignore[call-arg]
 
 
-@njit(cache=True)
+@jit
 def popcount(bb):  # type: ignore[no-untyped-def]
-    return popcount64(bb)
+    return popcount64(bb)  # type: ignore[call-arg]
 
 
-@njit(cache=True)
+@jit
 def shr8(bb):  # type: ignore[no-untyped-def]
     """Logical right shift by 8 of an int64 bitboard."""
     return (bb >> np.int64(8)) & NOT_RANK8_LOW56
 
 
-@njit(cache=True)
+@jit
 def piece_color(piece):  # type: ignore[no-untyped-def]
     return 1 if piece >= 7 else 0
 
 
-@njit(cache=True)
+@jit
 def piece_type(piece):  # type: ignore[no-untyped-def]
     return piece - 6 if piece >= 7 else piece
 
 
-@njit(cache=True)
+@jit
 def make_piece(color, ptype):  # type: ignore[no-untyped-def]
     return ptype + 6 * color
 
 
-@njit(cache=True)
+@jit
 def mv_from(move):  # type: ignore[no-untyped-def]
     return move & 63
 
 
-@njit(cache=True)
+@jit
 def mv_to(move):  # type: ignore[no-untyped-def]
     return (move >> 6) & 63
 
 
-@njit(cache=True)
+@jit
 def mv_promo(move):  # type: ignore[no-untyped-def]
     return (move >> 12) & 7
 
 
-@njit(cache=True)
+@jit
 def mv_flags(move):  # type: ignore[no-untyped-def]
     return (move >> 16) & 15
 
 
-@njit(cache=True)
+@jit
 def encode_move(frm, to, promo, flags):  # type: ignore[no-untyped-def]
     return np.int64(frm) | (np.int64(to) << 6) | (np.int64(promo) << 12) | (np.int64(flags) << 16)
 
@@ -272,21 +291,19 @@ def encode_move(frm, to, promo, flags):  # type: ignore[no-untyped-def]
 # ----------------------------------------------------------------------------- attacks
 
 
-@njit(cache=True)
+@jit
 def slider_attacks_dir(sq, occ, d):  # type: ignore[no-untyped-def]
     """Attacks from ``sq`` along ray direction ``d`` given occupancy."""
     att = RAYS[d, sq]
     blockers = att & occ
     if blockers != 0:
-        if d <= 2 or d == 7:  # N NE E NW: positive directions -> first blocker is lsb
-            first = lsb(blockers)
-        else:
-            first = msb(blockers)
+        # N NE E NW are the positive directions, so the first blocker is the lsb
+        first = lsb(blockers) if d <= 2 or d == 7 else msb(blockers)
         att &= ~RAYS[d, first]
     return att
 
 
-@njit(cache=True)
+@jit
 def bishop_attacks(sq, occ):  # type: ignore[no-untyped-def]
     return (
         slider_attacks_dir(sq, occ, 1)
@@ -296,7 +313,7 @@ def bishop_attacks(sq, occ):  # type: ignore[no-untyped-def]
     )
 
 
-@njit(cache=True)
+@jit
 def rook_attacks(sq, occ):  # type: ignore[no-untyped-def]
     return (
         slider_attacks_dir(sq, occ, 0)
@@ -306,7 +323,7 @@ def rook_attacks(sq, occ):  # type: ignore[no-untyped-def]
     )
 
 
-@njit(cache=True)
+@jit
 def attackers_to(P, sq, by, occ):  # type: ignore[no-untyped-def]
     """Bitboard of pieces of colour ``by`` attacking ``sq`` with occupancy ``occ``."""
     base = 6 * by
@@ -322,7 +339,7 @@ def attackers_to(P, sq, by, occ):  # type: ignore[no-untyped-def]
     return att
 
 
-@njit(cache=True)
+@jit
 def is_attacked(P, sq, by):  # type: ignore[no-untyped-def]
     occ = P[OCC + 2]
     base = 6 * by
@@ -333,17 +350,13 @@ def is_attacked(P, sq, by):  # type: ignore[no-untyped-def]
     if KING_ATT[sq] & P[BB + base + KING]:
         return True
     bq = P[BB + base + BISHOP] | P[BB + base + QUEEN]
-    if bq != 0:
-        if (bishop_attacks(sq, occ) & bq) != 0:
-            return True
+    if bq != 0 and (bishop_attacks(sq, occ) & bq) != 0:
+        return True
     rq = P[BB + base + ROOK] | P[BB + base + QUEEN]
-    if rq != 0:
-        if (rook_attacks(sq, occ) & rq) != 0:
-            return True
-    return False
+    return rq != 0 and (rook_attacks(sq, occ) & rq) != 0
 
 
-@njit(cache=True)
+@jit
 def in_check(P):  # type: ignore[no-untyped-def]
     side = P[SIDE]
     return is_attacked(P, P[KSQ + side], 1 - side)
@@ -352,7 +365,7 @@ def in_check(P):  # type: ignore[no-untyped-def]
 # ----------------------------------------------------------------------------- setup
 
 
-@njit(cache=True)
+@jit
 def compute_hash(P):  # type: ignore[no-untyped-def]
     h = np.int64(0)
     for sq in range(64):
@@ -367,7 +380,7 @@ def compute_hash(P):  # type: ignore[no-untyped-def]
     return h
 
 
-@njit(cache=True)
+@jit
 def rebuild(P):  # type: ignore[no-untyped-def]
     """Recompute bitboards, occupancy, king squares, hash and material from P[0:64]."""
     for i in range(13):
@@ -431,7 +444,7 @@ def from_board(board, P: np.ndarray | None = None) -> np.ndarray:  # type: ignor
 # ----------------------------------------------------------------------------- make / unmake
 
 
-@njit(cache=True)
+@jit
 def _move_piece(P, pc, frm, to):  # type: ignore[no-untyped-def]
     fb = bit(frm)
     tb = bit(to)
@@ -442,7 +455,7 @@ def _move_piece(P, pc, frm, to):  # type: ignore[no-untyped-def]
     P[HASH] ^= ZOB[pc, frm] ^ ZOB[pc, to]
 
 
-@njit(cache=True)
+@jit
 def _remove_piece(P, pc, sq):  # type: ignore[no-untyped-def]
     b = bit(sq)
     P[BB + pc] ^= b
@@ -451,7 +464,7 @@ def _remove_piece(P, pc, sq):  # type: ignore[no-untyped-def]
     P[HASH] ^= ZOB[pc, sq]
 
 
-@njit(cache=True)
+@jit
 def _add_piece(P, pc, sq):  # type: ignore[no-untyped-def]
     b = bit(sq)
     P[BB + pc] |= b
@@ -460,7 +473,7 @@ def _add_piece(P, pc, sq):  # type: ignore[no-untyped-def]
     P[HASH] ^= ZOB[pc, sq]
 
 
-@njit(cache=True)
+@jit
 def make_move(P, undo, ply, move):  # type: ignore[no-untyped-def]
     """Apply ``move``.  Returns False (after restoring nothing) if it leaves own king in check;
     the caller must then call unmake_move.  The undo record is written to undo[ply]."""
@@ -545,7 +558,7 @@ def make_move(P, undo, ply, move):  # type: ignore[no-untyped-def]
     return not is_attacked(P, P[KSQ + side], them)
 
 
-@njit(cache=True)
+@jit
 def unmake_move(P, undo, ply):  # type: ignore[no-untyped-def]
     move = undo[ply, 0]
     captured = undo[ply, 1]
@@ -584,7 +597,7 @@ def unmake_move(P, undo, ply):  # type: ignore[no-untyped-def]
     P[OCC + 2] = P[OCC] | P[OCC + 1]
 
 
-@njit(cache=True)
+@jit
 def make_null(P, undo, ply):  # type: ignore[no-untyped-def]
     undo[ply, 0] = 0
     undo[ply, 1] = 0
@@ -600,7 +613,7 @@ def make_null(P, undo, ply):  # type: ignore[no-untyped-def]
     P[HALF] += 1
 
 
-@njit(cache=True)
+@jit
 def unmake_null(P, undo, ply):  # type: ignore[no-untyped-def]
     P[EP] = undo[ply, 2]
     P[HALF] = undo[ply, 4]
@@ -611,13 +624,13 @@ def unmake_null(P, undo, ply):  # type: ignore[no-untyped-def]
 # ----------------------------------------------------------------------------- movegen
 
 
-@njit(cache=True)
+@jit
 def _add(out, n, frm, to, promo, flags):  # type: ignore[no-untyped-def]
     out[n] = np.int64(frm) | (np.int64(to) << 6) | (np.int64(promo) << 12) | (np.int64(flags) << 16)
     return n + 1
 
 
-@njit(cache=True)
+@jit
 def _add_promos(out, n, frm, to, flags, captures_only):  # type: ignore[no-untyped-def]
     n = _add(out, n, frm, to, QUEEN, flags)
     if not captures_only:
@@ -627,7 +640,7 @@ def _add_promos(out, n, frm, to, flags, captures_only):  # type: ignore[no-untyp
     return n
 
 
-@njit(cache=True)
+@jit
 def _gen_pawns(P, out, n, captures_only):  # type: ignore[no-untyped-def]
     side = P[SIDE]
     them = 1 - side
@@ -681,7 +694,7 @@ def _gen_pawns(P, out, n, captures_only):  # type: ignore[no-untyped-def]
     return n
 
 
-@njit(cache=True)
+@jit
 def _gen_pieces(P, out, n, captures_only):  # type: ignore[no-untyped-def]
     side = P[SIDE]
     base = 6 * side
@@ -717,7 +730,7 @@ def _gen_pieces(P, out, n, captures_only):  # type: ignore[no-untyped-def]
     return n
 
 
-@njit(cache=True)
+@jit
 def _castle_ok(P, rights_bit, empty_mask, rook_sq, rook_pc, ksq, s1, s2, them):  # type: ignore[no-untyped-def]
     if (P[CASTLE] & rights_bit) == 0:
         return False
@@ -732,7 +745,7 @@ def _castle_ok(P, rights_bit, empty_mask, rook_sq, rook_pc, ksq, s1, s2, them): 
     return not is_attacked(P, s2, them)
 
 
-@njit(cache=True)
+@jit
 def _gen_castling(P, out, n):  # type: ignore[no-untyped-def]
     side = P[SIDE]
     them = 1 - side
@@ -753,7 +766,7 @@ def _gen_castling(P, out, n):  # type: ignore[no-untyped-def]
     return n
 
 
-@njit(cache=True)
+@jit
 def gen_moves(P, out, captures_only):  # type: ignore[no-untyped-def]
     """Pseudo-legal moves into ``out``; returns the count.  Castling is generated fully legal
     (rights, empty path, no attacked transit squares).  With ``captures_only`` only captures and
@@ -765,7 +778,7 @@ def gen_moves(P, out, captures_only):  # type: ignore[no-untyped-def]
     return n
 
 
-@njit(cache=True)
+@jit
 def perft(P, undo, moves, ply, depth):  # type: ignore[no-untyped-def]
     n = gen_moves(P, moves[ply], False)
     if depth == 1:
@@ -783,7 +796,7 @@ def perft(P, undo, moves, ply, depth):  # type: ignore[no-untyped-def]
     return total
 
 
-@njit(cache=True)
+@jit
 def has_legal_move(P, undo, moves, ply):  # type: ignore[no-untyped-def]
     n = gen_moves(P, moves[ply], False)
     for i in range(n):

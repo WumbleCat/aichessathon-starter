@@ -17,10 +17,11 @@ from __future__ import annotations
 import time
 
 import numpy as np
-from numba import njit, objmode
+from numba import objmode
 
 import cboard as cb
 import nnue
+from jitconf import jit
 
 MATE = 30000
 MATE_BOUND = MATE - 512
@@ -45,34 +46,400 @@ MVV = np.array([0, 100, 320, 330, 500, 900, 2000], dtype=np.int64)
 
 _PST = {
     cb.PAWN: [
-        0, 0, 0, 0, 0, 0, 0, 0, 5, 10, 10, -20, -20, 10, 10, 5, 5, -5, -10, 0, 0, -10, -5, 5,
-        0, 0, 0, 20, 20, 0, 0, 0, 5, 5, 10, 25, 25, 10, 5, 5, 10, 10, 20, 30, 30, 20, 10, 10,
-        50, 50, 50, 50, 50, 50, 50, 50, 0, 0, 0, 0, 0, 0, 0, 0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        10,
+        10,
+        -20,
+        -20,
+        10,
+        10,
+        5,
+        5,
+        -5,
+        -10,
+        0,
+        0,
+        -10,
+        -5,
+        5,
+        0,
+        0,
+        0,
+        20,
+        20,
+        0,
+        0,
+        0,
+        5,
+        5,
+        10,
+        25,
+        25,
+        10,
+        5,
+        5,
+        10,
+        10,
+        20,
+        30,
+        30,
+        20,
+        10,
+        10,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
     ],
     cb.KNIGHT: [
-        -50, -40, -30, -30, -30, -30, -40, -50, -40, -20, 0, 5, 5, 0, -20, -40, -30, 5, 10, 15, 15, 10, 5, -30,
-        -30, 0, 15, 20, 20, 15, 0, -30, -30, 5, 15, 20, 20, 15, 5, -30, -30, 0, 10, 15, 15, 10, 0, -30,
-        -40, -20, 0, 0, 0, 0, -20, -40, -50, -40, -30, -30, -30, -30, -40, -50,
+        -50,
+        -40,
+        -30,
+        -30,
+        -30,
+        -30,
+        -40,
+        -50,
+        -40,
+        -20,
+        0,
+        5,
+        5,
+        0,
+        -20,
+        -40,
+        -30,
+        5,
+        10,
+        15,
+        15,
+        10,
+        5,
+        -30,
+        -30,
+        0,
+        15,
+        20,
+        20,
+        15,
+        0,
+        -30,
+        -30,
+        5,
+        15,
+        20,
+        20,
+        15,
+        5,
+        -30,
+        -30,
+        0,
+        10,
+        15,
+        15,
+        10,
+        0,
+        -30,
+        -40,
+        -20,
+        0,
+        0,
+        0,
+        0,
+        -20,
+        -40,
+        -50,
+        -40,
+        -30,
+        -30,
+        -30,
+        -30,
+        -40,
+        -50,
     ],
     cb.BISHOP: [
-        -20, -10, -10, -10, -10, -10, -10, -20, -10, 5, 0, 0, 0, 0, 5, -10, -10, 10, 10, 10, 10, 10, 10, -10,
-        -10, 0, 10, 10, 10, 10, 0, -10, -10, 5, 5, 10, 10, 5, 5, -10, -10, 0, 5, 10, 10, 5, 0, -10,
-        -10, 0, 0, 0, 0, 0, 0, -10, -20, -10, -10, -10, -10, -10, -10, -20,
+        -20,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -20,
+        -10,
+        5,
+        0,
+        0,
+        0,
+        0,
+        5,
+        -10,
+        -10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        -10,
+        -10,
+        0,
+        10,
+        10,
+        10,
+        10,
+        0,
+        -10,
+        -10,
+        5,
+        5,
+        10,
+        10,
+        5,
+        5,
+        -10,
+        -10,
+        0,
+        5,
+        10,
+        10,
+        5,
+        0,
+        -10,
+        -10,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -10,
+        -20,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -20,
     ],
     cb.ROOK: [
-        0, 0, 0, 5, 5, 0, 0, 0, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5,
-        -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5, -5, 0, 0, 0, 0, 0, 0, -5,
-        5, 10, 10, 10, 10, 10, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0,
+        0,
+        0,
+        0,
+        5,
+        5,
+        0,
+        0,
+        0,
+        -5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -5,
+        -5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -5,
+        -5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -5,
+        -5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -5,
+        -5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -5,
+        5,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
     ],
     cb.QUEEN: [
-        -20, -10, -10, -5, -5, -10, -10, -20, -10, 0, 5, 0, 0, 0, 0, -10, -10, 5, 5, 5, 5, 5, 0, -10,
-        0, 0, 5, 5, 5, 5, 0, -5, -5, 0, 5, 5, 5, 5, 0, -5, -10, 0, 5, 5, 5, 5, 0, -10,
-        -10, 0, 0, 0, 0, 0, 0, -10, -20, -10, -10, -5, -5, -10, -10, -20,
+        -20,
+        -10,
+        -10,
+        -5,
+        -5,
+        -10,
+        -10,
+        -20,
+        -10,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        -10,
+        -10,
+        5,
+        5,
+        5,
+        5,
+        5,
+        0,
+        -10,
+        0,
+        0,
+        5,
+        5,
+        5,
+        5,
+        0,
+        -5,
+        -5,
+        0,
+        5,
+        5,
+        5,
+        5,
+        0,
+        -5,
+        -10,
+        0,
+        5,
+        5,
+        5,
+        5,
+        0,
+        -10,
+        -10,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -10,
+        -20,
+        -10,
+        -10,
+        -5,
+        -5,
+        -10,
+        -10,
+        -20,
     ],
     cb.KING: [
-        20, 30, 10, 0, 0, 10, 30, 20, 20, 20, 0, 0, 0, 0, 20, 20, -10, -20, -20, -20, -20, -20, -20, -10,
-        -20, -30, -30, -40, -40, -30, -30, -20, -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30,
-        -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30,
+        20,
+        30,
+        10,
+        0,
+        0,
+        10,
+        30,
+        20,
+        20,
+        20,
+        0,
+        0,
+        0,
+        0,
+        20,
+        20,
+        -10,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -20,
+        -10,
+        -20,
+        -30,
+        -30,
+        -40,
+        -40,
+        -30,
+        -30,
+        -20,
+        -30,
+        -40,
+        -40,
+        -50,
+        -50,
+        -40,
+        -40,
+        -30,
+        -30,
+        -40,
+        -40,
+        -50,
+        -50,
+        -40,
+        -40,
+        -30,
+        -30,
+        -40,
+        -40,
+        -50,
+        -50,
+        -40,
+        -40,
+        -30,
+        -30,
+        -40,
+        -40,
+        -50,
+        -50,
+        -40,
+        -40,
+        -30,
     ],
 }
 PSQT = np.zeros((13, 64), dtype=np.int64)
@@ -94,7 +461,7 @@ class SearchTimeout(Exception):
 # ----------------------------------------------------------------------------- helpers
 
 
-@njit(cache=True)
+@jit
 def psqt_eval(P):  # type: ignore[no-untyped-def]
     s = 0
     for sq in range(64):
@@ -104,14 +471,14 @@ def psqt_eval(P):  # type: ignore[no-untyped-def]
     return s if P[cb.SIDE] == 0 else -s
 
 
-@njit(cache=True)
+@jit
 def static_eval(P, acc, ply, net, ctl):  # type: ignore[no-untyped-def]
     if ctl[C_USE_NNUE] != 0:
         return nnue.evaluate(acc, ply, P[cb.SIDE], net[2], net[3])
     return psqt_eval(P)
 
 
-@njit(cache=True)
+@jit
 def is_draw(P, keys, ply, ghist, ctl):  # type: ignore[no-untyped-def]
     """Repetition (path or game history), 50-move rule, bare/insufficient material."""
     half = P[cb.HALF]
@@ -133,12 +500,13 @@ def is_draw(P, keys, ply, ghist, ctl):  # type: ignore[no-untyped-def]
                 return True
             d += 2
     if (P[cb.BB + cb.WP] | P[cb.BB + cb.BP]) == 0:
-        if ((P[cb.BB + cb.WR] | P[cb.BB + cb.BR] | P[cb.BB + cb.WQ] | P[cb.BB + cb.BQ]) == 0) & (P[cb.NONPAWN] <= 1):
+        heavy = P[cb.BB + cb.WR] | P[cb.BB + cb.BR] | P[cb.BB + cb.WQ] | P[cb.BB + cb.BQ]
+        if (heavy == 0) & (P[cb.NONPAWN] <= 1):
             return True
     return False
 
 
-@njit(cache=True)
+@jit
 def tt_probe(tt_key, tt_val, key):  # type: ignore[no-untyped-def]
     idx = key & TT_MASK
     if tt_key[idx] == key:
@@ -146,7 +514,7 @@ def tt_probe(tt_key, tt_val, key):  # type: ignore[no-untyped-def]
     return np.int64(0)
 
 
-@njit(cache=True)
+@jit
 def tt_store(tt_key, tt_val, key, move, score, depth, flag):  # type: ignore[no-untyped-def]
     idx = key & TT_MASK
     # depth-preferred replacement unless the slot belongs to another position or is old
@@ -158,27 +526,27 @@ def tt_store(tt_key, tt_val, key, move, score, depth, flag):  # type: ignore[no-
     tt_val[idx] = (move & 0xFFFFF) | ((score + 32768) << 20) | (depth << 40) | (flag << 48)
 
 
-@njit(cache=True)
+@jit
 def tt_move(val):  # type: ignore[no-untyped-def]
     return val & 0xFFFFF
 
 
-@njit(cache=True)
+@jit
 def tt_score(val):  # type: ignore[no-untyped-def]
     return ((val >> 20) & 0xFFFF) - 32768
 
 
-@njit(cache=True)
+@jit
 def tt_depth(val):  # type: ignore[no-untyped-def]
     return (val >> 40) & 255
 
 
-@njit(cache=True)
+@jit
 def tt_flag(val):  # type: ignore[no-untyped-def]
     return (val >> 48) & 3
 
 
-@njit(cache=True)
+@jit
 def score_to_tt(score, ply):  # type: ignore[no-untyped-def]
     if score >= MATE_BOUND:
         return score + ply
@@ -187,7 +555,7 @@ def score_to_tt(score, ply):  # type: ignore[no-untyped-def]
     return score
 
 
-@njit(cache=True)
+@jit
 def score_from_tt(score, ply):  # type: ignore[no-untyped-def]
     if score >= MATE_BOUND:
         return score - ply
@@ -196,7 +564,7 @@ def score_from_tt(score, ply):  # type: ignore[no-untyped-def]
     return score
 
 
-@njit(cache=True)
+@jit
 def check_clock(ctl, ctf):  # type: ignore[no-untyped-def]
     nodes = ctl[C_NODES]
     if nodes >= ctl[C_NEXT_CHECK]:
@@ -210,7 +578,7 @@ def check_clock(ctl, ctf):  # type: ignore[no-untyped-def]
                 ctl[C_ABORT] = 1
 
 
-@njit(cache=True)
+@jit
 def score_moves(P, moves, scores, n, ttmv, killers, history, ply):  # type: ignore[no-untyped-def]
     side = P[cb.SIDE]
     for i in range(n):
@@ -236,7 +604,7 @@ def score_moves(P, moves, scores, n, ttmv, killers, history, ply):  # type: igno
             scores[i] = history[side, cb.mv_from(m), cb.mv_to(m)]
 
 
-@njit(cache=True)
+@jit
 def pick_next(moves, scores, n, i):  # type: ignore[no-untyped-def]
     """Selection step: swap the best-scored remaining move into slot i."""
     best = i
@@ -255,7 +623,7 @@ def pick_next(moves, scores, n, i):  # type: ignore[no-untyped-def]
     return moves[i]
 
 
-@njit(cache=True)
+@jit
 def do_move(P, undo, ply, move, acc, net, ctl):  # type: ignore[no-untyped-def]
     if not cb.make_move(P, undo, ply, move):
         return False
@@ -267,8 +635,26 @@ def do_move(P, undo, ply, move, acc, net, ctl):  # type: ignore[no-untyped-def]
 # ----------------------------------------------------------------------------- quiescence
 
 
-@njit(cache=True)
-def qsearch(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply, alpha, beta):  # type: ignore[no-untyped-def]
+@jit
+def qsearch(  # type: ignore[no-untyped-def]
+    P,
+    undo,
+    mv,
+    ms,
+    acc,
+    net,
+    tt_key,
+    tt_val,
+    killers,
+    history,
+    keys,
+    ghist,
+    ctl,
+    ctf,
+    ply,
+    alpha,
+    beta,
+):
     ctl[C_NODES] += 1
     ctl[C_QNODES] += 1
     if ply > ctl[C_SELDEPTH]:
@@ -300,7 +686,25 @@ def qsearch(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
             cb.unmake_move(P, undo, ply)
             continue
         keys[ply + 1] = P[cb.HASH]
-        score = -qsearch(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply + 1, -beta, -alpha)
+        score = -qsearch(
+            P,
+            undo,
+            mv,
+            ms,
+            acc,
+            net,
+            tt_key,
+            tt_val,
+            killers,
+            history,
+            keys,
+            ghist,
+            ctl,
+            ctf,
+            ply + 1,
+            -beta,
+            -alpha,
+        )
         cb.unmake_move(P, undo, ply)
         if ctl[C_ABORT] != 0:
             return 0
@@ -316,10 +720,48 @@ def qsearch(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
 # ----------------------------------------------------------------------------- main search
 
 
-@njit(cache=True)
-def negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply, depth, alpha, beta, do_null):  # type: ignore[no-untyped-def]
+@jit
+def negamax(  # type: ignore[no-untyped-def]
+    P,
+    undo,
+    mv,
+    ms,
+    acc,
+    net,
+    tt_key,
+    tt_val,
+    killers,
+    history,
+    keys,
+    ghist,
+    ctl,
+    ctf,
+    ply,
+    depth,
+    alpha,
+    beta,
+    do_null,
+):
     if depth <= 0:
-        return qsearch(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply, alpha, beta)
+        return qsearch(
+            P,
+            undo,
+            mv,
+            ms,
+            acc,
+            net,
+            tt_key,
+            tt_val,
+            killers,
+            history,
+            keys,
+            ghist,
+            ctl,
+            ctf,
+            ply,
+            alpha,
+            beta,
+        )
     ctl[C_NODES] += 1
     check_clock(ctl, ctf)
     if ctl[C_ABORT] != 0:
@@ -350,7 +792,11 @@ def negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
         if (not pv_node) & (tt_depth(val) >= depth):
             s = score_from_tt(tt_score(val), ply)
             f = tt_flag(val)
-            if (f == FLAG_EXACT) | ((f == FLAG_LOWER) & (s >= beta)) | ((f == FLAG_UPPER) & (s <= alpha)):
+            if (
+                (f == FLAG_EXACT)
+                | ((f == FLAG_LOWER) & (s >= beta))
+                | ((f == FLAG_UPPER) & (s <= alpha))
+            ):
                 ctl[C_TT_HITS] += 1
                 return s
 
@@ -372,7 +818,27 @@ def negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
                 if ctl[C_USE_NNUE] != 0:
                     nnue.copy_acc(acc, ply)
                 keys[ply + 1] = P[cb.HASH]
-                score = -negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply + 1, depth - 1 - r, -beta, -beta + 1, False)
+                score = -negamax(
+                    P,
+                    undo,
+                    mv,
+                    ms,
+                    acc,
+                    net,
+                    tt_key,
+                    tt_val,
+                    killers,
+                    history,
+                    keys,
+                    ghist,
+                    ctl,
+                    ctf,
+                    ply + 1,
+                    depth - 1 - r,
+                    -beta,
+                    -beta + 1,
+                    False,
+                )
                 cb.unmake_null(P, undo, ply)
                 if ctl[C_ABORT] != 0:
                     return 0
@@ -382,7 +848,25 @@ def negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
                     return score
             # razoring
             if (depth <= 2) & (stat + 300 * depth < alpha):
-                score = qsearch(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply, alpha, beta)
+                score = qsearch(
+                    P,
+                    undo,
+                    mv,
+                    ms,
+                    acc,
+                    net,
+                    tt_key,
+                    tt_val,
+                    killers,
+                    history,
+                    keys,
+                    ghist,
+                    ctl,
+                    ctf,
+                    ply,
+                    alpha,
+                    beta,
+                )
                 if score < alpha:
                     return score
 
@@ -420,7 +904,27 @@ def negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
         new_depth = depth - 1
         score = 0
         if legal == 1:
-            score = -negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply + 1, new_depth, -beta, -alpha, True)
+            score = -negamax(
+                P,
+                undo,
+                mv,
+                ms,
+                acc,
+                net,
+                tt_key,
+                tt_val,
+                killers,
+                history,
+                keys,
+                ghist,
+                ctl,
+                ctf,
+                ply + 1,
+                new_depth,
+                -beta,
+                -alpha,
+                True,
+            )
         else:
             r = 0
             if is_quiet & (depth >= 3) & (legal > 3) & (not incheck) & (not gives_check):
@@ -433,11 +937,71 @@ def negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
                     r = 0
                 if r > new_depth - 1:
                     r = max(0, new_depth - 1)
-            score = -negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply + 1, new_depth - r, -alpha - 1, -alpha, True)
+            score = -negamax(
+                P,
+                undo,
+                mv,
+                ms,
+                acc,
+                net,
+                tt_key,
+                tt_val,
+                killers,
+                history,
+                keys,
+                ghist,
+                ctl,
+                ctf,
+                ply + 1,
+                new_depth - r,
+                -alpha - 1,
+                -alpha,
+                True,
+            )
             if (score > alpha) & (r > 0):
-                score = -negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply + 1, new_depth, -alpha - 1, -alpha, True)
+                score = -negamax(
+                    P,
+                    undo,
+                    mv,
+                    ms,
+                    acc,
+                    net,
+                    tt_key,
+                    tt_val,
+                    killers,
+                    history,
+                    keys,
+                    ghist,
+                    ctl,
+                    ctf,
+                    ply + 1,
+                    new_depth,
+                    -alpha - 1,
+                    -alpha,
+                    True,
+                )
             if (score > alpha) & (score < beta):
-                score = -negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, ply + 1, new_depth, -beta, -alpha, True)
+                score = -negamax(
+                    P,
+                    undo,
+                    mv,
+                    ms,
+                    acc,
+                    net,
+                    tt_key,
+                    tt_val,
+                    killers,
+                    history,
+                    keys,
+                    ghist,
+                    ctl,
+                    ctf,
+                    ply + 1,
+                    new_depth,
+                    -beta,
+                    -alpha,
+                    True,
+                )
         cb.unmake_move(P, undo, ply)
         if ctl[C_ABORT] != 0:
             return 0
@@ -470,14 +1034,52 @@ def negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, g
     return best
 
 
-@njit(cache=True)
-def search_root(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, depth, alpha, beta):  # type: ignore[no-untyped-def]
+@jit
+def search_root(  # type: ignore[no-untyped-def]
+    P,
+    undo,
+    mv,
+    ms,
+    acc,
+    net,
+    tt_key,
+    tt_val,
+    killers,
+    history,
+    keys,
+    ghist,
+    ctl,
+    ctf,
+    depth,
+    alpha,
+    beta,
+):
     keys[0] = P[cb.HASH]
     ctl[C_ROOT_MOVES_DONE] = 0
-    return negamax(P, undo, mv, ms, acc, net, tt_key, tt_val, killers, history, keys, ghist, ctl, ctf, 0, depth, alpha, beta, False)
+    return negamax(
+        P,
+        undo,
+        mv,
+        ms,
+        acc,
+        net,
+        tt_key,
+        tt_val,
+        killers,
+        history,
+        keys,
+        ghist,
+        ctl,
+        ctf,
+        0,
+        depth,
+        alpha,
+        beta,
+        False,
+    )
 
 
-@njit(cache=True)
+@jit
 def extract_pv(P, undo, mv, tt_key, tt_val, out, max_len):  # type: ignore[no-untyped-def]
     """Follow TT moves from the root; returns the pv length.  Restores P."""
     n = 0
@@ -512,7 +1114,11 @@ def extract_pv(P, undo, mv, tt_key, tt_val, out, max_len):  # type: ignore[no-un
 class Searcher:
     """Owns the arrays; one instance per game so the TT and history survive between moves."""
 
-    def __init__(self, net: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None, use_nnue: bool = True) -> None:
+    def __init__(
+        self,
+        net: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None,
+        use_nnue: bool = True,
+    ) -> None:
         self.P = cb.new_position()
         self.undo = cb.new_undo()
         self.mv = cb.new_movelists()
@@ -552,11 +1158,22 @@ class Searcher:
     def new_search(self) -> None:
         self.killers[:] = 0
         self.history //= 4
-        for k in (C_NODES, C_QNODES, C_ABORT, C_SELDEPTH, C_TT_HITS, C_ROOT_MOVE, C_ROOT_SCORE, C_ROOT_DEPTH):
+        for k in (
+            C_NODES,
+            C_QNODES,
+            C_ABORT,
+            C_SELDEPTH,
+            C_TT_HITS,
+            C_ROOT_MOVE,
+            C_ROOT_SCORE,
+            C_ROOT_DEPTH,
+        ):
             self.ctl[k] = 0
         self.ctl[C_NEXT_CHECK] = NODES_PER_CLOCK_CHECK
 
-    def search(self, max_depth: int = MAX_DEPTH, time_budget: float | None = None, node_limit: int = 0):  # type: ignore[no-untyped-def]
+    def search(
+        self, max_depth: int = MAX_DEPTH, time_budget: float | None = None, node_limit: int = 0
+    ) -> tuple[int, int, int, list[int], dict[str, float]]:
         """Iterative deepening.  Returns (best_move, score, depth, pv list, stats dict)."""
         self.new_search()
         start = time.perf_counter()
@@ -566,7 +1183,22 @@ class Searcher:
         best_score = 0
         completed = 0
         pv_list: list[int] = []
-        args = (self.P, self.undo, self.mv, self.ms, self.acc, self.net, self.tt_key, self.tt_val, self.killers, self.history, self.keys, self.ghist, self.ctl, self.ctf)
+        args = (
+            self.P,
+            self.undo,
+            self.mv,
+            self.ms,
+            self.acc,
+            self.net,
+            self.tt_key,
+            self.tt_val,
+            self.killers,
+            self.history,
+            self.keys,
+            self.ghist,
+            self.ctl,
+            self.ctf,
+        )
         for depth in range(1, max_depth + 1):
             alpha, beta = -INF, INF
             window = 30
@@ -589,7 +1221,11 @@ class Searcher:
             if aborted:
                 # keep an improved root move from the partial iteration only if it was fully
                 # searched and raised alpha above the previous best
-                if self.ctl[C_ROOT_MOVE] != 0 and self.ctl[C_ROOT_MOVES_DONE] >= 1 and self.ctl[C_ROOT_SCORE] > best_score:
+                if (
+                    self.ctl[C_ROOT_MOVE] != 0
+                    and self.ctl[C_ROOT_MOVES_DONE] >= 1
+                    and self.ctl[C_ROOT_SCORE] > best_score
+                ):
                     best_move = int(self.ctl[C_ROOT_MOVE])
                     best_score = int(self.ctl[C_ROOT_SCORE])
                 break

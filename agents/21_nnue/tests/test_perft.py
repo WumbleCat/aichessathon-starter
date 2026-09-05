@@ -9,7 +9,7 @@ import chess
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-import cboard  # noqa: E402
+import cboard
 
 POSITIONS = [
     (chess.STARTING_FEN, [20, 400, 8902, 197281]),
@@ -61,7 +61,7 @@ class PerftTest(unittest.TestCase):
         for _ in range(12):
             board = chess.Board()
             P = cboard.from_board(board)
-            for ply in range(120):
+            for _ply in range(120):
                 legal = {m.uci() for m in board.legal_moves}
                 n = cboard.gen_moves(P, moves[0], False)
                 ours = set()
@@ -91,7 +91,9 @@ class PerftTest(unittest.TestCase):
     def test_speed(self) -> None:
         undo = cboard.new_undo()
         moves = cboard.new_movelists()
-        P = cboard.from_board(chess.Board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"))
+        P = cboard.from_board(
+            chess.Board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
+        )
         cboard.perft(P, undo, moves, 0, 2)
         t0 = time.perf_counter()
         n = cboard.perft(P, undo, moves, 0, 4)

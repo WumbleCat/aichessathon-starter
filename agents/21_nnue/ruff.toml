@@ -1,0 +1,6 @@
+# Same rules as the repository root, minus the naming rules for the numba position array ``P``
+# (a fixed convention across cboard/csearch/nnue: every jitted function takes the board as P).
+extend = "../../pyproject.toml"
+
+[lint]
+ignore = ["N818", "N803", "N806"]

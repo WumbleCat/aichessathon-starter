@@ -10,8 +10,8 @@ import chess
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-import cboard as cb  # noqa: E402
-import nnue  # noqa: E402
+import cboard as cb
+import nnue
 
 
 class NNUETest(unittest.TestCase):
@@ -21,7 +21,7 @@ class NNUETest(unittest.TestCase):
         self.moves = cb.new_movelists()
 
     def test_incremental_equals_refresh_on_random_games(self) -> None:
-        W1, B1, W2, B2 = self.net
+        W1, B1, _W2, _B2 = self.net
         acc = nnue.new_acc(64)
         ref = nnue.new_acc(64)
         rng = random.Random(7)
@@ -33,7 +33,11 @@ class NNUETest(unittest.TestCase):
             while ply < 100 and not board.is_game_over():
                 moves = list(board.legal_moves)
                 # prefer "interesting" moves so castling/ep/promotion get exercised
-                special = [m for m in moves if board.is_castling(m) or board.is_en_passant(m) or m.promotion]
+                special = [
+                    m
+                    for m in moves
+                    if board.is_castling(m) or board.is_en_passant(m) or m.promotion
+                ]
                 mv = rng.choice(special) if special and rng.random() < 0.8 else rng.choice(moves)
                 n = cb.gen_moves(P, self.moves[ply], False)
                 idx = [i for i in range(n) if cb.move_to_uci(int(self.moves[ply, i])) == mv.uci()]
@@ -42,7 +46,9 @@ class NNUETest(unittest.TestCase):
                 nnue.update(acc, ply, P, W1)
                 board.push(mv)
                 nnue.refresh(ref, ply + 1, P, W1, B1)
-                np.testing.assert_array_equal(acc[ply + 1], ref[ply + 1], f"after {mv.uci()} in {board.fen()}")
+                np.testing.assert_array_equal(
+                    acc[ply + 1], ref[ply + 1], f"after {mv.uci()} in {board.fen()}"
+                )
                 ply += 1
 
     def test_colour_flip_symmetry(self) -> None:

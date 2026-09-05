@@ -24,9 +24,9 @@ import os
 import struct
 
 import numpy as np
-from numba import njit
 
 import cboard as cb
+from jitconf import jit
 
 NUM_FEATURES = 768
 QA = 255
@@ -51,7 +51,9 @@ def read_safetensors(path: str) -> dict[str, np.ndarray]:
     return out
 
 
-def write_safetensors(path: str, tensors: dict[str, np.ndarray], metadata: dict[str, str] | None = None) -> None:
+def write_safetensors(
+    path: str, tensors: dict[str, np.ndarray], metadata: dict[str, str] | None = None
+) -> None:
     inv = {v: k for k, v in _DTYPES.items()}
     header: dict[str, object] = {}
     blobs: list[bytes] = []
@@ -59,7 +61,11 @@ def write_safetensors(path: str, tensors: dict[str, np.ndarray], metadata: dict[
     for name, arr in tensors.items():
         arr = np.ascontiguousarray(arr)
         raw = arr.tobytes()
-        header[name] = {"dtype": inv[arr.dtype.type], "shape": list(arr.shape), "data_offsets": [offset, offset + len(raw)]}
+        header[name] = {
+            "dtype": inv[arr.dtype.type],
+            "shape": list(arr.shape),
+            "data_offsets": [offset, offset + len(raw)],
+        }
         blobs.append(raw)
         offset += len(raw)
     if metadata:
@@ -84,7 +90,9 @@ def load_net(path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
     return W1, B1, W2, B2
 
 
-def random_net(hidden: int = 256, seed: int = 0) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def random_net(
+    hidden: int = 256, seed: int = 0
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """A random network of the right shape, for tests that only need the plumbing."""
     rng = np.random.default_rng(seed)
     W1 = rng.integers(-40, 40, size=(NUM_FEATURES, hidden), dtype=np.int16)
@@ -98,14 +106,14 @@ def new_acc(hidden: int) -> np.ndarray:
     return np.zeros((cb.MAX_PLY + 2, 2, hidden), dtype=np.int16)
 
 
-@njit(cache=True)
+@jit
 def feature_index(persp, piece, sq):  # type: ignore[no-untyped-def]
     c = 1 if piece >= 7 else 0
     t = piece - 6 if piece >= 7 else piece
     return ((c ^ persp) * 6 + t - 1) * 64 + (sq ^ (56 * persp))
 
 
-@njit(cache=True)
+@jit
 def refresh(acc, ply, P, W1, B1):  # type: ignore[no-untyped-def]
     """Full recompute of both perspectives at ``ply`` from the board in ``P``."""
     H = W1.shape[1]
@@ -120,7 +128,7 @@ def refresh(acc, ply, P, W1, B1):  # type: ignore[no-untyped-def]
                     acc[ply, persp, i] += W1[f, i]
 
 
-@njit(cache=True)
+@jit
 def update(acc, ply, P, W1):  # type: ignore[no-untyped-def]
     """acc[ply+1] = acc[ply] patched with the move recorded in P[LAST_*]."""
     H = W1.shape[1]
@@ -136,19 +144,23 @@ def update(acc, ply, P, W1):  # type: ignore[no-untyped-def]
         if cap != 0:
             f_cap = feature_index(persp, cap, P[cb.LAST_CAPSQ])
             for i in range(H):
-                acc[ply + 1, persp, i] = acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i] - W1[f_cap, i]
+                acc[ply + 1, persp, i] = (
+                    acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i] - W1[f_cap, i]
+                )
         elif rfrom >= 0:
             rook = cb.make_piece(cb.piece_color(pc), cb.ROOK)
             f_rr = feature_index(persp, rook, rfrom)
             f_ra = feature_index(persp, rook, P[cb.LAST_ROOK_TO])
             for i in range(H):
-                acc[ply + 1, persp, i] = acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i] - W1[f_rr, i] + W1[f_ra, i]
+                acc[ply + 1, persp, i] = (
+                    acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i] - W1[f_rr, i] + W1[f_ra, i]
+                )
         else:
             for i in range(H):
                 acc[ply + 1, persp, i] = acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i]
 
 
-@njit(cache=True)
+@jit
 def copy_acc(acc, ply):  # type: ignore[no-untyped-def]
     """acc[ply+1] = acc[ply] (null move)."""
     H = acc.shape[2]
@@ -157,7 +169,7 @@ def copy_acc(acc, ply):  # type: ignore[no-untyped-def]
             acc[ply + 1, persp, i] = acc[ply, persp, i]
 
 
-@njit(cache=True)
+@jit
 def evaluate(acc, ply, side, W2, B2):  # type: ignore[no-untyped-def]
     """Centipawns from the side-to-move's point of view."""
     H = acc.shape[2]
@@ -165,16 +177,16 @@ def evaluate(acc, ply, side, W2, B2):  # type: ignore[no-untyped-def]
     for i in range(H):
         v = np.int64(acc[ply, side, i])
         if v < 0:
-            v = 0
+            v = np.int64(0)
         elif v > QA:
-            v = QA
+            v = np.int64(QA)
         s += v * W2[i]
     for i in range(H):
         v = np.int64(acc[ply, 1 - side, i])
         if v < 0:
-            v = 0
+            v = np.int64(0)
         elif v > QA:
-            v = QA
+            v = np.int64(QA)
         s += v * W2[H + i]
     s += B2[0]
     return (s * SCALE) // (QA * QB)
