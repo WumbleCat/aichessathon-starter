@@ -22,8 +22,11 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
+from multiprocessing import Manager
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +45,10 @@ INCREMENT_MS = 100
 # terminations that mean an agent failed rather than lost a game of chess
 FAULTS = frozenset({"flag", "crash", "illegal", "init", "both_failed"})
 
+# agents that compile a numba search at import and need most of a core to finish it; measure
+# with agent_health.py before changing this list
+SLOW_AGENTS = ("18_alpha_beta", "20_pvs", "21_nnue")
+
 
 class WarmAgent(Agent):
     """An agent whose process can be started before the referee asks for it.
@@ -55,12 +62,16 @@ class WarmAgent(Agent):
         super().__init__(command)
         self._warmed = False
         self._warm_failure: AgentFailure | None = None
+        self.import_s = 0.0
+        self.move_times: list[float] = []
 
     def warm(self, init_budget_s: float) -> None:
+        began = time.monotonic()
         try:
             super().start(init_budget_s)
         except AgentFailure as failure:
             self._warm_failure = failure
+        self.import_s = time.monotonic() - began
         self._warmed = True
 
     def start(self, init_budget_s: float) -> None:
@@ -69,6 +80,21 @@ class WarmAgent(Agent):
             return
         if self._warm_failure is not None:
             raise self._warm_failure
+
+    def move(self, fen: str, time_left_ms: int) -> str:
+        """Time every move, so a game can say whether the agent searched or returned instantly."""
+        began = time.monotonic()
+        try:
+            return super().move(fen, time_left_ms)
+        finally:
+            self.move_times.append(time.monotonic() - began)
+
+    @property
+    def median_move_s(self) -> float:
+        if not self.move_times:
+            return 0.0
+        ordered = sorted(self.move_times)
+        return ordered[len(ordered) // 2]
 
 
 @dataclass(frozen=True)
@@ -96,9 +122,31 @@ def agent_names() -> list[str]:
     return sorted(d.name for d in AGENT_ROOT.iterdir() if (d / "agent.py").exists())
 
 
-def play_one(payload: tuple[str, str, int, int, int, int]) -> dict[str, Any]:
+_COMPILE_SLOTS: Any = None
+
+
+def hold_slots(semaphore: Any) -> None:
+    """Pool initializer: give every worker the handle that rations compile slots."""
+    global _COMPILE_SLOTS
+    _COMPILE_SLOTS = semaphore
+
+
+@contextmanager
+def compile_slot(needed: bool) -> Iterator[None]:
+    """Hold one of the rationed slots while a slow agent imports, if this game has one."""
+    if not needed or _COMPILE_SLOTS is None:
+        yield
+        return
+    _COMPILE_SLOTS.acquire()
+    try:
+        yield
+    finally:
+        _COMPILE_SLOTS.release()
+
+
+def play_one(payload: tuple[str, str, int, int, int, int, tuple[str, ...]]) -> dict[str, Any]:
     """Worker entry point: play a single game in two fresh processes."""
-    left, right, game, base_ms, increment_ms, ply_cap = payload
+    left, right, game, base_ms, increment_ms, ply_cap, slow = payload
     task = Task(left, right, game)
     started = time.monotonic()
     white = WarmAgent([sys.executable, str(RUNNER), str(AGENT_ROOT / task.white)])
@@ -107,10 +155,13 @@ def play_one(payload: tuple[str, str, int, int, int, int]) -> dict[str, Any]:
         threading.Thread(target=white.warm, args=(INIT_BUDGET_S,)),
         threading.Thread(target=black.warm, args=(INIT_BUDGET_S,)),
     ]
-    for warmer in warmers:
-        warmer.start()
-    for warmer in warmers:
-        warmer.join()
+    # a slow agent needs most of a core to finish its jit inside the import budget; without this
+    # ration it falls back to pure Python and the game measures the machine, not the agent
+    with compile_slot(left in slow or right in slow):
+        for warmer in warmers:
+            warmer.start()
+        for warmer in warmers:
+            warmer.join()
     plies = 0
     try:
         outcome = play_match(white, black, base_ms, increment_ms, ply_cap=ply_cap)
@@ -128,6 +179,12 @@ def play_one(payload: tuple[str, str, int, int, int, int]) -> dict[str, Any]:
         "plies": plies,
         "seconds": round(time.monotonic() - started, 1),
         "finished": round(time.time(), 1),  # lets throughput be measured over any window later
+        # health, per side: a numba agent that never finished compiling imports for its whole
+        # budget and then either moves instantly or crawls, and both show up here
+        "health": {
+            task.white: [round(white.import_s, 1), round(white.median_move_s, 2)],
+            task.black: [round(black.import_s, 1), round(black.median_move_s, 2)],
+        },
     }
     if termination in FAULTS or termination.startswith("harness_error"):
         # a flag or a crash is worth explaining, and the agent's own stderr usually explains it
@@ -194,6 +251,7 @@ def run(
     total = len(names) * (len(names) - 1) // 2 * games
     print(f"{len(names)} agents, {total} games, {len(done)} already played, {len(todo)} to go")
     print(f"time control {arguments.base_ms} ms + {arguments.increment_ms} ms, {workers} workers")
+    print(f"compile slots {arguments.compile_slots} for {arguments.slow_agents}")
     sys.stdout.flush()
     if not todo:
         return
@@ -201,7 +259,13 @@ def run(
     started = time.monotonic()
     played = 0
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as sink, ProcessPoolExecutor(max_workers=workers) as pool:
+    slow = tuple(name for name in arguments.slow_agents.split(",") if name.strip())
+    manager = Manager()
+    slots = manager.Semaphore(arguments.compile_slots)
+    with (
+        path.open("a", encoding="utf-8") as sink,
+        ProcessPoolExecutor(max_workers=workers, initializer=hold_slots, initargs=(slots,)) as pool,
+    ):
         pending: dict[Future[dict[str, Any]], Task] = {}
         queue = iter(todo)
 
@@ -218,6 +282,7 @@ def run(
                     arguments.base_ms,
                     arguments.increment_ms,
                     arguments.ply_cap,
+                    slow,
                 )
                 pending[pool.submit(play_one, payload)] = task
 
@@ -380,6 +445,44 @@ def report(path: Path, names: list[str]) -> None:
     print("\nterminations: " + ", ".join(f"{name} {count}" for name, count in ranked))
 
 
+def health_report(path: Path, names: list[str]) -> None:
+    """Per agent: how long it imported and how long its moves took, over the games recorded.
+
+    An agent whose compiled search never lands imports for its whole wait every game, and then
+    either returns instantly or crawls. Both are visible here, and neither is visible in the
+    scores.
+    """
+    imports: dict[str, list[float]] = {name: [] for name in names}
+    moves: dict[str, list[float]] = {name: [] for name in names}
+    for record in load(path):
+        for name, pair in record.get("health", {}).items():
+            if name in imports:
+                imports[name].append(pair[0])
+                moves[name].append(pair[1])
+
+    if not any(imports.values()):
+        print("no games carry health data yet")
+        return
+
+    header = f"{'agent':22} {'games':>6} {'import s':>10} {'median move s':>15}"
+    print(header)
+    print("-" * len(header))
+    for name in sorted(names, key=lambda n: -median(imports[n])):
+        if not imports[name]:
+            continue
+        print(
+            f"{name:22} {len(imports[name]):>6} {median(imports[name]):>10.1f}"
+            f" {median(moves[name]):>15.2f}"
+        )
+
+
+def median(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    return ordered[len(ordered) // 2]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--games", type=int, default=100, help="games per pairing")
@@ -389,7 +492,17 @@ def main() -> None:
     parser.add_argument("--ply-cap", type=int, default=PLY_CAP)
     parser.add_argument("--results", type=Path, default=RESULT_ROOT / "games.jsonl")
     parser.add_argument("--report", action="store_true", help="print standings and exit")
+    parser.add_argument(
+        "--health", action="store_true", help="print per agent import and move times, and exit"
+    )
     parser.add_argument("--only", default="", help="comma separated agent names, for a smoke test")
+    parser.add_argument(
+        "--compile-slots",
+        type=int,
+        default=5,
+        help="games with a slow agent that may import at once; keep it near the free core count",
+    )
+    parser.add_argument("--slow-agents", default=",".join(SLOW_AGENTS))
     arguments = parser.parse_args()
 
     os.chdir(REPO)
@@ -400,6 +513,9 @@ def main() -> None:
         if missing:
             raise SystemExit("unknown agents: " + ", ".join(sorted(missing)))
         names = [name for name in names if name in wanted]
+    if arguments.health:
+        health_report(arguments.results, names)
+        return
     if arguments.report:
         report(arguments.results, names)
         return

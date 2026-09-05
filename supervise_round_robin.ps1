@@ -11,7 +11,8 @@ param(
     [int]$BaseMs = 10000,
     [int]$IncrementMs = 100,
     [int]$PollSeconds = 120,
-    [int]$SnapshotEvery = 1000
+    [int]$SnapshotEvery = 1000,
+    [int]$CompileSlots = 5
 )
 
 $repo = "E:\sourcecode\ai-chess-original\aichessathon-starter"
@@ -50,7 +51,7 @@ function Write-Snapshot($played) {
     Write-Log "standings snapshot at $played games"
 }
 
-Write-Log "supervisor up, target $target games, $Workers workers"
+Write-Log "supervisor up, target $target games, $Workers workers, $CompileSlots compile slots"
 $nextSnapshot = 0
 
 while ($true) {
@@ -75,7 +76,8 @@ while ($true) {
             "--games", $Games,
             "--workers", $Workers,
             "--base-ms", $BaseMs,
-            "--increment-ms", $IncrementMs
+            "--increment-ms", $IncrementMs,
+            "--compile-slots", $CompileSlots
         )
         $stamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $process = Start-Process -FilePath $python -ArgumentList $arguments -WorkingDirectory $repo -RedirectStandardOutput "$results\run_$stamp.log" -RedirectStandardError "$results\run_$stamp.err" -WindowStyle Hidden -PassThru
