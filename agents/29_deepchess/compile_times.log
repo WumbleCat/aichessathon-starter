@@ -1,0 +1,3 @@
+NUMBA_OPT 0 numba import 41.0 engine compile 183.9
+NUMBA_OPT 1 numba import 30.9 engine compile 342.3
+NUMBA_OPT 3 numba import 62.0 engine compile 555.0
