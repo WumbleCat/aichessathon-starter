@@ -24,6 +24,8 @@ are worth +40 to +158 each versus -9 to +140 for h256. Queen 997, KQ v K 553, KR
 
 ## Engine
 
+- Session 4: the compile is 44.2 s CPU in a fresh process (was 116.8 s in the same
+  measurement), see `results/compile_time.md`; the figures below are from before that change.
 - Compile of the numba search: 119-125 s CPU (fresh process, no cache). `agent.py` builds it
   in a thread, waits up to 70 s at import, and plays a python-chess alpha-beta meanwhile.
 - Tests: 26 of 26 pass on the final code (`tests/`, 2026-09-05 08:40 run); perft 4 kiwipete
@@ -78,6 +80,10 @@ Under this load the python bot only reached depth 1-3, so the margin is inflated
 `harness.play` vs `baselines/greedy` at 120 s + 0.5 s: draw by threefold repetition, played
 entirely by the python fallback (the compile outlasted the game on this box). The fallback now
 treats root moves that repeat a seen position as draws.
+
+Session 4 (`results/arena.md`): `harness.arena` at 120 s + 0.5 s, 10 games per baseline,
+after the compile cut and the wait-for-compile hand-over in `get_move`: 40 of 40 against
+random, greedy, minimax and numba, all by checkmate.
 
 ## Submission
 

@@ -68,6 +68,31 @@ reader (no torch import at runtime).
 
 ## Status log (checkpoint for a fresh session; newest first)
 
+### 2026-09-05 (session 4, branch `feature/agent-21-nnue-compile`, worktree `agent-21-compile`)
+
+- Compile time of the engine cut from 116.8 s to 44.2 s CPU in a fresh process (wall 258 s to
+  94 s on the loaded box), so the build thread now finishes inside `INIT_WAIT_S` and games start
+  on the compiled engine.  Cause and fix in `results/compile_time.md`: Python constants at call
+  sites are numba `Literal` types and each distinct literal compiled another specialisation
+  (negamax 3x, is_attacked 11x, slider_attacks_dir 88x, _add 22x).  Search state now travels as
+  one tuple `S` (`X_*` indices), the null-move permission is `ctl[C_NULL_PLY]`, the PVS/LMR
+  re-searches are one loop (two recursive call sites), castling is table-driven, the tiny
+  move-append helpers are IR-inlined, `captures_only` is passed as `cb.ALL_MOVES` /
+  `cb.CAPTURES_ONLY`.
+- Verified: `tools/compare_search.py` fixed-depth fingerprints (10 positions, depth 6) are
+  identical between the branch tip and the refactor; 26/26 tests; ruff, ruff format and
+  mypy --strict clean (the `llvmlite` import now carries an `import-untyped` ignore).
+- New tools: `tools/prof_compile.py` (per-function overload counts and pipeline times),
+  `tools/compare_search.py` (fingerprint one engine version per process, diff the outputs).
+- `harness.arena` at 120 s + 0.5 s, 10 games per baseline, four arenas in parallel
+  (`results/arena.md`): round 1 was played by the python fallback (65/60/35/65% vs
+  random/greedy/minimax/numba, draws by repetition) because the fallback search holds the GIL
+  and starves the build thread once a game starts on it.  `get_move` now waits on the ready
+  event for 60% of the budget (`COMPILE_WAIT_SHARE`) before falling back; round 2 after that
+  fix: 40 of 40 by checkmate.  Test added (27 tests).
+- Merge of this branch into main is pending (left to the user); it sits on top of
+  `feature/agent-21-nnue`.
+
 ### 2026-09-05 (session 3)
 
 - Found on disk: engine (`cboard.py`, `csearch.py`, `nnue.py`, `agent.py`), tests, training

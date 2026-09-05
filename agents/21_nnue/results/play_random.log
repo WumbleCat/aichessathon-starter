@@ -1,0 +1,5 @@
+agents\21_nnue vs baselines\random: white by checkmate
+
+white wrote to stderr:
+[21_nnue] engine ready after 42.7s wall, 38.2s cpu, nnue=yes
+pgn written to agents\21_nnue\results\play_random.pgn
