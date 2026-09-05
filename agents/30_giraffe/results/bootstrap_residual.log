@@ -1,0 +1,32 @@
+171890 positions, residual (label - static) mean 43 std 209 cp
+epoch 1/30 train 0.03121 val 0.02216 (~59 cp mean abs err) * 7s
+epoch 2/30 train 0.01998 val 0.01613 (~50 cp mean abs err) * 7s
+epoch 3/30 train 0.01456 val 0.01381 (~47 cp mean abs err) * 6s
+epoch 4/30 train 0.01312 val 0.01259 (~44 cp mean abs err) * 7s
+epoch 5/30 train 0.01216 val 0.01177 (~43 cp mean abs err) * 7s
+epoch 6/30 train 0.01144 val 0.01113 (~39 cp mean abs err) * 6s
+epoch 7/30 train 0.01102 val 0.01106 (~39 cp mean abs err) * 6s
+epoch 8/30 train 0.01055 val 0.01130 (~38 cp mean abs err)  6s
+epoch 9/30 train 0.01019 val 0.01212 (~40 cp mean abs err)  6s
+epoch 10/30 train 0.00998 val 0.01093 (~38 cp mean abs err) * 6s
+epoch 11/30 train 0.00980 val 0.01102 (~39 cp mean abs err)  6s
+epoch 12/30 train 0.00947 val 0.01056 (~38 cp mean abs err) * 6s
+epoch 13/30 train 0.00922 val 0.01059 (~36 cp mean abs err)  7s
+epoch 14/30 train 0.00889 val 0.01022 (~39 cp mean abs err) * 6s
+epoch 15/30 train 0.00868 val 0.01040 (~37 cp mean abs err)  7s
+epoch 16/30 train 0.00845 val 0.00978 (~35 cp mean abs err) * 6s
+epoch 17/30 train 0.00823 val 0.00971 (~35 cp mean abs err) * 6s
+epoch 18/30 train 0.00796 val 0.00967 (~36 cp mean abs err) * 7s
+epoch 19/30 train 0.00767 val 0.00993 (~36 cp mean abs err)  6s
+epoch 20/30 train 0.00750 val 0.00924 (~35 cp mean abs err) * 7s
+epoch 21/30 train 0.00726 val 0.00936 (~35 cp mean abs err)  7s
+epoch 22/30 train 0.00704 val 0.00918 (~34 cp mean abs err) * 7s
+epoch 23/30 train 0.00686 val 0.00915 (~34 cp mean abs err) * 7s
+epoch 24/30 train 0.00665 val 0.00904 (~34 cp mean abs err) * 8s
+epoch 25/30 train 0.00650 val 0.00891 (~34 cp mean abs err) * 7s
+epoch 26/30 train 0.00637 val 0.00893 (~33 cp mean abs err)  6s
+epoch 27/30 train 0.00625 val 0.00892 (~34 cp mean abs err)  6s
+epoch 28/30 train 0.00617 val 0.00886 (~33 cp mean abs err) * 6s
+epoch 29/30 train 0.00610 val 0.00888 (~34 cp mean abs err)  6s
+epoch 30/30 train 0.00607 val 0.00887 (~34 cp mean abs err)  6s
+best checkpoint written to models\giraffe.npz
