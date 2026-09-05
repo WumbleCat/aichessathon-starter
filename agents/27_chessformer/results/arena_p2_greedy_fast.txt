@@ -1,0 +1,8 @@
+game 1/4: white by checkmate
+game 2/4: black by checkmate
+game 3/4: white by checkmate
+game 4/4: black by checkmate
+
+agents\27_chessformer vs baselines\greedy over 4 games
++4 =0 -0, score 100.0%
+terminations: checkmate 4

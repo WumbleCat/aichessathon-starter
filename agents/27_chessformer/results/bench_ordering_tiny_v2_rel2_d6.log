@@ -1,0 +1,3 @@
+16 positions, depth 6
+no model: nodes 364548 cpu 30.2s (12070 nodes/s); network 11.5 ms; charging 60 nodes per call
+min_depth 3 rel_depth 2: raw nodes 327540 (0.90x), charged 415140 (1.14x), cpu 39.4s (1.30x), calls 1460 (91.2/pos), same best move 11/16
