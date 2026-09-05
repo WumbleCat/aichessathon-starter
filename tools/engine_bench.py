@@ -290,19 +290,33 @@ def elo_of(score: float, n: int, opponent_elo: int) -> tuple[float, float]:
     return elo, (opponent_elo - 400 * math.log10(1 / hi - 1)) - elo
 
 
-def report(results: dict[str, dict[str, object]], agents: list[AgentEntry]) -> str:
+def report(
+    results: dict[str, dict[str, object]], agents: list[AgentEntry], exclude_failures: bool = False
+) -> str:
+    """Render the table.
+
+    ``exclude_failures`` scores only games that ended in a chess result.  On a shared machine
+    a crash or a flag is usually the machine (see benchmarks/README.md), and counting those as
+    losses understates an agent by tens of points; the excluded count stays in the table so the
+    reader can see how much was dropped.
+    """
     by_elo: dict[int, dict[str, list[dict[str, object]]]] = {}
     for entry in results.values():
         by_elo.setdefault(int(entry["elo"]), {}).setdefault(str(entry["agent"]), []).append(entry)
     lines: list[str] = []
     for elo in sorted(by_elo):
         rows = by_elo[elo]
-        lines.append(f"\n### vs Stockfish UCI_Elo {elo}\n")
+        scored = "decided games only" if exclude_failures else "all games"
+        lines.append(f"\n### vs Stockfish UCI_Elo {elo} ({scored})\n")
         lines.append("| # | agent | games | W | D | L | score | implied Elo | failures |")
         lines.append("|---|---|---|---|---|---|---|---|---|")
         table = []
         for agent in agents:
-            games = rows.get(agent.label)
+            all_games = rows.get(agent.label)
+            if not all_games:
+                continue
+            bad_count = sum(1 for g in all_games if is_failure(g))
+            games = [g for g in all_games if not is_failure(g)] if exclude_failures else all_games
             if not games:
                 continue
             n = len(games)
@@ -311,8 +325,7 @@ def report(results: dict[str, dict[str, object]], agents: list[AgentEntry]) -> s
             losses = n - wins - draws
             score = sum(float(g["points"]) for g in games) / n
             rating, half = elo_of(score, n, elo)
-            bad = sum(1 for g in games if is_failure(g))
-            table.append((rating, agent, n, wins, draws, losses, score, half, bad))
+            table.append((rating, agent, n, wins, draws, losses, score, half, bad_count))
         for rating, agent, n, wins, draws, losses, score, half, bad in sorted(
             table, key=lambda t: -t[0]
         ):
@@ -348,6 +361,11 @@ def main() -> None:
         "nothing is lost either way, since every finished game is appended as it ends",
     )
     parser.add_argument("--report", action="store_true", help="only print the table")
+    parser.add_argument(
+        "--exclude-failures",
+        action="store_true",
+        help="score only games that ended in a chess result, and show how many were dropped",
+    )
     parser.add_argument(
         "--redo-failures",
         action="store_true",
@@ -408,7 +426,7 @@ def main() -> None:
                 thread.join()
         done = load_results(args.out)
 
-    table = report(done, agents)
+    table = report(done, agents, exclude_failures=args.exclude_failures)
     print(table)
     if args.report_file:
         args.report_file.parent.mkdir(parents=True, exist_ok=True)
