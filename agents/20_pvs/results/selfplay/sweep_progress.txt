@@ -1,2 +1,4 @@
 P_NULL exit 0
 P_LMR exit 0
+P_FUTILITY exit 0
+P_RFP exit 0

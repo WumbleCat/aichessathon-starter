@@ -75,6 +75,8 @@ expected outcome; a clearly negative one would mean a bug. 100 games give roughl
 |---|---|---|---|---|
 | null move (`P_NULL`) | +42 =21 -37 | 52.5 % | +17 (-44..+79) | 1513 s wall / 140 s cpu |
 | late move reductions (`P_LMR`) | +42 =27 -31 | 55.5 % | +38 (-20..+99) | |
+| futility pruning (`P_FUTILITY`) | +38 =29 -33 | 52.5 % | +17 (-40..+76) | |
+| reverse futility pruning (`P_RFP`) | +46 =19 -35 | 55.5 % | +38 (-23..+102) | 841 s wall / 135 s cpu |
 
 The sweep continues over the other toggles in `results/selfplay/off_<P_NAME>.log`.
 
