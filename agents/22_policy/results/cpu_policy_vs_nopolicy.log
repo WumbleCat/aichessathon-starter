@@ -1,0 +1,43 @@
+game 1/16: policy white score 1.0 by checkmate  running 1.0/1 (297s)
+game 2/16: policy black score 0.0 by checkmate  running 1.0/2 (452s)
+game 3/16: policy white score 1.0 by checkmate  running 2.0/3 (611s)
+game 4/16: policy black score 0.0 by checkmate  running 2.0/4 (737s)
+game 5/16: policy white score 0.0 by checkmate  running 2.0/5 (1057s)
+game 6/16: policy black score 1.0 by checkmate  running 3.0/6 (1139s)
+game 7/16: policy white score 1.0 by checkmate  running 4.0/7 (1293s)
+game 8/16: policy black score 0.5 by threefold_repetition  running 4.5/8 (1457s)
+game 9/16: policy white score 0.0 by checkmate  running 4.5/9 (1934s)
+game 10/16: policy black score 0.0 by checkmate  running 4.5/10 (2287s)
+game 11/16: policy white score 1.0 by checkmate  running 5.5/11 (2473s)
+game 12/16: policy black score 0.5 by insufficient_material  running 6.0/12 (2850s)
+game 13/16: policy white score 1.0 by checkmate  running 7.0/13 (2971s)
+game 14/16: policy black score 0.0 by checkmate  running 7.0/14 (3224s)
+game 15/16: policy white score 1.0 by checkmate  running 8.0/15 (3338s)
+game 16/16: policy black score 0.0 by checkmate  running 8.0/16 (3471s)
+{
+ "a": {
+  "name": "policy",
+  "moves": 799,
+  "avg_depth": 3.6758448060075093,
+  "avg_nodes": 2956.3617021276596,
+  "avg_policy_calls": 6.112640801001252,
+  "avg_cpu_s": 0.20468945556946183
+ },
+ "b": {
+  "name": "nopolicy",
+  "moves": 800,
+  "avg_depth": 3.85,
+  "avg_nodes": 3200.75875,
+  "avg_policy_calls": 0.0,
+  "avg_cpu_s": 0.199921875
+ },
+ "games": 16,
+ "a_wins": 7,
+ "draws": 2,
+ "a_losses": 7,
+ "a_score": 0.5,
+ "a_elo_diff": -0.0,
+ "budget_cpu_s": 0.25,
+ "seed": 11,
+ "minutes": 57.85694860219955
+}

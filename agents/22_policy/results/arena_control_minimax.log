@@ -1,0 +1,14 @@
+game 1/10: white by flag
+game 2/10: black by flag
+game 3/10: white by flag
+game 4/10: black by flag
+game 5/10: white by flag
+game 6/10: black by flag
+game 7/10: white by flag
+game 8/10: black by flag
+game 9/10: white by flag
+game 10/10: black by flag
+
+agents\22_policy vs baselines\minimax over 10 games
++10 =0 -0, score 100.0%
+terminations: flag 10

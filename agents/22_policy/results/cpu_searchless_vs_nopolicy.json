@@ -1,0 +1,67 @@
+{
+ "summary": {
+  "a": {
+   "name": "searchless",
+   "moves": 0,
+   "avg_depth": 0.0,
+   "avg_nodes": 0.0,
+   "avg_policy_calls": 0.0,
+   "avg_cpu_s": 0.0
+  },
+  "b": {
+   "name": "nopolicy",
+   "moves": 186,
+   "avg_depth": 3.752688172043011,
+   "avg_nodes": 3079.3064516129034,
+   "avg_policy_calls": 0.0,
+   "avg_cpu_s": 0.19338037634408603
+  },
+  "games": 6,
+  "a_wins": 0,
+  "draws": 0,
+  "a_losses": 6,
+  "a_score": 0.0,
+  "a_elo_diff": null,
+  "budget_cpu_s": 0.25,
+  "seed": 12,
+  "minutes": 8.533069296677906
+ },
+ "games": [
+  {
+   "fen": "r1bqkbnr/ppp1pppp/8/3p4/1n4P1/3PK3/PPP1PP1P/RNBQ1BNR b kq - 4 4",
+   "a_white": true,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkbnr/ppp1pppp/8/3p4/1n4P1/3PK3/PPP1PP1P/RNBQ1BNR b kq - 4 4",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rnbqkbnr/p1p1ppp1/3p4/1p5p/4P3/2P5/PPQP1PPP/RNB1KBNR w KQkq - 0 4",
+   "a_white": true,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rnbqkbnr/p1p1ppp1/3p4/1p5p/4P3/2P5/PPQP1PPP/RNB1KBNR w KQkq - 0 4",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkbnr/1p1ppppp/8/p1p5/1n6/N2PP2N/PPP2PPP/R1BQKB1R w KQkq - 3 5",
+   "a_white": true,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkbnr/1p1ppppp/8/p1p5/1n6/N2PP2N/PPP2PPP/R1BQKB1R w KQkq - 3 5",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  }
+ ]
+}

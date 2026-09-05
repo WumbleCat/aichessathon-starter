@@ -1,0 +1,43 @@
+game 1/20: draw by threefold_repetition (agent white)
+game 2/20: white by flag (agent black)
+game 3/20: black by flag (agent white)
+game 4/20: draw by threefold_repetition (agent black)
+game 5/20: draw by threefold_repetition (agent white)
+game 6/20: black by flag (agent black)
+game 7/20: black by checkmate (agent white)
+game 8/20: black by checkmate (agent black)
+game 9/20: draw by threefold_repetition (agent white)
+game 10/20: white by flag (agent black)
+game 11/20: white by checkmate (agent white)
+game 12/20: white by flag (agent black)
+game 13/20: draw by threefold_repetition (agent white)
+game 14/20: draw by threefold_repetition (agent black)
+game 15/20: black by flag (agent white)
+game 16/20: white by flag (agent black)
+game 17/20: black by flag (agent white)
+game 18/20: white by flag (agent black)
+game 19/20: black by flag (agent white)
+game 20/20: white by flag (agent black)
+{
+ "agent": "agents/22_policy/variants/nopolicy",
+ "opponent": "my-agents/15_selective_extensions",
+ "games": 20,
+ "wins": 3,
+ "draws": 6,
+ "losses": 11,
+ "score": 0.3,
+ "elo_diff": -147.19071411783779,
+ "terminations": {
+  "threefold_repetition": 6,
+  "flag": 11,
+  "checkmate": 3
+ },
+ "agent_failures": 10,
+ "avg_depth": 1.1296703296703297,
+ "avg_nodes": 198.94945054945055,
+ "avg_move_time_s": 0.44087912087912084,
+ "avg_policy_calls": 0.0,
+ "base_ms": 10000,
+ "increment_ms": 100,
+ "minutes": 9.351058463255564
+}

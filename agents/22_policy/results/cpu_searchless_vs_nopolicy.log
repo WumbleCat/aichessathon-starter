@@ -1,0 +1,33 @@
+game 1/6: searchless white score 0.0 by checkmate  running 0.0/1 (55s)
+game 2/6: searchless black score 0.0 by checkmate  running 0.0/2 (197s)
+game 3/6: searchless white score 0.0 by checkmate  running 0.0/3 (242s)
+game 4/6: searchless black score 0.0 by checkmate  running 0.0/4 (365s)
+game 5/6: searchless white score 0.0 by checkmate  running 0.0/5 (447s)
+game 6/6: searchless black score 0.0 by checkmate  running 0.0/6 (512s)
+{
+ "a": {
+  "name": "searchless",
+  "moves": 0,
+  "avg_depth": 0.0,
+  "avg_nodes": 0.0,
+  "avg_policy_calls": 0.0,
+  "avg_cpu_s": 0.0
+ },
+ "b": {
+  "name": "nopolicy",
+  "moves": 186,
+  "avg_depth": 3.752688172043011,
+  "avg_nodes": 3079.3064516129034,
+  "avg_policy_calls": 0.0,
+  "avg_cpu_s": 0.19338037634408603
+ },
+ "games": 6,
+ "a_wins": 0,
+ "draws": 0,
+ "a_losses": 6,
+ "a_score": 0.0,
+ "a_elo_diff": null,
+ "budget_cpu_s": 0.25,
+ "seed": 12,
+ "minutes": 8.533069296677906
+}
