@@ -52,7 +52,8 @@ def main() -> None:
     report = (
         f"import {init_s:.1f}s; {n} moves at {args.base_ms}+{args.increment_ms} ms: "
         f"median {pct(0.5):.0f} ms, p95 {pct(0.95):.0f} ms, p99 {pct(0.99):.0f} ms, "
-        f"max {took_ms[-1]:.0f} ms; clocks left W {clocks[chess.WHITE]:.0f} B {clocks[chess.BLACK]:.0f}"
+        f"max {took_ms[-1]:.0f} ms; "
+        f"clocks left W {clocks[chess.WHITE]:.0f} B {clocks[chess.BLACK]:.0f}"
     )
     print(report)
     if args.out:
