@@ -1,11 +1,13 @@
 """Supervised pretraining of the Giraffe network (stage 2).
 
-    python training/bootstrap.py --data training/data/search_d2.npz --epochs 30 --out models/giraffe.npz
+    python training/bootstrap.py --data training/data/search_d2.npz --epochs 30 \
+        --out models/giraffe.npz
 
 The network predicts the residual ``label - static`` where ``static`` is the handcrafted
 score the evaluator adds back at play time; a data file without a ``static`` array is
 treated as absolute labels (the legacy bootstrap set). Loss is mean squared error in the
-network's tanh output space (targets are ``tanh(cp / OUT_SCALE)``). Ten percent of the data is held out for validation; the
+network's tanh output space (targets are ``tanh(cp / OUT_SCALE)``). Ten percent of the data is
+held out for validation; the
 checkpoint with the best validation loss is exported as the flat weight file the numba
 evaluator loads.
 """
@@ -24,9 +26,8 @@ HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
-from model import GiraffeNet, cp_to_target, load_weights, save_weights  # noqa: E402
-
 import giraffe_eval as ge  # noqa: E402
+from model import GiraffeNet, cp_to_target, load_weights, save_weights  # noqa: E402
 
 
 def train(
@@ -80,7 +81,15 @@ def train(
             val_loss = float(torch.mean((val_pred - y_val) ** 2)) if n_val else train_loss
             # error in centipawns after undoing the tanh, on the held-out set
             cp_err = (
-                float(torch.mean(torch.abs(torch.atanh(val_pred.clamp(-0.999, 0.999)) - torch.atanh(y_val.clamp(-0.999, 0.999))))) * ge.OUT_SCALE
+                float(
+                    torch.mean(
+                        torch.abs(
+                            torch.atanh(val_pred.clamp(-0.999, 0.999))
+                            - torch.atanh(y_val.clamp(-0.999, 0.999))
+                        )
+                    )
+                )
+                * ge.OUT_SCALE
                 if n_val
                 else float("nan")
             )
@@ -91,7 +100,8 @@ def train(
                 save_weights(model, out)
         print(
             f"{log_prefix}epoch {epoch + 1}/{epochs} train {train_loss:.5f} val {val_loss:.5f} "
-            f"(~{cp_err:.0f} cp mean abs err) {'*' if improved else ''} {time.time() - started:.0f}s",
+            f"(~{cp_err:.0f} cp mean abs err) {'*' if improved else ''} "
+            f"{time.time() - started:.0f}s",
             flush=True,
         )
     return train_loss, best_val
@@ -106,7 +116,12 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
-    parser.add_argument("--threads", type=int, default=1, help="torch threads; more than one spin-waits on a loaded machine")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="torch threads; more than one spin-waits on a loaded machine",
+    )
     parser.add_argument("--seed", type=int, default=0)
     arguments = parser.parse_args()
 
@@ -116,7 +131,10 @@ def main() -> None:
     labels = data["labels"].astype(np.float32)
     if "static" in data:
         labels = labels - data["static"].astype(np.float32)
-        print(f"{len(labels)} positions, residual (label - static) mean {labels.mean():.0f} std {labels.std():.0f} cp")
+        print(
+            f"{len(labels)} positions, residual (label - static) "
+            f"mean {labels.mean():.0f} std {labels.std():.0f} cp"
+        )
     else:
         print(f"{len(labels)} positions, absolute label std {labels.std():.0f} cp")
     model = GiraffeNet()

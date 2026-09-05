@@ -59,13 +59,25 @@ def trajectory(
         for pv_move in pv:
             leaf.push(pv_move)
         leaf_score = score if leaf.turn == board.turn else -score
-        usable = abs(score) < MATE_BOUND and not leaf.is_check() and abs(evaluator(leaf) - leaf_score) <= LEAF_MISMATCH_CP
-        values.append(float(max(-VALUE_CLAMP, min(VALUE_CLAMP, score if board.turn == chess.WHITE else -score))))
+        usable = (
+            abs(score) < MATE_BOUND
+            and not leaf.is_check()
+            and abs(evaluator(leaf) - leaf_score) <= LEAF_MISMATCH_CP
+        )
+        values.append(
+            float(
+                max(-VALUE_CLAMP, min(VALUE_CLAMP, score if board.turn == chess.WHITE else -score))
+            )
+        )
         leaves.append((ge.board_features(leaf), leaf.turn, ge.hce_eval(leaf)) if usable else None)
         board.push(move)
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
-        terminal = 0.0 if outcome.winner is None else (VALUE_CLAMP if outcome.winner == chess.WHITE else -VALUE_CLAMP)
+        terminal = (
+            0.0
+            if outcome.winner is None
+            else (VALUE_CLAMP if outcome.winner == chess.WHITE else -VALUE_CLAMP)
+        )
         values.append(terminal)
 
     xs: list[np.ndarray] = []
@@ -85,7 +97,9 @@ def trajectory(
     return xs, ys
 
 
-def worker(args: tuple[np.ndarray, list[str], int, int, float, int]) -> tuple[np.ndarray, np.ndarray]:
+def worker(
+    args: tuple[np.ndarray, list[str], int, int, float, int],
+) -> tuple[np.ndarray, np.ndarray]:
     weights, fens, plies, depth, lam, seed = args
     rng = random.Random(seed)
     evaluator = ge.NetEvaluator(weights)
@@ -120,15 +134,34 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--epochs", type=int, default=2)
     parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument("--replay", type=int, default=4, help="iterations kept in the replay buffer")
+    parser.add_argument(
+        "--replay", type=int, default=4, help="iterations kept in the replay buffer"
+    )
     parser.add_argument("--anchor", type=float, default=0.5, help="bootstrap samples per TD sample")
     parser.add_argument("--gate-every", type=int, default=5)
     parser.add_argument("--gate-pairs", type=int, default=12)
-    parser.add_argument("--gate-budget", type=float, default=0.15, help="seconds per move in the gate arena")
-    parser.add_argument("--gate-depth", type=int, default=0, help="fixed depth for the gate arena (0 = use --gate-budget)")
-    parser.add_argument("--checkpoints", type=Path, default=HERE / "data" / "tdleaf", help="per-iteration weight dumps")
+    parser.add_argument(
+        "--gate-budget", type=float, default=0.15, help="seconds per move in the gate arena"
+    )
+    parser.add_argument(
+        "--gate-depth",
+        type=int,
+        default=0,
+        help="fixed depth for the gate arena (0 = use --gate-budget)",
+    )
+    parser.add_argument(
+        "--checkpoints",
+        type=Path,
+        default=HERE / "data" / "tdleaf",
+        help="per-iteration weight dumps",
+    )
     parser.add_argument("--workers", type=int, default=6)
-    parser.add_argument("--threads", type=int, default=1, help="torch threads; more than one spin-waits on a loaded machine")
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=1,
+        help="torch threads; more than one spin-waits on a loaded machine",
+    )
     parser.add_argument("--seed", type=int, default=0)
     arguments = parser.parse_args()
 
@@ -138,7 +171,9 @@ def main() -> None:
     fens = data["fens"]
     boot_x = data["features"]
     if "static" not in data:
-        raise SystemExit("tdleaf needs a residual dataset with a 'static' array (training/relabel.py)")
+        raise SystemExit(
+            "tdleaf needs a residual dataset with a 'static' array (training/relabel.py)"
+        )
     boot_y = cp_to_target(data["labels"].astype(np.float32) - data["static"].astype(np.float32))
 
     accepted = load_weights(arguments.init)
@@ -152,14 +187,24 @@ def main() -> None:
         log.write(message + "\n")
         log.flush()
 
-    note(f"tdleaf start init={arguments.init} iterations={arguments.iterations} depth={arguments.depth} plies={arguments.plies} lam={arguments.lam}")
+    note(
+        f"tdleaf start init={arguments.init} iterations={arguments.iterations} "
+        f"depth={arguments.depth} plies={arguments.plies} lam={arguments.lam}"
+    )
     with mp.Pool(arguments.workers) as pool:
         for iteration in range(1, arguments.iterations + 1):
             started = time.time()
             picks = [str(fens[rng.randrange(len(fens))]) for _ in range(arguments.positions)]
             chunk = max(1, len(picks) // arguments.workers)
             jobs = [
-                (weights, picks[i : i + chunk], arguments.plies, arguments.depth, arguments.lam, arguments.seed * 100_000 + iteration * 100 + j)
+                (
+                    weights,
+                    picks[i : i + chunk],
+                    arguments.plies,
+                    arguments.depth,
+                    arguments.lam,
+                    arguments.seed * 100_000 + iteration * 100 + j,
+                )
                 for j, i in enumerate(range(0, len(picks), chunk))
             ]
             parts = pool.map(worker, jobs)
@@ -196,19 +241,31 @@ def main() -> None:
             weights = model.to_flat()
             save_weights(model, arguments.checkpoints / f"tdleaf_iter{iteration:03d}.npz")
             note(
-                f"iter {iteration}: {len(y_td)} td samples (replay {len(y_all)}, anchor {n_anchor}) "
-                f"mean |td error| {td_err:.0f} cp, self-play {selfplay_s:.0f}s, total {time.time() - started:.0f}s"
+                f"iter {iteration}: {len(y_td)} td samples "
+                f"(replay {len(y_all)}, anchor {n_anchor}) "
+                f"mean |td error| {td_err:.0f} cp, self-play {selfplay_s:.0f}s, "
+                f"total {time.time() - started:.0f}s"
             )
 
             if iteration % arguments.gate_every == 0:
                 gate_budget = 1e9 if arguments.gate_depth else arguments.gate_budget
                 gate_depth = arguments.gate_depth or 64
                 wins, draws, losses = selfplay_arena.run(
-                    weights, accepted, arguments.gate_pairs, gate_budget, gate_depth, arguments.workers, iteration, pool=pool
+                    weights,
+                    accepted,
+                    arguments.gate_pairs,
+                    gate_budget,
+                    gate_depth,
+                    arguments.workers,
+                    iteration,
+                    pool=pool,
                 )
                 score = (wins + draws / 2) / max(1, wins + draws + losses)
                 verdict = "accepted" if score >= 0.5 else "rejected"
-                note(f"gate iter {iteration}: candidate vs accepted +{wins} ={draws} -{losses} ({score:.1%}) -> {verdict}")
+                note(
+                    f"gate iter {iteration}: candidate vs accepted "
+                    f"+{wins} ={draws} -{losses} ({score:.1%}) -> {verdict}"
+                )
                 if score >= 0.5:
                     accepted = weights.copy()
                     np.savez(arguments.out, weights=accepted)

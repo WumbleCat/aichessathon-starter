@@ -57,14 +57,23 @@ def worker(args: tuple[list[str], int]) -> tuple[np.ndarray, np.ndarray, np.ndar
         statics.append(static)
         kept.append(fen)
     if not feats:
-        return np.zeros((0, ge.N_INPUT), np.float16), np.zeros(0, np.float32), np.zeros(0, np.float32), []
+        return (
+            np.zeros((0, ge.N_INPUT), np.float16),
+            np.zeros(0, np.float32),
+            np.zeros(0, np.float32),
+            [],
+        )
     return np.stack(feats), np.array(labels, np.float32), np.array(statics, np.float32), kept
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data", type=Path, default=AGENT_DIR / "training" / "data" / "bootstrap.npz")
-    parser.add_argument("--out", type=Path, default=None, help="default training/data/search_d<depth>.npz")
+    parser.add_argument(
+        "--data", type=Path, default=AGENT_DIR / "training" / "data" / "bootstrap.npz"
+    )
+    parser.add_argument(
+        "--out", type=Path, default=None, help="default training/data/search_d<depth>.npz"
+    )
     parser.add_argument("--depth", type=int, default=2)
     parser.add_argument("--limit", type=int, default=0, help="positions to consider (0 = all)")
     parser.add_argument("--chunk", type=int, default=1000)
@@ -76,7 +85,10 @@ def main() -> None:
     fens = [str(f) for f in np.load(arguments.data)["fens"]]
     if arguments.limit:
         fens = fens[: arguments.limit]
-    jobs = [(fens[i : i + arguments.chunk], arguments.depth) for i in range(0, len(fens), arguments.chunk)]
+    jobs = [
+        (fens[i : i + arguments.chunk], arguments.depth)
+        for i in range(0, len(fens), arguments.chunk)
+    ]
     started = time.time()
     parts = []
     done = 0
@@ -88,7 +100,9 @@ def main() -> None:
         labels = np.concatenate([p[1] for p in parts])
         statics = np.concatenate([p[2] for p in parts])
         kept_fens = [f for p in parts for f in p[3]]
-        np.savez_compressed(out, features=feats, labels=labels, static=statics, fens=np.array(kept_fens))
+        np.savez_compressed(
+            out, features=feats, labels=labels, static=statics, fens=np.array(kept_fens)
+        )
         return labels, statics
 
     with mp.Pool(arguments.workers) as pool:
@@ -97,12 +111,17 @@ def main() -> None:
             done += 1
             if done % arguments.save_every == 0 or done == len(jobs):
                 labels, statics = save()
-                print(f"{done}/{len(jobs)} chunks, {len(labels)} quiet positions saved, {time.time() - started:.0f}s", flush=True)
+                print(
+                    f"{done}/{len(jobs)} chunks, {len(labels)} quiet positions saved, "
+                    f"{time.time() - started:.0f}s",
+                    flush=True,
+                )
     labels, statics = save()
     residual = labels - statics
     print(
         f"wrote {len(labels)} of {len(fens)} positions to {out} in {time.time() - started:.0f}s; "
-        f"residual mean {residual.mean():.1f} std {residual.std():.1f} |residual|>200: {(np.abs(residual) > 200).mean():.1%}"
+        f"residual mean {residual.mean():.1f} std {residual.std():.1f} "
+        f"|residual|>200: {(np.abs(residual) > 200).mean():.1%}"
     )
 
 

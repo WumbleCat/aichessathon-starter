@@ -1,6 +1,6 @@
 """Benchmarks for RESULTS.md: evaluator latency, search speed and depth, model size.
 
-    python bench.py [--model models/giraffe.npz] [--budget 2.0]
+python bench.py [--model models/giraffe.npz] [--budget 2.0]
 """
 
 from __future__ import annotations
@@ -86,11 +86,16 @@ def main() -> None:
         evaluators = [("hce", ge.hce_eval)]
 
     for name, evaluate in evaluators:
-        print(f"\n[{name}] batch-1 latency {eval_latency(evaluate):.1f} us per position (board -> centipawns)")
+        print(
+            f"\n[{name}] batch-1 latency {eval_latency(evaluate):.1f} us per position "
+            "(board -> centipawns)"
+        )
         stats = search_bench(evaluate, arguments.budget)
         print(
-            f"[{name}] {arguments.budget:.1f}s/move over {len(POSITIONS)} positions: depth {stats['depth_mean']:.1f} "
-            f"(min {stats['depth_min']}, max {stats['depth_max']}), seldepth {stats['seldepth_mean']:.1f}, "
+            f"[{name}] {arguments.budget:.1f}s/move over {len(POSITIONS)} positions: "
+            f"depth {stats['depth_mean']:.1f} "
+            f"(min {stats['depth_min']}, max {stats['depth_max']}), "
+            f"seldepth {stats['seldepth_mean']:.1f}, "
             f"nodes {stats['nodes']}, qnodes {stats['qnodes']} ({stats['qnode_share']:.0%}), "
             f"tt_hits {stats['tt_hits']}, {stats['nps']:.0f} nodes/s"
         )

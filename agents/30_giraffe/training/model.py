@@ -52,7 +52,14 @@ class GiraffeNet(nn.Module):
     # ---------------------------------------------------------------- flat weights
 
     def _layers(self) -> dict[str, nn.Linear]:
-        return {"g": self.g, "p": self.p, "s": self.s, "h2": self.h2, "h3": self.h3, "out": self.out}
+        return {
+            "g": self.g,
+            "p": self.p,
+            "s": self.s,
+            "h2": self.h2,
+            "h3": self.h3,
+            "out": self.out,
+        }
 
     def to_flat(self) -> np.ndarray:
         flat = np.zeros(ge.N_WEIGHTS, dtype=np.float32)
@@ -66,7 +73,9 @@ class GiraffeNet(nn.Module):
         with torch.no_grad():
             for name, layer in self._layers().items():
                 off_w, off_b, n_out, n_in = ge.LAYOUT[name]
-                layer.weight.copy_(torch.from_numpy(flat[off_w : off_w + n_out * n_in].reshape(n_out, n_in)))
+                layer.weight.copy_(
+                    torch.from_numpy(flat[off_w : off_w + n_out * n_in].reshape(n_out, n_in))
+                )
                 layer.bias.copy_(torch.from_numpy(flat[off_b : off_b + n_out]))
 
 

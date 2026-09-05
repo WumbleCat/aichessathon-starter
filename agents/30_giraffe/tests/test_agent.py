@@ -17,9 +17,10 @@ import numpy as np
 HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
 
-import agent  # noqa: E402
 import giraffe_eval as ge  # noqa: E402
 from giraffe_search import MATE_BOUND, Searcher  # noqa: E402
+
+import agent  # noqa: E402
 
 
 def legal(fen: str, time_left_ms: int = 2000) -> chess.Move:
@@ -138,8 +139,12 @@ class Clock(unittest.TestCase):
             uci = agent.get_move(self.FEN, time_left)
             elapsed_ms = (time.monotonic() - started) * 1000.0
             self.assertIn(chess.Move.from_uci(uci), board.legal_moves)
-            allowed = max(time_left * 0.6, 60) if time_left <= 1000 else agent.MAX_BUDGET_S * 1000 * 1.5
-            self.assertLess(elapsed_ms, allowed + 300, f"{time_left} ms clock took {elapsed_ms:.0f} ms")
+            allowed = (
+                max(time_left * 0.6, 60) if time_left <= 1000 else agent.MAX_BUDGET_S * 1000 * 1.5
+            )
+            self.assertLess(
+                elapsed_ms, allowed + 300, f"{time_left} ms clock took {elapsed_ms:.0f} ms"
+            )
 
     def test_budget_monotone_and_bounded(self) -> None:
         last = 0.0
@@ -162,13 +167,13 @@ class Clock(unittest.TestCase):
 
 
 class Features(unittest.TestCase):
-    FENS = [
+    FENS = (
         chess.STARTING_FEN,
         "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
         "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
         "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
-    ]
+    )
 
     def test_shape_and_range(self) -> None:
         for fen in self.FENS:

@@ -8,7 +8,8 @@ control evaluator's knowledge before TD-Leaf refines it.
 
 Usage (from the agent directory, with the project interpreter):
 
-    python training/gen_positions.py --positions 300000 --workers 6 --out training/data/bootstrap.npz
+    python training/gen_positions.py --positions 300000 --workers 6 \
+        --out training/data/bootstrap.npz
 """
 
 from __future__ import annotations
@@ -27,7 +28,6 @@ if str(AGENT_DIR) not in sys.path:
     sys.path.insert(0, str(AGENT_DIR))
 
 import chess  # noqa: E402
-
 import giraffe_eval as ge  # noqa: E402
 from giraffe_search import INF, Searcher  # noqa: E402
 
@@ -38,7 +38,7 @@ LABEL_CLAMP = 1500
 
 def greedy_move(board: chess.Board, rng: random.Random, noise: int) -> chess.Move:
     best: chess.Move | None = None
-    best_score = -10**9
+    best_score = -(10**9)
     for move in board.legal_moves:
         board.push(move)
         score = -ge.hce_eval(board) + rng.randint(-noise, noise)
@@ -100,13 +100,20 @@ def main() -> None:
     parser.add_argument("--positions", type=int, default=300_000)
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--random", type=float, default=0.25, help="probability of a random move")
-    parser.add_argument("--noise", type=int, default=40, help="evaluation noise in cp for greedy moves")
+    parser.add_argument(
+        "--noise", type=int, default=40, help="evaluation noise in cp for greedy moves"
+    )
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--out", type=Path, default=AGENT_DIR / "training" / "data" / "bootstrap.npz")
+    parser.add_argument(
+        "--out", type=Path, default=AGENT_DIR / "training" / "data" / "bootstrap.npz"
+    )
     arguments = parser.parse_args()
 
     per_worker = arguments.positions // arguments.workers
-    jobs = [(arguments.seed * 1000 + i, per_worker, arguments.random, arguments.noise) for i in range(arguments.workers)]
+    jobs = [
+        (arguments.seed * 1000 + i, per_worker, arguments.random, arguments.noise)
+        for i in range(arguments.workers)
+    ]
     started = time.time()
     with mp.Pool(arguments.workers) as pool:
         parts = pool.map(worker, jobs)
@@ -117,7 +124,8 @@ def main() -> None:
     np.savez_compressed(arguments.out, features=feats, labels=labels, fens=np.array(fens))
     print(
         f"wrote {len(labels)} positions to {arguments.out} in {time.time() - started:.0f}s; "
-        f"label mean {labels.mean():.1f} std {labels.std():.1f} |label|>800: {(np.abs(labels) > 800).mean():.1%}"
+        f"label mean {labels.mean():.1f} std {labels.std():.1f} "
+        f"|label|>800: {(np.abs(labels) > 800).mean():.1%}"
     )
 
 

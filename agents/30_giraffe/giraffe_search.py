@@ -234,7 +234,9 @@ class Searcher:
                 board.push(chess.Move.null())
                 self.path.append(key)
                 try:
-                    score = -self._negamax(board, depth - 1 - NULL_MOVE_REDUCTION, -beta, -beta + 1, ply + 1)
+                    score = -self._negamax(
+                        board, depth - 1 - NULL_MOVE_REDUCTION, -beta, -beta + 1, ply + 1
+                    )
                 finally:
                     self.path.pop()
                     board.pop()
@@ -341,10 +343,12 @@ class Searcher:
         best = stand_pat
         for move in captures:
             victim = board.piece_type_at(move.to_square)
-            if victim is None:  # en passant or promotion
-                gain = 100 if move.promotion is None else 800
-            else:
+            if victim is not None:
                 gain = MVV[victim]
+            elif move.promotion is None:
+                gain = 100  # en passant
+            else:
+                gain = 800  # promotion
             if stand_pat + gain + DELTA_MARGIN <= alpha and move.promotion is None:
                 continue  # delta pruning
             board.push(move)
@@ -372,7 +376,9 @@ class Searcher:
             score += MVV[move.promotion]
         return score
 
-    def _ordered_moves(self, board: chess.Board, tt_move: chess.Move | None, ply: int) -> list[chess.Move]:
+    def _ordered_moves(
+        self, board: chess.Board, tt_move: chess.Move | None, ply: int
+    ) -> list[chess.Move]:
         killers = self.killers[ply]
         turn = board.turn
         scored: list[tuple[int, chess.Move]] = []

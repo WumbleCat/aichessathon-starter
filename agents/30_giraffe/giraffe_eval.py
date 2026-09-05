@@ -42,6 +42,8 @@ if CACHE:
     except OSError:
         CACHE = False
 
+from typing import Any  # noqa: E402
+
 import numpy as np  # noqa: E402
 from numba import njit  # noqa: E402
 
@@ -232,7 +234,8 @@ def _castle_bits(castling: np.uint64) -> tuple[int, int, int, int]:
 
 
 @njit(
-    "void(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, boolean, uint64, int64, float32[::1])",
+    "void(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, boolean, uint64, int64, "
+    "float32[::1])",
     cache=CACHE,
 )
 def features(
@@ -396,7 +399,15 @@ def features(
 
 @njit(cache=CACHE, fastmath=True)
 def _dense_relu(
-    w: np.ndarray, off_w: int, off_b: int, x: np.ndarray, x0: int, n_in: int, out: np.ndarray, o0: int, n_out: int
+    w: np.ndarray,
+    off_w: int,
+    off_b: int,
+    x: np.ndarray,
+    x0: int,
+    n_in: int,
+    out: np.ndarray,
+    o0: int,
+    n_out: int,
 ) -> None:
     for j in range(n_out):
         acc = w[off_b + j]
@@ -468,7 +479,7 @@ def hce_eval_bb(
             if t == 3:
                 bishops_w += 1
         else:
-            fsq = (sq ^ 56)
+            fsq = sq ^ 56
             mg -= PIECE_CP[t] + PST_MG[t, fsq]
             eg -= PIECE_CP[t] + PST_EG[t, fsq]
             if t == 3:
@@ -485,7 +496,11 @@ def hce_eval_bb(
     return score if white_to_move else -score
 
 
-@njit("float64(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, boolean, uint64, int64, float32[::1], float32[::1])", cache=CACHE)
+@njit(
+    "float64(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, boolean, uint64, "
+    "int64, float32[::1], float32[::1])",
+    cache=CACHE,
+)
 def net_eval_bb(
     pawns: np.uint64,
     knights: np.uint64,
@@ -503,7 +518,18 @@ def net_eval_bb(
 ) -> float:
     """Static handcrafted score plus the network residual, centipawns for the side to move."""
     features(
-        pawns, knights, bishops, rooks, queens, kings, occ_w, occ_b, white_to_move, castling, ep_square, scratch
+        pawns,
+        knights,
+        bishops,
+        rooks,
+        queens,
+        kings,
+        occ_w,
+        occ_b,
+        white_to_move,
+        castling,
+        ep_square,
+        scratch,
     )
     static = hce_eval_bb(pawns, knights, bishops, rooks, queens, kings, occ_w, occ_b, white_to_move)
     return float(static) + forward(w, scratch)
@@ -514,7 +540,11 @@ def net_eval_bb(
 # ---------------------------------------------------------------------------------------
 
 
-def _bitboards(board):  # type: ignore[no-untyped-def]
+Bitboards = tuple[Any, ...]  # numba checks the real types at the call
+
+
+def _bitboards(board: Any) -> Bitboards:
+    """The raw bitboards of a ``chess.Board`` in the order every jitted function takes."""
     return (
         board.pawns,
         board.knights,
@@ -530,10 +560,10 @@ def _bitboards(board):  # type: ignore[no-untyped-def]
     )
 
 
-def board_features(board) -> np.ndarray:  # type: ignore[no-untyped-def]
+def board_features(board: Any) -> np.ndarray:
     """Feature vector of a ``chess.Board`` (side-to-move normalised)."""
     x = np.zeros(N_INPUT, dtype=np.float32)
-    features(*_bitboards(board), x)
+    features(*_bitboards(board), x)  # type: ignore[call-arg]
     return x
 
 
@@ -546,17 +576,19 @@ class NetEvaluator:
         self.weights = np.ascontiguousarray(weights)
         self.scratch = np.zeros(N_INPUT, dtype=np.float32)
 
-    def __call__(self, board) -> int:  # type: ignore[no-untyped-def]
+    def __call__(self, board: Any) -> int:
         p, n, b, r, q, k, ow, ob, turn, castling, ep = _bitboards(board)
-        return int(net_eval_bb(p, n, b, r, q, k, ow, ob, turn, castling, ep, self.weights, self.scratch))
+        return int(
+            net_eval_bb(p, n, b, r, q, k, ow, ob, turn, castling, ep, self.weights, self.scratch)
+        )
 
-    def residual(self, board) -> float:  # type: ignore[no-untyped-def]
+    def residual(self, board: Any) -> float:
         """The learned correction alone (what ``training/`` fits), in centipawns."""
-        features(*_bitboards(board), self.scratch)
+        features(*_bitboards(board), self.scratch)  # type: ignore[call-arg]
         return float(forward(self.weights, self.scratch))
 
 
-def hce_eval(board) -> int:  # type: ignore[no-untyped-def]
+def hce_eval(board: Any) -> int:
     """Handcrafted evaluation in centipawns for the side to move."""
     p, n, b, r, q, k, ow, ob, turn, _castling, _ep = _bitboards(board)
     return int(hce_eval_bb(p, n, b, r, q, k, ow, ob, turn))

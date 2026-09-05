@@ -23,12 +23,12 @@ if str(HERE) not in sys.path:
 
 try:
     import giraffe_eval
-except Exception as cache_error:  # noqa: BLE001 - a broken numba cache must not lose the game
+except Exception as cache_error:
     print(f"giraffe: import with numba cache failed ({cache_error!r}); retrying without cache")
     os.environ["GIRAFFE_NUMBA_CACHE"] = "0"
     sys.modules.pop("giraffe_eval", None)
     import giraffe_eval
-from giraffe_search import Searcher  # noqa: E402
+from giraffe_search import Evaluator, Searcher  # noqa: E402
 
 MODEL_PATH = HERE / "models" / "giraffe.npz"
 
@@ -42,7 +42,7 @@ PANIC_MS = 400  # below this only the unclocked depth-1 search runs
 NO_SEARCH_MS = 120  # below this the fallback move goes out untouched
 
 
-def _load_evaluator() -> tuple[giraffe_eval.Evaluator, str]:
+def _load_evaluator() -> tuple[Evaluator, str]:
     if os.environ.get("GIRAFFE_EVAL", "net").lower() == "hce" or not MODEL_PATH.exists():
         return giraffe_eval.hce_eval, "hce"
     weights = np.load(MODEL_PATH)["weights"].astype(np.float32)
@@ -93,7 +93,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
             move, _ = searcher.search(board, 0.0, 1)
         else:
             move, _ = searcher.search(board, budget_seconds(time_left_ms), MAX_DEPTH)
-    except Exception as error:  # noqa: BLE001 - a crash loses the game, a fallback does not
+    except Exception as error:
         print(f"giraffe: search failed ({error!r}), playing fallback")
     board = chess.Board(fen)  # the search unwinds its moves, but never trust that blindly
     if move not in board.legal_moves:

@@ -98,7 +98,9 @@ def run(
     pool: mp.pool.Pool | None = None,
 ) -> tuple[int, int, int]:
     rng = random.Random(seed)
-    jobs = [(spec_a, spec_b, random_opening(rng, opening_plies), budget, depth) for _ in range(pairs)]
+    jobs = [
+        (spec_a, spec_b, random_opening(rng, opening_plies), budget, depth) for _ in range(pairs)
+    ]
     if pool is None:
         with mp.Pool(workers) as own_pool:
             results = own_pool.map(pair, jobs)
@@ -125,7 +127,8 @@ def elo(wins: int, draws: int, losses: int) -> str:
     diff = -400 * math.log10(1 / p - 1)
     # standard error of the score, propagated through the logistic
     se = math.sqrt(max(p * (1 - p), 1e-6) / games)
-    return f"{diff:+.0f} elo (score {p:.1%} over {games} games, +/- {400 * se / (p * (1 - p) * math.log(10)):.0f})"
+    margin = 400 * se / (p * (1 - p) * math.log(10))
+    return f"{diff:+.0f} elo (score {p:.1%} over {games} games, +/- {margin:.0f})"
 
 
 def main() -> None:
@@ -134,16 +137,28 @@ def main() -> None:
     parser.add_argument("--b", default="hce")
     parser.add_argument("--pairs", type=int, default=20)
     parser.add_argument("--budget", type=float, default=0.2, help="seconds per move")
-    parser.add_argument("--depth", type=int, default=64, help="max depth (use with a huge budget for fixed depth)")
+    parser.add_argument(
+        "--depth", type=int, default=64, help="max depth (use with a huge budget for fixed depth)"
+    )
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--opening-plies", type=int, default=6)
     arguments = parser.parse_args()
     started = time.time()
     wins, draws, losses = run(
-        arguments.a, arguments.b, arguments.pairs, arguments.budget, arguments.depth, arguments.workers, arguments.seed, arguments.opening_plies
+        arguments.a,
+        arguments.b,
+        arguments.pairs,
+        arguments.budget,
+        arguments.depth,
+        arguments.workers,
+        arguments.seed,
+        arguments.opening_plies,
     )
-    print(f"A={arguments.a} vs B={arguments.b}: +{wins} ={draws} -{losses}  {elo(wins, draws, losses)}  [{time.time() - started:.0f}s]")
+    print(
+        f"A={arguments.a} vs B={arguments.b}: +{wins} ={draws} -{losses}  "
+        f"{elo(wins, draws, losses)}  [{time.time() - started:.0f}s]"
+    )
 
 
 if __name__ == "__main__":
