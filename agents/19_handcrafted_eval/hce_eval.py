@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from typing import Any
 
 import numpy as np
 
@@ -38,24 +39,24 @@ try:
     if os.environ.get("HCE_NO_NUMBA"):
         raise ImportError("numba disabled by HCE_NO_NUMBA")
     from numba import boolean, int64, njit, uint64
-    from numba.types import UniTuple
+    from numba.types import UniTuple  # type: ignore[attr-defined]
 
     USING_NUMBA = True
 except ImportError:  # pragma: no cover - exercised by the HCE_NO_NUMBA test run
 
-    def njit(*args, **kwargs):  # type: ignore[misc]
+    def njit(*args: Any, **kwargs: Any) -> Any:  # type: ignore[no-redef]
         if len(args) == 1 and callable(args[0]) and not kwargs:
             return args[0]
 
-        def wrap(function):  # type: ignore[no-untyped-def]
+        def wrap(function: Any) -> Any:
             return function
 
         return wrap
 
     USING_NUMBA = False
-    boolean = int64 = uint64 = None
+    boolean = int64 = uint64 = None  # type: ignore[assignment]
 
-    def UniTuple(*args):  # type: ignore[no-untyped-def]  # noqa: N802
+    def UniTuple(*args: Any) -> Any:  # noqa: N802
         return None
 
 U64 = np.uint64

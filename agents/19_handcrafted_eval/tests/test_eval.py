@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import hce_eval
 from hce_eval import evaluate_board, evaluate_stm
+from hce_tables import MATERIAL_MG, TEMPO_MG
 
 
 def mirror(board: chess.Board) -> chess.Board:
@@ -70,7 +71,7 @@ class BitHelpers(unittest.TestCase):
 
 class EvaluationProperties(unittest.TestCase):
     def test_start_position_is_balanced(self) -> None:
-        self.assertLessEqual(abs(evaluate_board(chess.Board())), hce_eval.TEMPO_MG)
+        self.assertLessEqual(abs(evaluate_board(chess.Board())), TEMPO_MG)
 
     def test_material_gain_changes_sign_and_magnitude(self) -> None:
         base = chess.Board("4k3/pppppppp/8/8/8/8/PPPPPPPP/4K3 w - - 0 1")
@@ -159,7 +160,7 @@ class EvaluationProperties(unittest.TestCase):
         open_file = chess.Board("4k3/pppp1ppp/8/8/8/8/PPPP1PPP/4RK2 w - - 0 1")
         closed_file = chess.Board("4k3/pppp1ppp/8/8/8/8/PPPPPPPP/4RK2 w - - 0 1")
         self.assertGreater(
-            evaluate_board(open_file) - 0, evaluate_board(closed_file) - hce_eval.MATERIAL_MG[1]
+            evaluate_board(open_file) - 0, evaluate_board(closed_file) - MATERIAL_MG[1]
         )
 
     def test_lone_minor_piece_is_a_draw(self) -> None:

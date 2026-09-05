@@ -141,8 +141,7 @@ def bench_depth(depth: int) -> None:
             f"{elapsed * 1000:7.0f}ms  {fen}"
         )
     print(
-        f"
-depth {depth}: total nodes {total_nodes} evals {total_evals} "
+        f"\ndepth {depth}: total nodes {total_nodes} evals {total_evals} "
         f"time {total_time:.1f}s nps {total_nodes / max(total_time, 1e-9):.0f}"
     )
 
