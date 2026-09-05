@@ -74,15 +74,24 @@ session; the six `shard_d3_s2000..2005` shards, 24.5k positions, survived). Sess
   depending on load); shards accumulate in `training/data/`. Re-running the launcher skips
   finished shards.
 
+### Findings that fix the design (see RESULTS.md for the tables)
+
+- The prior does not reduce the tree: nodes to depth 5/6/7 are 0.99-1.08x of the no-network
+  search whether the network is consulted everywhere, near the root or at the root only, with
+  either ordering scheme. Match results at 3000 nodes/move are 45-52 %, i.e. noise.
+- The value head is a worse predictor of the depth-3 teacher score than the static eval it was
+  distilled from (MSE 0.047 vs 0.034 on a held-out shard), as expected for a self-distilled net.
+- Therefore `agent.py` consults the network at the root only by default (cost-free), and the
+  engine's strength is that of the alpha-beta search. A stronger teacher (deeper search, or an
+  external engine when available) is the lever that would change this, not more epochs.
+
 ### Remaining work
 
-1. When ~100k+ positions exist: train the final tiny model (64/2/4, smol 32) for ~6 epochs, and
-   try 96/4/4 if the node-budget matches say the tiny policy pays for itself.
-2. Pick `CF_POLICY_MIN_DEPTH` from the d3 vs d4 matches; consider using the value head at the
-   root children.
-3. Copy the chosen `.npz` to `models/chessformer.npz`, run `tests/run_tests.py`, a wall-clock
-   arena vs baselines and vs `variants/nomodel`, then package:
-   `python -m harness.package --include models/chessformer.npz` from the agent directory and
-   check the unzipped size.
+1. When `models/tiny_v3` (all shards, 6 epochs) finishes: copy `models/tiny_v3.npz` to
+   `models/chessformer.npz`, re-run `tests/run_tests.py`, and record the numbers.
+2. Collect the wall-clock arena results in `results/arena_p2_*.txt` (greedy, minimax, numba,
+   the no-model variant, and 2 games at the contest control) into RESULTS.md.
+3. Package: `python -m harness.package --include models/chessformer.npz` from the agent
+   directory (tested: 7 MB unzipped, imports without torch in 2-14 s).
 4. Merge `feature/agent-27-chessformer` into `main` with `--no-ff` (the branch is committed
    from a worktree; the main working tree holds the same files untracked).

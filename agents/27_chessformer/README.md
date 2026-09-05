@@ -13,7 +13,7 @@ a policy prior inside an alpha-beta search. Entry point: `agent.py` (`get_move(f
 | `cf_encode.py` | board -> 64 square tokens (side-to-move perspective), move <-> policy index, geometry tables |
 | `cf_model.py` | the torch Chessformer (training-time definition) |
 | `cf_infer.py` | pure-numpy forward pass used at move time (no torch on the clock) |
-| `models/chessformer.pt` | trained weights: `{"config", "state_dict", "meta"}` (provenance inside `meta`) |
+| `models/chessformer.npz` | trained weights as numpy arrays plus the config (the `.pt` twin with provenance in `meta` is not shipped) |
 | `training/gen_data.py` | self-play data generation labelled by `cf_search` (the teacher) |
 | `training/train.py` | training script |
 | `training/bench_latency.py` | parameter count / file size / batch-1 latency per config |
@@ -39,13 +39,29 @@ Following Monroe et al. (Chessformer, ICLR 2026; "Mastering Chess with a Transfo
 
 ## How the model is used at move time
 
-The search runs on the handcrafted evaluation; the network is called at the root and at
-interior nodes with remaining depth >= `CF_POLICY_MIN_DEPTH` (default 3), where its priors
-order the moves and steer late-move reductions (low-prior quiet moves are reduced more,
-high-prior ones less). Inference is a numpy forward pass at batch 1.
+The search runs on the handcrafted evaluation. The network is a numpy forward pass at batch 1
+(about 4 ms of CPU for the shipped 0.69 M-parameter model) that returns a prior over the legal
+moves; the search orders quiet moves by that prior (hash move, captures by MVV-LVA and killers
+keep their classic order first) and steers late-move reductions by it (low-prior quiet moves are
+reduced more, high-prior ones less).
 
-Environment switches (for experiments): `CF_USE_MODEL=0` disables the network,
-`CF_POLICY_MIN_DEPTH=n` changes where it is consulted.
+Where it is consulted is controlled by two switches, because the benchmarks in `RESULTS.md`
+showed that in this alpha-beta search the prior does **not** save nodes: to depth 5-7 the tree
+is the same size with or without it, so every call is a cost. The shipped default therefore
+consults the network only at the root (`CF_POLICY_REL_DEPTH=0`, two to three calls per move,
+about 0.1 % of the move time), where it cannot hurt; `CF_POLICY_REL_DEPTH=n` consults it within
+`n` plies of the root, `CF_POLICY_MIN_DEPTH=d` only at nodes with at least `d` plies left,
+and `CF_USE_MODEL=0` disables it. `training/bench_ordering.py` and `training/match.py` are the
+tools that measured this; use them before changing the defaults.
+
+## Files added for measurement
+
+| File | Role |
+|---|---|
+| `training/match.py` | paired self-play A/B at a fixed node budget; network calls charged in nodes |
+| `training/bench_ordering.py` | nodes to a fixed depth with and without the network, per consultation policy |
+| `training/launch_gen.ps1` | detached data-generation workers that survive the launching shell |
+| `variants/nomodel/agent.py` | the same engine with the network off, for `harness.arena` A/B games |
 
 ## Training provenance
 
