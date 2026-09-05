@@ -81,6 +81,8 @@ expected outcome; a clearly negative one would mean a bug. 100 games give roughl
 | late move pruning (`P_LMP`) | +38 =24 -38 | 50.0 % | 0 (-60..+60) | neutral at fixed nodes; kept for the node saving |
 | SEE pruning of losing captures in the main search (`P_SEE_PRUNE_MAIN`) | +39 =32 -29 | 55.0 % | +35 (-21..+93) | |
 | SEE pruning of losing captures in quiescence (`P_SEE_PRUNE_Q`) | +41 =30 -29 | 56.0 % | +42 (-15..+101) | |
+| delta pruning in quiescence (`P_DELTA`) | +36 =26 -38 | 49.0 % | -7 (-67..+52) | neutral at fixed nodes; kept for the node saving |
+| internal iterative deepening (`P_IID`) | +34 =32 -34 | 50.0 % | 0 (-57..+57) | |
 
 The sweep continues over the other toggles in `results/selfplay/off_<P_NAME>.log`.
 
