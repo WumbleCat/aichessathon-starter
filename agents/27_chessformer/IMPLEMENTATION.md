@@ -52,3 +52,16 @@
 5. Integrate policy in search, benchmark with `harness.arena` paired colours vs baselines and
    vs the no-net version of this same engine. Record in RESULTS.md.
 6. Fix weaknesses, re-benchmark.
+
+## Status checkpoint (2026-09-05, session 2)
+
+Session 1 finished phases 1-2 and started phase 3 (its Pool-based data run died with the
+session; the six `shard_d3_s2000..2005` shards, 24.5k positions, survived). Session 2:
+
+- Data generation now runs as independent detached processes (`training/launch_gen.ps1`), one
+  shard per 4000 positions, so it survives the launching session. Seeds 2006-2045, depth 3.
+- `agent.py` loads `models/chessformer.npz` (numpy only) or `models/chessformer.pt`;
+  `train.py` writes both. (Session 1 pointed at a non-existent `.onnx`.)
+- `tests/run_tests.py` understands real pytest parametrize marks (pytest 9 is now in the venv).
+- Next: train on the growing data, integrate, paired arena vs the no-model engine
+  (`CF_USE_MODEL=0`), record in RESULTS.md, then package and size-check.
