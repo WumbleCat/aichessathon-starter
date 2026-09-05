@@ -91,3 +91,28 @@ def test_underpromotion_is_searched():
     r = s.search(b, 5.0, max_depth=4)
     b.push(r.move)
     assert not b.is_stalemate()
+
+
+def test_node_budget_stops_the_search_and_charges_policy_calls():
+    """max_nodes bounds the search (depth 1 excepted) and policy calls add policy_node_cost."""
+    board = chess.Board("r1bq1rk1/pp2bppp/2n1pn2/2pp4/3P4/2PBPN2/PP1N1PPP/R2QK2R w KQ - 0 8")
+    plain = Searcher()
+    res = plain.search(board, budget_s=60.0, max_nodes=1500)
+    assert res.move in board.legal_moves
+    assert (
+        res.nodes < 1500 + 2 * 128 + 400
+    )  # the check runs every 128 nodes, plus one iteration overshoot
+
+    calls = []
+
+    def uniform(b: chess.Board) -> dict[chess.Move, float]:
+        moves = list(b.legal_moves)
+        calls.append(1)
+        return {m: 1.0 / len(moves) for m in moves}
+
+    charged = Searcher(policy_fn=uniform, policy_min_depth=2)
+    charged.policy_node_cost = 100
+    res2 = charged.search(board, budget_s=60.0, max_nodes=1500)
+    assert res2.move in board.legal_moves
+    assert len(calls) >= 1
+    assert res2.nodes >= 100 * len(calls)
