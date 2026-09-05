@@ -81,7 +81,13 @@ def evaluate(model: Chessformer, x: np.ndarray, move: np.ndarray, vt: np.ndarray
 
 def export_npz(model: Chessformer, cfg: Config, path: str) -> None:
     """Write the weights as a numpy archive so cf_infer can load them without importing torch."""
-    arrays = {k: v.detach().cpu().numpy().astype(np.float32) for k, v in model.state_dict().items()}
+    # the shared smolgen output projection is registered under every block as well as under
+    # smol_out; keep it once (cf_infer reads smol_out) so the archive is not inflated
+    arrays = {
+        k: v.detach().cpu().numpy().astype(np.float32)
+        for k, v in model.state_dict().items()
+        if ".dyn.out." not in k
+    }
     np.savez(path, __config__=np.array(json.dumps(cfg.as_dict())), **arrays)
     print(f"saved {path} ({os.path.getsize(path) / 1e6:.1f} MB)", flush=True)
 
@@ -106,7 +112,7 @@ def main() -> None:
     parser.add_argument("--value-weight", type=float, default=1.0)
     parser.add_argument("--result-weight", type=float, default=0.3)
     parser.add_argument("--val-frac", type=float, default=0.05)
-    parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--threads", type=int, default=1, help="torch threads; >1 is 10x SLOWER on the shared dev box")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-positions", type=int, default=0)
     args = parser.parse_args()
