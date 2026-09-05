@@ -1,7 +1,8 @@
 """Minimal test runner (the project venv has no pytest and the box has no internet).
 
 Usage: python tests/run_tests.py [test_file_or_name_substring ...]
-Supports plain test_* functions and @pytest.mark.parametrize("name", [values]).
+Supports plain test_* functions and @pytest.mark.parametrize("name", [values]) with or
+without a real pytest installed.
 """
 
 import importlib.util
@@ -72,6 +73,10 @@ def main(argv: list[str]) -> int:
             if not callable(fn):
                 continue
             params = getattr(fn, "_parametrize", None)
+            if params is None:  # real pytest installed: read its mark instead
+                for mark in getattr(fn, "pytestmark", []):
+                    if getattr(mark, "name", "") == "parametrize":
+                        params = (mark.args[0], mark.args[1])
             cases = [((), "")]
             if params is not None:
                 names, values = params
