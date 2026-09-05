@@ -239,6 +239,28 @@ class PythonFallback(unittest.TestCase):
         self.assertEqual(board.fen(), before)  # the interrupted search must restore the board
         self.assertIn(move, board.legal_moves)
 
+    def test_get_move_while_engine_not_ready(self) -> None:
+        # Simulate a compile that is still running: get_move waits part of its budget for the
+        # engine, then answers with the fallback, all inside the move budget.
+        agent.wait_ready()
+        agent.reset_game()
+        fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
+        agent._ENGINE_READY.clear()
+        try:
+            fallback_before = agent._STATS["fallback"]
+            t0 = time.perf_counter()
+            move = legal(fen, 3000)
+            elapsed = time.perf_counter() - t0
+            self.assertIn(move, chess.Board(fen).legal_moves)
+            self.assertEqual(agent._STATS["fallback"], fallback_before + 1)
+            self.assertLess(elapsed, agent.budget_seconds(3000) + 0.1)
+            self.assertGreater(elapsed, agent.budget_seconds(3000) * agent.COMPILE_WAIT_SHARE)
+        finally:
+            agent._ENGINE_READY.set()
+        fallback_after = agent._STATS["fallback"]
+        legal(fen, 3000)
+        self.assertEqual(agent._STATS["fallback"], fallback_after)  # the engine answers again
+
 
 if __name__ == "__main__":
     unittest.main()

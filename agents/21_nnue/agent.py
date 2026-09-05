@@ -12,8 +12,9 @@ calls an external engine; the weights in ``weights/`` were trained by this proje
 Start-up: numba compiles the engine on first use, which can take longer than the platform's
 90 s import budget on a slow core.  The compile therefore runs in a background thread while
 import waits for it up to ``INIT_WAIT_S``.  If it is still running when the first moves are
-requested, a small pure-python alpha-beta (``_python_search``) answers them; the compiled
-engine takes over as soon as it is ready.
+requested, each request first waits for it for most of its budget (the wait releases the GIL
+to the build thread) and then, if it is still not ready, a small pure-python alpha-beta
+(``_python_search``) answers; the compiled engine takes over as soon as it is ready.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ import csearch  # noqa: E402
 import nnue  # noqa: E402
 
 INIT_WAIT_S = 70.0  # wall seconds after import start that we wait for the compile
+COMPILE_WAIT_SHARE = 0.6  # share of a move's budget spent waiting for the compile, if still running
 MIN_BUDGET_S = 0.004
 OVERHEAD_S = 0.015  # python-chess parsing, validation, protocol
 MATE = 30000
@@ -257,12 +259,19 @@ def get_move(fen: str, time_left_ms: int) -> str:
     stats = {"nodes": 0, "depth": 0}
     try:
         _update_history(board)
+        budget = budget_seconds(time_left_ms)
+        if not _ENGINE_READY.is_set() and _ENGINE_ERROR is None:
+            # Give the build thread the interpreter: waiting releases the GIL, whereas the
+            # python fallback search would take it away from numba's type inference and the
+            # engine would stay "almost ready" for the whole game.
+            _ENGINE_READY.wait(max(0.0, budget * COMPILE_WAIT_SHARE))
         if _ENGINE_READY.is_set() and _ENGINE_ERROR is None:
-            move, stats = _engine_move(board, time_left_ms)
+            remaining_ms = time_left_ms - int((time.perf_counter() - t0) * 1000)
+            move, stats = _engine_move(board, max(0, remaining_ms))
         else:
             _STATS["fallback"] += 1
             seen = frozenset(_position_key(chess.Board(f)) for f in _HISTORY_FENS)
-            deadline = t0 + max(MIN_BUDGET_S, budget_seconds(time_left_ms) * 0.5)
+            deadline = t0 + max(MIN_BUDGET_S, budget * 0.9)
             move = _python_search(board, deadline, seen)
     except Exception as exc:  # never lose on an exception: play the fallback
         print(f"[21_nnue] search failed: {exc!r}", file=sys.stderr)
