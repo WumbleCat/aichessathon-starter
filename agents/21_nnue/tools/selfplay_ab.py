@@ -67,7 +67,14 @@ def play(
     """Returns (white score, termination, stats) with stats nodes/seconds per side."""
     board = start.copy()
     keys: list[int] = []
-    stats = {"w_nodes": 0.0, "w_time": 0.0, "b_nodes": 0.0, "b_time": 0.0}
+    stats = {
+        "w_nodes": 0.0,
+        "w_time": 0.0,
+        "b_nodes": 0.0,
+        "b_time": 0.0,
+        "w_cpu": 0.0,
+        "b_cpu": 0.0,
+    }
     while True:
         if board.is_checkmate():
             return (0.0 if board.turn else 1.0), "mate", stats
@@ -79,14 +86,17 @@ def play(
         side = white if board.turn else black
         side.set_position(board, keys)
         t0 = time.perf_counter()
+        c0 = time.process_time()
         if movetime > 0:
             mv, _score, _depth, _pv, st = side.search(time_budget=movetime)
         else:
             mv, _score, _depth, _pv, st = side.search(node_limit=nodes)
         dt = time.perf_counter() - t0
+        dc = time.process_time() - c0
         tag = "w" if board.turn else "b"
         stats[f"{tag}_nodes"] += st["nodes"]
         stats[f"{tag}_time"] += dt
+        stats[f"{tag}_cpu"] += dc
         move = chess.Move.from_uci(cb.move_to_uci(mv)) if mv else None
         if move is None or move not in board.legal_moves:
             move = next(iter(board.legal_moves))
@@ -129,7 +139,14 @@ def main() -> None:
     c_start = time.process_time()
     score = 0.0
     wins = draws = losses = 0
-    tot = {"nnue_nodes": 0.0, "nnue_time": 0.0, "psqt_nodes": 0.0, "psqt_time": 0.0}
+    tot = {
+        "nnue_nodes": 0.0,
+        "nnue_time": 0.0,
+        "nnue_cpu": 0.0,
+        "psqt_nodes": 0.0,
+        "psqt_time": 0.0,
+        "psqt_cpu": 0.0,
+    }
     with open(args.out, "a", encoding="utf-8") as out:
         out.write(
             f"\n# {time.strftime('%Y-%m-%d %H:%M')} "
@@ -156,6 +173,8 @@ def main() -> None:
                 tot["nnue_time"] += st[f"{nt}_time"]
                 tot["psqt_nodes"] += st[f"{pt}_nodes"]
                 tot["psqt_time"] += st[f"{pt}_time"]
+                tot["nnue_cpu"] += st[f"{nt}_cpu"]
+                tot["psqt_cpu"] += st[f"{pt}_cpu"]
                 n = wins + draws + losses
                 line = (
                     f"game {n:3d} pair {pair + 1} nnue={'white' if nnue_white else 'black'} "
@@ -166,12 +185,15 @@ def main() -> None:
                 out.write(line + "\n")
                 out.flush()
         n = wins + draws + losses
-        nps_n = tot["nnue_nodes"] / max(1e-9, tot["nnue_time"])
-        nps_p = tot["psqt_nodes"] / max(1e-9, tot["psqt_time"])
+        nps_n = tot["nnue_nodes"] / max(1e-9, tot["nnue_cpu"])
+        nps_p = tot["psqt_nodes"] / max(1e-9, tot["psqt_cpu"])
+        wall_n = tot["nnue_nodes"] / max(1e-9, tot["nnue_time"])
+        wall_p = tot["psqt_nodes"] / max(1e-9, tot["psqt_time"])
         summary = (
             f"TOTAL {os.path.basename(args.weights)} vs {b_name}: +{wins} ={draws} -{losses} "
             f"score {score / n:.1%} elo {elo(score, n)} | "
-            f"nps nnue {nps_n:,.0f} psqt {nps_p:,.0f} | wall {time.perf_counter() - t_start:.0f}s "
+            f"nps by cpu A {nps_n:,.0f} B {nps_p:,.0f} (by wall {wall_n:,.0f} / {wall_p:,.0f}) | "
+            f"wall {time.perf_counter() - t_start:.0f}s "
             f"cpu {time.process_time() - c_start:.0f}s"
         )
         print(summary, flush=True)

@@ -9,7 +9,7 @@ comparisons are the reliable ones.
 | run | args | epochs | val MSE (sigmoid space) | val MAE cp | val sign acc |
 |---|---|---|---|---|---|
 | h256 | `--hidden 256 --epochs 12 --threads 4 --lambda-result 0.1 --seed 1` | 12 | 0.00494 | 134.3 | 95.0% |
-| h256_long | `--hidden 256 --epochs 30 --threads 1 --lambda-result 0.0 --seed 2` | 18 of 30 | 0.00328 | 115.1 | 95.9% |
+| h256_long | `--hidden 256 --epochs 30 --threads 1 --lambda-result 0.0 --seed 2` | 30 | 0.00318 | 113.8 | 96.0% |
 
 Single-thread training was 3x faster per epoch than 4 threads on the loaded box.
 `val_loss` is against the blended target, so it is only comparable within one `--lambda-result`.
@@ -18,6 +18,9 @@ Quantised export (`training/export.py`, int16, QA 255 / QB 64 / SCALE 400): 395,
 worst-case accumulator 1931 of 32767. Per-pawn probe of the h256 net from the start position
 (side-to-move cp, start = +31): removing a black pawn on a7/b7/c7/d7/e7/f7/g7/h7 gives
 +0/+91/+61/+54/+48/+151/+123/+9. Material: queen ~1000, rook ~560, KQ v K +601.
+The h256_long net (models/nnue_h256_long.safetensors, |W1| max 121, worst-case accumulator
+2617): same probe -6/+117/+98/+75/+77/+167/+152/+39; in a quiet middlegame its black pawns
+are worth +40 to +158 each versus -9 to +140 for h256. Queen 997, KQ v K 553, KR v K 413.
 
 ## Engine
 
@@ -40,8 +43,18 @@ both colours per random 8-ply opening.
 | h256 epoch 4 | old nnue.py | 20,000 | 40 | +28 =3 -9 | 73.8% | +179 | 46.8k | 724k |
 | h256 epoch 12 | row-view nnue.py | 20,000 | 40 | +28 =4 -8 | 75.0% | +191 | 48.7k | 732k |
 
-The node-rate gap did not move with the `evaluate`/`update` rewrite, so the 15x per-node cost
-of the NNUE path lies elsewhere in the search; profiling in progress (see IMPLEMENTATION.md).
+The node-rate gap did not move with the `evaluate`/`update` rewrite because it was never in
+the engine: the A/B tool timed each side by wall clock on a swapping machine. Measured in
+CPU time in one process (`prof_search.py`, 150k nodes from three positions each):
+
+| searcher | eval | nodes | CPU s | knps |
+|---|---|---|---|---|
+| PSQT searcher | PSQT | 451,584 | 0.55 | 826 |
+| NNUE searcher (H=256) | NNUE | 451,585 | 0.83 | 545 |
+| NNUE searcher (H=256) | PSQT | 451,584 | 0.53 | 850 |
+
+So the network costs 1.5x per node, worth well under a ply, against +190 Elo at equal nodes.
+`selfplay_ab.py` now reports node rates by CPU time as well as wall time.
 
 `harness.play` vs `baselines/greedy` at 120 s + 0.5 s: draw by threefold repetition, played
 entirely by the python fallback (the compile outlasted the game on this box). The fallback now

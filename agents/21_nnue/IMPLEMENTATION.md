@@ -113,7 +113,19 @@ reader (no torch import at runtime).
 - `harness.play` vs greedy (120 s + 0.5 s): draw by threefold repetition, played entirely by
   the python fallback because the compile outlasted the game here. Fallback now scores root
   moves that repeat a seen position as 0 (`_position_key`, `_HISTORY_FENS`).
-- Next: confirm the nnue speed-up and exactness (`tests.test_nnue`), re-run the A/B at equal
-  nodes and then at equal time (or the arena), export the 30-epoch net when it finishes, re-export final weights, A/B NNUE vs
+- nnue.py row-view rewrite is exact (`tests.test_nnue` pass) and committed. Second A/B (epoch-12
+  net): +28 =4 -8, +191 Elo at 20k nodes, node rate still 48.7k vs 732k by wall clock. Profiled
+  in CPU time (`prof_search.py`): NNUE 545 knps vs PSQT 826 knps, so the network costs 1.5x per
+  node and the 15x was a wall-clock artefact of the swapping machine. selfplay_ab now reports
+  CPU-time nps.
+- 30-epoch run finished: val MAE 113.8 cp, sign 96.0%; exported to
+  `models/nnue_h256_long.safetensors` (not yet shipped). Pawn probe is much saner (see RESULTS.md).
+- Running: `selfplay_ab --weights models/nnue_h256_long.safetensors --weights-b weights/nnue.safetensors`
+  (results/ab_run3.log), `selfplay_ab --movetime 0.1` shipped net vs PSQT (results/ab_run4.log),
+  `tools/vs_bot.py --bot ../../my-agents/10_principal_variation_search --movetime 0.5`
+  (results/vs_bot_run.log).
+- Next: if the long net wins the net-vs-net A/B, copy it to `weights/nnue.safetensors`, re-run
+  `tests.test_agent`, rebuild the zip, update RESULTS.md and commit. Then more data
+  (datagen with more workers/nodes when the box is free) and an H=384 or king-bucket experiment, re-export final weights, A/B NNUE vs
   PSQT and vs baselines with `harness.arena`, record numbers in `RESULTS.md`, commit on
   `feature/agent-21-nnue` (throwaway index, see memory) and note "merge pending".
