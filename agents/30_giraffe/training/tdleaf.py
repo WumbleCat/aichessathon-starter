@@ -123,7 +123,9 @@ def main() -> None:
     parser.add_argument("--anchor", type=float, default=0.5, help="bootstrap samples per TD sample")
     parser.add_argument("--gate-every", type=int, default=5)
     parser.add_argument("--gate-pairs", type=int, default=12)
-    parser.add_argument("--gate-budget", type=float, default=0.15)
+    parser.add_argument("--gate-budget", type=float, default=0.15, help="seconds per move in the gate arena")
+    parser.add_argument("--gate-depth", type=int, default=0, help="fixed depth for the gate arena (0 = use --gate-budget)")
+    parser.add_argument("--checkpoints", type=Path, default=HERE / "data" / "tdleaf", help="per-iteration weight dumps")
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
@@ -189,15 +191,17 @@ def main() -> None:
                 holdout=0.0,
             )
             weights = model.to_flat()
-            save_weights(model, AGENT_DIR / "models" / f"tdleaf_iter{iteration:03d}.npz")
+            save_weights(model, arguments.checkpoints / f"tdleaf_iter{iteration:03d}.npz")
             note(
                 f"iter {iteration}: {len(y_td)} td samples (replay {len(y_all)}, anchor {n_anchor}) "
                 f"mean |td error| {td_err:.0f} cp, self-play {selfplay_s:.0f}s, total {time.time() - started:.0f}s"
             )
 
             if iteration % arguments.gate_every == 0:
+                gate_budget = 1e9 if arguments.gate_depth else arguments.gate_budget
+                gate_depth = arguments.gate_depth or 64
                 wins, draws, losses = selfplay_arena.run(
-                    weights, accepted, arguments.gate_pairs, arguments.gate_budget, 64, arguments.workers, iteration, pool=pool
+                    weights, accepted, arguments.gate_pairs, gate_budget, gate_depth, arguments.workers, iteration, pool=pool
                 )
                 score = (wins + draws / 2) / max(1, wins + draws + losses)
                 verdict = "accepted" if score >= 0.5 else "rejected"

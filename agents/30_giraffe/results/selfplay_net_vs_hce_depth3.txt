@@ -1,0 +1,1 @@
+A=models/giraffe.npz vs B=hce: +4 =0 -20  -280 elo (score 16.7% over 24 games, +/- 95)  [354s]
