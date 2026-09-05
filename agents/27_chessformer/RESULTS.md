@@ -66,3 +66,53 @@ engine without the network.
 
 Harness check with the model loaded through `agent.py` (npz, no torch at import): import 14 s
 on the loaded box, 2/2 wins vs baselines/greedy by checkmate, no illegal moves or flags.
+
+### tiny_v1 (64/2/4, smol 32; 8 epochs on 40.8k positions, no augmentation)
+
+Val top-1 31 %, top-3 51 %, but it overfits from epoch 4 (train policy loss 0.77 vs val 4.69
+at epoch 8; the shipped checkpoint is the last one).
+
+Paired node-budget matches vs the no-model engine, 3000 nodes/move (average depth ~3.2),
+network charged 58-62 nodes/call, 10 pairs each:
+
+| Setting | Result for the model | Score | Elo (95 % CI) | calls/move |
+|---|---|---|---|---|
+| policy at depth >= 3 | +10 =1 -9 | 52.5 % | +17 [-142, +185] | 6.6 |
+| policy at depth >= 4 | +8 =2 -10 | 45.0 % | -35 [-208, +121] | 1.6 |
+
+No measurable difference at this budget.
+
+**Fixed-depth ordering benchmark** (`training/bench_ordering.py`, 40 positions from a shard,
+depth 5, nodes relative to the engine without the network; 60 nodes charged per call):
+
+| Ordering scheme | where consulted | raw nodes | charged | calls/pos | same best move |
+|---|---|---|---|---|---|
+| prior-first (session 1) | depth >= 3 | 0.99x | 2.30x* | 82 | 34/40 |
+| prior-first | depth >= 4 | 1.00x | 1.42x* | 26 | 32/40 |
+| prior-first | depth >= 5 (root) | 0.98x | 1.03x* | 2.8 | 38/40 |
+| quiet moves by prior, captures/killers classic | depth >= 3 | 0.99x | 1.46x | 83 | 33/40 |
+
+\* charged at 171 nodes/call, the CPU-time ratio measured in that run (the box was loaded).
+
+Conclusion for tiny_v1: its priors are not sharper than hash move + MVV-LVA + killers +
+history, so they save no nodes, and every call is pure cost. The overfit and the depth-3
+teacher are the likely causes; tiny_v2 (augmentation, label smoothing, best-epoch checkpoint,
+57k positions) reaches val policy loss 2.57 / top-1 35 % at epoch 5 and is benchmarked next.
+
+### tiny_v2 (64/2/4, smol 32; 6 epochs on 57.3k positions, mirror augmentation, label smoothing 0.05, wd 0.05)
+
+Best epoch (5) by validation policy loss: **val policy loss 2.57, top-1 34.5 %, top-3 59.2 %,
+value MSE 0.073** (tiny_v1: 3.06 / 31 % / 51 % at its best epoch). Weights 2.8 MB (npz).
+
+Fixed-depth ordering benchmark, quiet moves ordered by prior (60 nodes charged per call):
+
+| depth | where consulted | raw nodes | charged | calls/pos | same best move |
+|---|---|---|---|---|---|
+| 5 | root only | 1.01x | 1.02x | 3.0 | 34/40 |
+| 5 | depth >= 3 (everywhere) | 1.00x | 1.46x | 81 | 32/40 |
+| 6 | within 2 plies of the root (16 pos) | **0.90x** | 1.14x | 91 | 11/16 |
+
+At depth 5 the prior still saves nothing; at depth 6 it saves 10 % of the nodes, but ~90
+calls per position cost more than that. The trend says the prior pays off only when the
+subtrees below the consulted nodes are large, i.e. deeper searches with the network confined
+to the top plies. Benchmarked next: depth 6 and 7 with the network within one ply of the root.
