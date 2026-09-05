@@ -34,7 +34,12 @@ MODEL_PATH = next(
     ),
     "",
 )
+# Where the network is consulted: at nodes with remaining depth >= CF_POLICY_MIN_DEPTH that lie
+# within CF_POLICY_REL_DEPTH plies of the root. The fixed-depth benchmarks in RESULTS.md found
+# no node savings from the prior anywhere in this search, so the default is the root only,
+# where the 2-3 calls per move are free; CF_POLICY_REL_DEPTH=64 consults it everywhere.
 POLICY_MIN_DEPTH = int(os.environ.get("CF_POLICY_MIN_DEPTH", "3"))
+POLICY_REL_DEPTH = int(os.environ.get("CF_POLICY_REL_DEPTH", "0"))
 USE_MODEL = os.environ.get("CF_USE_MODEL", "1") == "1"
 
 _policy = None
@@ -52,6 +57,7 @@ _searcher = Searcher(
     policy_fn=_policy.priors if _policy is not None else None,
     policy_min_depth=POLICY_MIN_DEPTH,
 )
+_searcher.policy_rel_depth = POLICY_REL_DEPTH
 _move_count = 0
 
 # safety margin for process/protocol overhead and the coarse deadline checks
