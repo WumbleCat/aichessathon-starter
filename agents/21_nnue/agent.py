@@ -122,9 +122,16 @@ class _Deadline(Exception):
     pass
 
 
-def _python_search(board: chess.Board, deadline: float) -> chess.Move:
+def _position_key(board: chess.Board) -> str:
+    return board.board_fen() + " " + ("w" if board.turn else "b")
+
+
+def _python_search(
+    board: chess.Board, deadline: float, seen: frozenset[str] = frozenset()
+) -> chess.Move:
     """Pure python-chess iterative-deepening alpha-beta on material, used only while the
-    compiled engine is still being built.  Always returns a legal move."""
+    compiled engine is still being built.  Always returns a legal move.  Root moves that
+    repeat a position in ``seen`` count as a draw, so it does not shuffle when ahead."""
     depth0 = len(board.move_stack)
     ordered = sorted(
         board.legal_moves, key=lambda m: -(_PIECE_CP.get(board.piece_type_at(m.to_square) or 0, 0))
@@ -163,7 +170,10 @@ def _python_search(board: chess.Board, deadline: float) -> chess.Move:
             current = best
             for move in ordered:
                 board.push(move)
-                score = -negamax(depth - 1, -MATE - 1, -alpha, 1)
+                if _position_key(board) in seen:
+                    score = 0
+                else:
+                    score = -negamax(depth - 1, -MATE - 1, -alpha, 1)
                 board.pop()
                 if score > alpha:
                     alpha = score
@@ -251,7 +261,9 @@ def get_move(fen: str, time_left_ms: int) -> str:
             move, stats = _engine_move(board, time_left_ms)
         else:
             _STATS["fallback"] += 1
-            move = _python_search(board, t0 + max(MIN_BUDGET_S, budget_seconds(time_left_ms) * 0.5))
+            seen = frozenset(_position_key(chess.Board(f)) for f in _HISTORY_FENS)
+            deadline = t0 + max(MIN_BUDGET_S, budget_seconds(time_left_ms) * 0.5)
+            move = _python_search(board, deadline, seen)
     except Exception as exc:  # never lose on an exception: play the fallback
         print(f"[21_nnue] search failed: {exc!r}", file=sys.stderr)
         move = None

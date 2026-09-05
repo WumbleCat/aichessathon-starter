@@ -103,6 +103,17 @@ reader (no torch import at runtime).
   (log `models/train_h256_long.log`); compare val loss and the pawn probe before swapping.
 - `tools/selfplay_ab.py --games 40 --nodes 20000` (NNUE vs PSQT, epoch-4 weights loaded at
   start) running; log `results/ab_run.log`, summary `results/ab_nnue_vs_psqt.txt`.
-- Next: finish `tests.test_agent` under the new agent.py, re-export final weights, A/B NNUE vs
+- All 25 tests pass under the threaded agent.py (engine ready after 125 s CPU / 18 min wall on
+  the loaded box; 120 s clock level used 4.2 s).
+- A/B `tools/selfplay_ab.py --games 40 --nodes 20000` with the epoch-4 net vs PSQT:
+  +28 =3 -9, 73.8%, about +180 Elo at equal nodes. But nodes/s: NNUE 46.8k vs PSQT 724k.
+  Micro-benchmark: `evaluate` 8.7 us, `update` 1.85 us, `refresh` 39 us, make+unmake 2.4 us
+  per move. `evaluate` was the hot spot (3-index access + branches per element); rewritten
+  over 1-D row views with min/max, `copy_acc` as a row copy. Re-measure before trusting.
+- `harness.play` vs greedy (120 s + 0.5 s): draw by threefold repetition, played entirely by
+  the python fallback because the compile outlasted the game here. Fallback now scores root
+  moves that repeat a seen position as 0 (`_position_key`, `_HISTORY_FENS`).
+- Next: confirm the nnue speed-up and exactness (`tests.test_nnue`), re-run the A/B at equal
+  nodes and then at equal time (or the arena), export the 30-epoch net when it finishes, re-export final weights, A/B NNUE vs
   PSQT and vs baselines with `harness.arena`, record numbers in `RESULTS.md`, commit on
   `feature/agent-21-nnue` (throwaway index, see memory) and note "merge pending".

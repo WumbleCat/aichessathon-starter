@@ -5,6 +5,7 @@ loaded the machine is (each side gets the same node budget per move, not wall ti
 opening is played twice with colours swapped.
 
     python tools/selfplay_ab.py --games 40 --nodes 20000 --out results/ab_nnue_vs_psqt.txt
+    python tools/selfplay_ab.py --games 40 --movetime 0.2   # equal wall time per move
 """
 
 from __future__ import annotations
@@ -55,7 +56,12 @@ def random_opening(rng: random.Random, plies: int) -> chess.Board:
 
 
 def play(
-    white: csearch.Searcher, black: csearch.Searcher, start: chess.Board, nodes: int, ply_cap: int
+    white: csearch.Searcher,
+    black: csearch.Searcher,
+    start: chess.Board,
+    nodes: int,
+    movetime: float,
+    ply_cap: int,
 ) -> tuple[float, str, dict[str, float]]:
     """Returns (white score, termination, stats) with stats nodes/seconds per side."""
     board = start.copy()
@@ -72,7 +78,10 @@ def play(
         side = white if board.turn else black
         side.set_position(board, keys)
         t0 = time.perf_counter()
-        mv, _score, _depth, _pv, st = side.search(node_limit=nodes)
+        if movetime > 0:
+            mv, _score, _depth, _pv, st = side.search(time_budget=movetime)
+        else:
+            mv, _score, _depth, _pv, st = side.search(node_limit=nodes)
         dt = time.perf_counter() - t0
         tag = "w" if board.turn else "b"
         stats[f"{tag}_nodes"] += st["nodes"]
@@ -95,6 +104,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--games", type=int, default=40, help="total games (pairs of two)")
     parser.add_argument("--nodes", type=int, default=20000)
+    parser.add_argument(
+        "--movetime", type=float, default=0.0, help="seconds per move; overrides --nodes"
+    )
     parser.add_argument("--opening-plies", type=int, default=8)
     parser.add_argument("--ply-cap", type=int, default=240)
     parser.add_argument("--seed", type=int, default=1)
@@ -115,7 +127,7 @@ def main() -> None:
     with open(args.out, "a", encoding="utf-8") as out:
         out.write(
             f"\n# {time.strftime('%Y-%m-%d %H:%M')} nnue={os.path.basename(args.weights)} "
-            f"nodes={args.nodes} games={args.games} seed={args.seed}\n"
+            f"nodes={args.nodes} movetime={args.movetime} games={args.games} seed={args.seed}\n"
         )
         for pair in range(args.games // 2):
             start = random_opening(rng, args.opening_plies)
@@ -123,7 +135,7 @@ def main() -> None:
                 a.clear()
                 b.clear()
                 w, bl = (a, b) if nnue_white else (b, a)
-                ws, term, st = play(w, bl, start, args.nodes, args.ply_cap)
+                ws, term, st = play(w, bl, start, args.nodes, args.movetime, args.ply_cap)
                 s = ws if nnue_white else 1.0 - ws
                 score += s
                 if s == 1.0:

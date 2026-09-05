@@ -220,6 +220,16 @@ class PythonFallback(unittest.TestCase):
             self.assertIn(move, board.legal_moves)
             self.assertIn(move.uci(), mates)
 
+    def test_avoids_repeating_when_ahead(self) -> None:
+        # KQ v K: with the position after Qh5+ marked as seen, the queen must go elsewhere
+        board = chess.Board("8/8/8/4k3/8/8/8/4K2Q w - - 0 1")
+        prev = board.copy()
+        prev.push_uci("h1h5")
+        seen = frozenset({agent._position_key(prev)})
+        move = agent._python_search(board, time.perf_counter() + 0.5, seen)
+        self.assertIn(move, board.legal_moves)
+        self.assertNotEqual(move.uci(), "h1h5")
+
     def test_respects_deadline(self) -> None:
         board = chess.Board("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4")
         t0 = time.perf_counter()
