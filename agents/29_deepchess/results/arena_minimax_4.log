@@ -1,0 +1,8 @@
+game 1/4: white by flag
+game 2/4: black by flag
+game 3/4: white by flag
+game 4/4: black by flag
+
+agents\29_deepchess vs baselines\minimax over 4 games
++4 =0 -0, score 100.0%
+terminations: flag 4

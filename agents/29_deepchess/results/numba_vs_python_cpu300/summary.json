@@ -1,0 +1,20 @@
+{
+ "a": "numba:net",
+ "b": "python:net",
+ "nodes": 3000,
+ "cpu_ms": 300.0,
+ "games": 20,
+ "a_wins": 16,
+ "draws": 4,
+ "a_losses": 0,
+ "a_score": 0.9,
+ "elo_a_minus_b": 381.7,
+ "elo_95_half_width": 1095.8,
+ "terminations": {
+  "checkmate": 16,
+  "threefold_repetition": 4
+ },
+ "mean_depth_a": 5.18,
+ "mean_depth_b": 3.11,
+ "elapsed_s": 2417.0
+}

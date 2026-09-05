@@ -1,0 +1,38 @@
+compiled engine not ready 70s into the import; the python engine plays until it is
+PASS test_bishop_promotion_is_legal_output (0 ms)
+PASS test_capture_free_queen (78 ms)
+PASS test_check_evasion (29 ms)
+PASS test_checkmated_position_has_no_move (1 ms)
+  clock     50 ms ->     3.0 ms, depth 0
+  clock    100 ms ->    25.3 ms, depth 0
+  clock    500 ms ->    50.1 ms, depth 0
+  clock   1000 ms ->    72.3 ms, depth 0
+  clock   5000 ms ->   189.9 ms, depth 0
+  clock  30000 ms ->   667.1 ms, depth 2
+  clock 120000 ms ->  2292.0 ms, depth 2
+PASS test_clock_budget_respected (3317 ms)
+PASS test_en_passant (71 ms)
+PASS test_en_passant_forced (121 ms)
+PASS test_features_are_colour_symmetric (2 ms)
+PASS test_features_count_and_range (0 ms)
+PASS test_finds_mate_in_one (313 ms)
+PASS test_finds_mate_in_two (261 ms)
+PASS test_gives_check_and_is_legal (85 ms)
+PASS test_handcrafted_eval_symmetric (0 ms)
+PASS test_kingside_castling_available_and_legal (86 ms)
+PASS test_kingside_castling_played_when_only_sensible_move (47 ms)
+PASS test_knight_promotion_mate (50 ms)
+PASS test_network_eval_symmetric_and_sane (1 ms)
+PASS test_normal_move (39 ms)
+PASS test_pairwise_preference_sanity (1 ms)
+PASS test_queen_promotion (77 ms)
+PASS test_queenside_castling_black (69 ms)
+PASS test_queenside_castling_legal (100 ms)
+PASS test_repeated_calls_keep_state_valid (1978 ms)
+PASS test_repetition_avoided_when_winning (194 ms)
+PASS test_rook_promotion_when_queen_stalemates (122 ms)
+PASS test_stalemate_avoided_when_winning (232 ms)
+PASS test_stalemate_position_no_crash (0 ms)
+PASS test_underpromotion_moves_are_legal_and_selectable (191 ms)
+
+28/28 passed

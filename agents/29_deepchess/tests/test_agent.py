@@ -202,7 +202,8 @@ def test_clock_budget_respected() -> None:
         # are answered almost immediately.
         limit = max(time_left * 0.45, 60)
         assert elapsed_ms < limit, f"{elapsed_ms:.0f} ms for a {time_left} ms clock"
-        print(f"  clock {time_left:>6} ms -> {elapsed_ms:7.1f} ms, depth {agent.STATS.get('depth')}")
+        print(f"  clock {time_left:>6} ms -> {elapsed_ms:7.1f} ms, "
+              f"depth {agent.STATS.get('depth')}")
 
 
 def test_repeated_calls_keep_state_valid() -> None:
@@ -306,7 +307,7 @@ if __name__ == "__main__":
         try:
             fn()
             print(f"PASS {name} ({(time.perf_counter() - t0) * 1000:.0f} ms)")
-        except Exception:  # noqa: BLE001
+        except Exception:
             failures += 1
             print(f"FAIL {name}")
             traceback.print_exc()

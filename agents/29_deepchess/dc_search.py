@@ -24,13 +24,36 @@ from __future__ import annotations
 import os as _os
 import time as _time
 
-from numba import boolean, float32, int8, int32, int64, njit, types, uint64
-
 from dc_engine import (
-    DRAW, F_CAPTURE, F_EP, INF, MATE, MATE_BOUND, MAX_MOVES, MAX_PLY, PIECE_VALUE, S_CASTLING,
-    S_EP, S_HALFMOVE, S_HIST_LEN, S_PLY, S_ROOT_HIST, S_TURN, U_CASTLING, U_EP, U_HALF, U_HASH,
-    U_MOVE, Z_SIDE, gen_moves, is_attacked, make_move, piece_type, unmake_move,
+    DRAW,
+    F_CAPTURE,
+    F_EP,
+    INF,
+    MATE,
+    MATE_BOUND,
+    MAX_MOVES,
+    MAX_PLY,
+    PIECE_VALUE,
+    S_CASTLING,
+    S_EP,
+    S_HALFMOVE,
+    S_HIST_LEN,
+    S_PLY,
+    S_ROOT_HIST,
+    S_TURN,
+    U_CASTLING,
+    U_EP,
+    U_HALF,
+    U_HASH,
+    U_MOVE,
+    Z_SIDE,
+    gen_moves,
+    is_attacked,
+    make_move,
+    piece_type,
+    unmake_move,
 )
+from numba import boolean, float32, int8, int32, int64, njit, types, uint64
 
 _TIMING = bool(_os.environ.get("DEEPCHESS_COMPILE_TIMING"))
 _t_last = _time.process_time()

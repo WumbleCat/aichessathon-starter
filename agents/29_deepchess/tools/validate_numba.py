@@ -15,7 +15,6 @@ import time
 from pathlib import Path
 
 import chess
-import numpy as np
 
 HERE = Path(__file__).resolve().parent
 AGENT_DIR = HERE.parent
@@ -100,8 +99,8 @@ for fen, depth, expect in PERFT:
         dc_engine.Z_CASTLE, dc_engine.Z_EP, dc_engine.Z_SIDE, dc_engine.CASTLE_MASK, p.hist,
         depth, dc_engine.KNIGHT_T, dc_engine.KING_T, dc_engine.BISHOP_RAYS, dc_engine.ROOK_RAYS,
         dc_engine.PAWN_ATTACKERS))
-    print(f"perft {fen[:24]:24} d{depth}: {count} {'ok' if count == expect else 'MISMATCH ' + str(expect)}",
-          flush=True)
+    verdict = "ok" if count == expect else f"MISMATCH {expect}"
+    print(f"perft {fen[:24]:24} d{depth}: {count} {verdict}", flush=True)
 
 worst_total = 0
 hash_bad = 0

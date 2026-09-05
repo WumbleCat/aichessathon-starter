@@ -16,12 +16,11 @@ Move encoding (int32): from | to << 6 | promo << 12 | flags << 16
 
 from __future__ import annotations
 
-import numpy as np
-from numba import njit, uint64, int64, int32, int8, float32, boolean
-
-
 import os as _os
 import time as _time
+
+import numpy as np
+from numba import boolean, float32, int8, int32, int64, njit, uint64
 
 _TIMING = bool(_os.environ.get("DEEPCHESS_COMPILE_TIMING"))
 _t_last = _time.process_time()
@@ -66,7 +65,8 @@ S_KING_W, S_KING_B, S_ROOT_HIST = 6, 7, 8
 STATE_SIZE = 16
 
 # stats vector indices
-ST_NODES, ST_QNODES, ST_MAX_NODES, ST_ABORT, ST_TT_HITS, ST_SELDEPTH, ST_TT_STORES = 0, 1, 2, 3, 4, 5, 6
+ST_NODES, ST_QNODES, ST_MAX_NODES, ST_ABORT, ST_TT_HITS, ST_SELDEPTH = 0, 1, 2, 3, 4, 5
+ST_TT_STORES = 6
 STATS_SIZE = 8
 
 PIECE_VALUE = np.array([0, 100, 320, 330, 500, 900, 20000,
@@ -138,7 +138,8 @@ for _sq in range(64):
 
 # zobrist keys, fixed seed so the hash is stable between runs
 _zrng = np.random.default_rng(0x5EED_29)
-ZOBRIST = _zrng.integers(0, 2**63 - 1, size=(13, 64), dtype=np.int64).astype(np.uint64) * np.uint64(2) + np.uint64(1)
+ZOBRIST = (_zrng.integers(0, 2**63 - 1, size=(13, 64), dtype=np.int64).astype(np.uint64)
+           * np.uint64(2) + np.uint64(1))
 ZOBRIST[0, :] = 0
 Z_CASTLE = _zrng.integers(0, 2**63 - 1, size=16, dtype=np.int64).astype(np.uint64)
 Z_CASTLE[0] = 0

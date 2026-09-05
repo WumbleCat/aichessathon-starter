@@ -22,8 +22,8 @@ from typing import Any
 _IMPORT_START = time.perf_counter()
 
 import chess  # noqa: E402
-import numpy as np
-from numba import njit, uint64, int64, float32, int32
+import numpy as np  # noqa: E402
+from numba import float32, int32, int64, njit, uint64  # noqa: E402
 
 # ---------------------------------------------------------------------------------------
 # Constants
@@ -370,7 +370,8 @@ def load_model(path: Path = MODEL_PATH) -> dict[str, np.ndarray] | None:
         model = {k: np.ascontiguousarray(data[k].astype(np.float32)) for k in data.files}
     # one all-zero row after the 773 features: dc_engine.make_move uses it for absent
     # features so its accumulator update is branch-free (index dc_engine.ZERO_ROW)
-    model["w1"] = np.ascontiguousarray(np.vstack([model["w1"], np.zeros((1, model["w1"].shape[1]), dtype=np.float32)]))
+    zero_row = np.zeros((1, model["w1"].shape[1]), dtype=np.float32)
+    model["w1"] = np.ascontiguousarray(np.vstack([model["w1"], zero_row]))
     _MODEL = model
     _ACC = np.zeros(model["w1"].shape[1], dtype=np.float32)
     _H2 = np.zeros(model["w2"].shape[1], dtype=np.float32)
@@ -450,10 +451,7 @@ class Searcher:
     def _mvv_lva(board: chess.Board, move: chess.Move) -> int:
         victim = board.piece_type_at(move.to_square)
         if victim is None:
-            if board.is_en_passant(move):
-                victim = chess.PAWN
-            else:
-                victim = 0
+            victim = chess.PAWN if board.is_en_passant(move) else 0
         attacker = board.piece_type_at(move.from_square) or 1
         score = int(PIECE_VALUE[victim]) * 10 - attacker
         if move.promotion:
@@ -525,7 +523,7 @@ class Searcher:
             if m.promotion == chess.QUEEN or board.is_en_passant(m):
                 captures.append((self._mvv_lva(board, m), m))
         captures.sort(key=lambda t: t[0], reverse=True)
-        for score_key, m in captures:
+        for _, m in captures:
             # delta pruning
             victim = board.piece_type_at(m.to_square)
             gain = int(PIECE_VALUE[victim]) if victim else 100
@@ -791,7 +789,7 @@ class NumbaSearcher:
         self.pos.set_board(board, m["w1"], m["b1"], self.game_hashes)
         self.game_hashes.append(int(self.pos.hash[0]))
         self.params[dc_search.P_MODE] = _MODE_CODE.get(EVAL_MODE, 0)
-        self.params[dc_search.P_BLEND] = int(round(BLEND_NET_WEIGHT * 100))
+        self.params[dc_search.P_BLEND] = round(BLEND_NET_WEIGHT * 100)
         self.killers[:] = 0
         self.history //= 2
         self.stats[:] = 0
@@ -803,7 +801,7 @@ class NumbaSearcher:
         m = self.model
         self.pos.set_board(board, m["w1"], m["b1"], None)
         self.params[dc_search.P_MODE] = _MODE_CODE.get(EVAL_MODE, 0)
-        self.params[dc_search.P_BLEND] = int(round(BLEND_NET_WEIGHT * 100))
+        self.params[dc_search.P_BLEND] = round(BLEND_NET_WEIGHT * 100)
         return int(dc_search.evaluate_pos(self._args()))
 
     def search_root(self, depth: int, root_moves: list[tuple[int, chess.Move]],
@@ -835,12 +833,12 @@ class NumbaSearcher:
                     score = child(code, alpha, beta)
             if stats[dc_search.ST_ABORT] != 0:
                 raise OutOfTime()
-            scored.append((int(score), code, move))
+            scored.append((score, code, move))
             if score > best:
-                best = int(score)
+                best = score
                 best_move = move
                 if score > alpha:
-                    alpha = int(score)
+                    alpha = score
         scored.sort(key=lambda t: t[0], reverse=True)
         return best, best_move, [(c, m) for _, c, m in scored]
 
@@ -872,7 +870,7 @@ def _compile_engine() -> None:
         ns.search_root(2, [(_move_code(warm, mv), mv) for mv in warm.legal_moves])
         ns.new_game()
         _numba_searcher = ns
-    except BaseException as exc:  # noqa: BLE001 - any failure means the python engine plays
+    except BaseException as exc:
         _compile_error = exc
         print(f"compiled engine unavailable: {exc!r}")
 
@@ -899,12 +897,8 @@ STATS: dict[str, float] = {}
 def _reset_game_if_needed(board: chess.Board) -> None:
     """A new game starts when the position is not a plausible continuation of the last."""
     global _game_history, _searcher
-    if board.fullmove_number <= 1 and len(_game_history) > 2:
-        _game_history = {}
-        _searcher = Searcher()
-        if _numba_searcher is not None:
-            _numba_searcher.new_game()
-    elif board.fullmove_number == 1 and board.turn == chess.WHITE:
+    if (board.fullmove_number <= 1 and len(_game_history) > 2) or (
+            board.fullmove_number == 1 and board.turn == chess.WHITE):
         _game_history = {}
         _searcher = Searcher()
         if _numba_searcher is not None:
@@ -931,10 +925,7 @@ def _quick_move(board: chess.Board, moves: list[chess.Move]) -> chess.Move:
     best = moves[0]
     for m in moves:
         board.push(m)
-        if board.is_checkmate():
-            score = MATE
-        else:
-            score = -evaluate(board)
+        score = MATE if board.is_checkmate() else -evaluate(board)
         board.pop()
         if score > best_score:
             best_score = score

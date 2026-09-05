@@ -174,21 +174,27 @@ def adjudicate(board: chess.Board) -> str:
     return "1-0" if balance > 0 else ("0-1" if balance < 0 else "1/2-1/2")
 
 
-def play(white: Player, black: Player, opening: list[str], ply_cap: int) -> tuple[str, str, int]:
+def play(white: Player, black: Player, opening: list[str], ply_cap: int,
+         ) -> tuple[str, str, int, str]:
+    """Returns (result, termination, plies, moves played after the opening)."""
     board = chess.Board()
     for uci in opening:
         board.push_uci(uci)
     white.new_game()
     black.new_game()
+    played: list[str] = []
     while True:
         if board.is_game_over(claim_draw=True):
             outcome = board.outcome(claim_draw=True)
             assert outcome is not None
-            return outcome.result(), outcome.termination.name.lower(), len(board.move_stack)
+            return (outcome.result(), outcome.termination.name.lower(), len(board.move_stack),
+                    " ".join(played))
         if len(board.move_stack) >= ply_cap:
-            return adjudicate(board), "adjudication", len(board.move_stack)
+            return adjudicate(board), "adjudication", len(board.move_stack), " ".join(played)
         player = white if board.turn == chess.WHITE else black
-        board.push(player.choose(board))
+        move = player.choose(board)
+        played.append(move.uci())
+        board.push(move)
 
 
 def make_openings(count: int, seed: int, plies: int) -> list[list[str]]:
@@ -221,11 +227,11 @@ def make_openings(count: int, seed: int, plies: int) -> list[list[str]]:
 
 def elo(score: float, n: int) -> tuple[float, float]:
     """Elo difference and its 95 % half-width from a score fraction over n games."""
-    p = min(max(score, 1e-6), 1 - 1e-6)
+    p = min(max(score, 0.01), 0.99)  # clamp: a clean sweep is "> 800 Elo", not infinity
     diff = -400 * math.log10(1 / p - 1)
     sd = math.sqrt(p * (1 - p) / max(n, 1))
-    lo = min(max(p - 1.96 * sd, 1e-6), 1 - 1e-6)
-    hi = min(max(p + 1.96 * sd, 1e-6), 1 - 1e-6)
+    lo = min(max(p - 1.96 * sd, 0.01), 0.99)
+    hi = min(max(p + 1.96 * sd, 0.01), 0.99)
     half = (-400 * math.log10(1 / hi - 1) + 400 * math.log10(1 / lo - 1)) / 2
     return diff, half
 
@@ -261,7 +267,7 @@ def main() -> None:
             a_white = game % 2 == 0
             white, black = (pa, pb) if a_white else (pb, pa)
             t0 = time.process_time()
-            result, termination, plies = play(white, black, opening, args.ply_cap)
+            result, termination, plies, played = play(white, black, opening, args.ply_cap)
             if result == "1-0":
                 a_score = 1.0 if a_white else 0.0
             elif result == "0-1":
@@ -272,6 +278,7 @@ def main() -> None:
                 "game": game, "opening": " ".join(opening), "a_white": a_white,
                 "result": result, "termination": termination, "plies": plies,
                 "a_score": a_score, "cpu_s": round(time.process_time() - t0, 1),
+                "moves": played,
             }
             done.append(record)
             fh.write(json.dumps(record) + "\n")

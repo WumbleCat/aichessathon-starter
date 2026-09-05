@@ -22,11 +22,11 @@ import numba  # noqa: E402,F401
 print(f"numba import {time.process_time() - t:.1f}s cpu (opt={os.environ.get('NUMBA_OPT', '3')})",
       flush=True)
 t = time.process_time()
-import dc_engine  # noqa: E402,F401
+import dc_engine  # noqa: E402
 
 print(f"dc_engine total {time.process_time() - t:.1f}s cpu", flush=True)
 t = time.process_time()
-import dc_search  # noqa: E402,F401
+import dc_search  # noqa: E402
 
 print(f"dc_search total {time.process_time() - t:.1f}s cpu", flush=True)
 print(f"all: {time.perf_counter() - w:.1f}s wall", flush=True)
