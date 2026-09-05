@@ -60,11 +60,22 @@ loading the cached recursive search crashed with an access violation (see README
 | arena vs `baselines/greedy`, 4 games | 10 s + 0.1 s | +0 =3 -1: the compile outlasted each game, so the fallback played |
 | arena vs `baselines/numba`, 6 games (3 per colour) | 60 s + 0.5 s | +6 =0 -0: 2 checkmates, 4 wins on the baseline's clock (it has no time management); no crash, illegal move or flag on our side |
 
-More arena runs are recorded below as they finish.
+| arena: ponder on vs `variants/noponder` (same engine, pondering off), 6 games (3 per colour) | 60 s + 0.5 s | +4 =1 -1 for pondering: 5 checkmates, 1 threefold; no flag on either side, so stopping the ponder thread costs nothing measurable |
 
-## Self-play A/B (`selfplay.py`, fixed nodes per move, colours swapped per opening)
+Six games say little about the size of the pondering gain, only that it does not break the
+clock handling; it is left on because the rules explicitly allow it.
 
-Recorded below as they finish.
+## Self-play A/B (`selfplay.py`, 4000 nodes per move, 100 games, colours swapped per opening)
+
+A = default parameters, B = one feature disabled. At a fixed node budget a pruning feature
+can only show its accuracy cost, not its speed gain, so a small positive number is the
+expected outcome; a clearly negative one would mean a bug. 100 games give roughly +-60 Elo.
+
+| feature off in B | A result | score | Elo (95 %) | note |
+|---|---|---|---|---|
+| null move (`P_NULL`) | +42 =21 -37 | 52.5 % | +17 (-44..+79) | 1513 s wall / 140 s cpu |
+
+The sweep continues over the other toggles in `results/selfplay/off_<P_NAME>.log`.
 
 ## What is next
 

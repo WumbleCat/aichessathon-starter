@@ -50,3 +50,19 @@ Budget per move = clamp(time_left/30 + increment*0.8, lower, upper), never more 
 time_left/4, and the jitted search checks the clock every 2048 nodes against a hard
 deadline. Depth 1 always completes (no clock). Under 100 ms left: return the fallback or a
 1-ply search only.
+
+## Status (2026-09-05, second session)
+
+Done: phases 1-4 and the harness runs listed in RESULTS.md. Added since the first session:
+compile in a daemon thread with a bounded join (the eager compile exceeded the init budget
+on the loaded machine), pondering on the opponent's time (`Ponderer`, shares the TT, negamax
+compiled `nogil`), `selfplay.py` for node-limited paired A/B games, a no-ponder variant agent
+for real-clock A/B, and RESULTS.md. numba's on-disk cache was tried and reverted (crash).
+
+In progress / next:
+- feature-toggle self-play sweep (`results/selfplay/off_<P_NAME>.jsonl`, resumable: rerun
+  `selfplay.py --b P_NAME=0 --nodes 4000 --games 100 --out <that file>`); anything that
+  scores clearly below 50 % is a bug to find, not a feature to drop
+- ponder on vs off at 60 s + 0.5 s (`results/arena_ponder_vs_noponder_60s.log`)
+- evaluation and margin tuning with `selfplay.py` once the sweep is clean
+- merge `feature/agent-20-pvs` into `main` (left to the user, see README)
