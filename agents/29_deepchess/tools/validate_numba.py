@@ -41,10 +41,7 @@ m = ns.model
 
 
 def numba_eval_here() -> int:
-    p = ns.pos
-    return int(dc_search.evaluate_pos(
-        p.board, p.state, p.acc[p.state[dc_engine.S_PLY]], m["w1"], m["b1"], m["w2"], m["b2"],
-        m["w3"], m["b3"], m["w4"], m["b4"], ns.work, agent.PST, ns.params))
+    return int(dc_search.evaluate_pos(ns._args()))
 
 
 def check_incremental(seed: int, plies: int) -> tuple[int, int]:
@@ -84,6 +81,27 @@ def check_incremental(seed: int, plies: int) -> tuple[int, int]:
     ns.params[dc_search.P_MODE] = 0
     return worst, hash_mismatch
 
+
+# move generator: perft against known node counts (castling, promotions, en passant)
+PERFT = [
+    (chess.STARTING_FEN, 4, 197281),
+    ("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 3, 97862),
+    ("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5, 674624),
+    ("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 4, 422333),
+    ("r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 3, 9467),
+    ("rnbqkb1r/pp1p1ppp/2p5/4P3/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 3, 62379),
+]
+for fen, depth, expect in PERFT:
+    board = chess.Board(fen)
+    ns.prepare(board, max_nodes=10**9)
+    p = ns.pos
+    count = int(dc_engine.perft(
+        p.board, p.state, p.hash, p.undo, p.moves, p.acc, m["w1"], m["b1"], dc_engine.ZOBRIST,
+        dc_engine.Z_CASTLE, dc_engine.Z_EP, dc_engine.Z_SIDE, dc_engine.CASTLE_MASK, p.hist,
+        depth, dc_engine.KNIGHT_T, dc_engine.KING_T, dc_engine.BISHOP_RAYS, dc_engine.ROOK_RAYS,
+        dc_engine.PAWN_ATTACKERS))
+    print(f"perft {fen[:24]:24} d{depth}: {count} {'ok' if count == expect else 'MISMATCH ' + str(expect)}",
+          flush=True)
 
 worst_total = 0
 hash_bad = 0

@@ -368,6 +368,9 @@ def load_model(path: Path = MODEL_PATH) -> dict[str, np.ndarray] | None:
         return None
     with np.load(path) as data:
         model = {k: np.ascontiguousarray(data[k].astype(np.float32)) for k in data.files}
+    # one all-zero row after the 773 features: dc_engine.make_move uses it for absent
+    # features so its accumulator update is branch-free (index dc_engine.ZERO_ROW)
+    model["w1"] = np.ascontiguousarray(np.vstack([model["w1"], np.zeros((1, model["w1"].shape[1]), dtype=np.float32)]))
     _MODEL = model
     _ACC = np.zeros(model["w1"].shape[1], dtype=np.float32)
     _H2 = np.zeros(model["w2"].shape[1], dtype=np.float32)
@@ -801,10 +804,7 @@ class NumbaSearcher:
         self.pos.set_board(board, m["w1"], m["b1"], None)
         self.params[dc_search.P_MODE] = _MODE_CODE.get(EVAL_MODE, 0)
         self.params[dc_search.P_BLEND] = int(round(BLEND_NET_WEIGHT * 100))
-        p = self.pos
-        return int(dc_search.evaluate_pos(
-            p.board, p.state, p.acc[0], m["w1"], m["b1"], m["w2"], m["b2"], m["w3"], m["b3"],
-            m["w4"], m["b4"], self.work, PST, self.params))
+        return int(dc_search.evaluate_pos(self._args()))
 
     def search_root(self, depth: int, root_moves: list[tuple[int, chess.Move]],
                     ) -> tuple[int, chess.Move, list[tuple[int, chess.Move]]]:
@@ -822,7 +822,7 @@ class NumbaSearcher:
             dc_engine.make_move(p.board, p.state, p.hash, code, p.undo, p.acc, m["w1"], m["b1"],
                                 dc_engine.ZOBRIST, dc_engine.Z_CASTLE, dc_engine.Z_EP,
                                 dc_engine.Z_SIDE, dc_engine.CASTLE_MASK, p.hist)
-            score = -dc_search.search(*args, depth - 1, -hi, -lo, 1, True)
+            score = -dc_search.search(args, depth - 1, -hi, -lo, 1)
             dc_engine.unmake_move(p.board, p.state, p.hash, p.undo)
             return int(score)
 

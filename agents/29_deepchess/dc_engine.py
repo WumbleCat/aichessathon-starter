@@ -56,6 +56,10 @@ DRAW = 0
 
 TT_EXACT, TT_LOWER, TT_UPPER = 1, 2, 3
 
+# w1 as loaded by agent.py has one extra all-zero row after the 773 features; make_move
+# points absent features at it so the accumulator update has no branches
+ZERO_ROW = 773
+
 # state vector indices
 S_TURN, S_CASTLING, S_EP, S_HALFMOVE, S_PLY, S_HIST_LEN = 0, 1, 2, 3, 4, 5
 S_KING_W, S_KING_B, S_ROOT_HIST = 6, 7, 8
@@ -295,49 +299,37 @@ def gen_moves(board, state, out, start, captures_only, knight_t, king_t, bishop_
                 elif q >= opp_lo and q <= opp_hi:
                     out[n] = make_move_code(frm, to, 0, F_CAPTURE)
                     n += 1
-            if pt == 6 and not captures_only:
-                # castling: rights, empty squares and no attack on king path
+            if pt == 6 and not captures_only and frm == (4 if turn == 0 else 60):
+                # castling: rights, empty squares between, rook in place and no attack on
+                # the king's start, transit and end squares
                 castling = state[S_CASTLING]
-                if turn == 0 and frm == 4:
-                    if (castling & 1) and board[5] == 0 and board[6] == 0 and board[7] == WR:
-                        if (not is_attacked(board, 4, 1, knight_t, king_t, bishop_rays,
-                                            rook_rays, pawn_attackers)
-                                and not is_attacked(board, 5, 1, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)
-                                and not is_attacked(board, 6, 1, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)):
-                            out[n] = make_move_code(4, 6, 0, F_CASTLE)
-                            n += 1
-                    if ((castling & 2) and board[3] == 0 and board[2] == 0 and board[1] == 0
-                            and board[0] == WR):
-                        if (not is_attacked(board, 4, 1, knight_t, king_t, bishop_rays,
-                                            rook_rays, pawn_attackers)
-                                and not is_attacked(board, 3, 1, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)
-                                and not is_attacked(board, 2, 1, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)):
-                            out[n] = make_move_code(4, 2, 0, F_CASTLE)
-                            n += 1
-                elif turn == 1 and frm == 60:
-                    if (castling & 4) and board[61] == 0 and board[62] == 0 and board[63] == BR:
-                        if (not is_attacked(board, 60, 0, knight_t, king_t, bishop_rays,
-                                            rook_rays, pawn_attackers)
-                                and not is_attacked(board, 61, 0, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)
-                                and not is_attacked(board, 62, 0, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)):
-                            out[n] = make_move_code(60, 62, 0, F_CASTLE)
-                            n += 1
-                    if ((castling & 8) and board[59] == 0 and board[58] == 0 and board[57] == 0
-                            and board[56] == BR):
-                        if (not is_attacked(board, 60, 0, knight_t, king_t, bishop_rays,
-                                            rook_rays, pawn_attackers)
-                                and not is_attacked(board, 59, 0, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)
-                                and not is_attacked(board, 58, 0, knight_t, king_t, bishop_rays,
-                                                    rook_rays, pawn_attackers)):
-                            out[n] = make_move_code(60, 58, 0, F_CASTLE)
-                            n += 1
+                r0 = 0 if turn == 0 else 56  # a-file square of the back rank
+                rook = WR if turn == 0 else BR
+                opp = 1 - turn
+                ks = 1 if turn == 0 else 4
+                qs = 2 if turn == 0 else 8
+                if ((castling & ks) and board[r0 + 5] == 0 and board[r0 + 6] == 0
+                        and board[r0 + 7] == rook):
+                    ok = True
+                    for sq in range(r0 + 4, r0 + 7):
+                        if is_attacked(board, sq, opp, knight_t, king_t, bishop_rays,
+                                       rook_rays, pawn_attackers):
+                            ok = False
+                            break
+                    if ok:
+                        out[n] = make_move_code(frm, r0 + 6, 0, F_CASTLE)
+                        n += 1
+                if ((castling & qs) and board[r0 + 3] == 0 and board[r0 + 2] == 0
+                        and board[r0 + 1] == 0 and board[r0] == rook):
+                    ok = True
+                    for sq in range(r0 + 2, r0 + 5):
+                        if is_attacked(board, sq, opp, knight_t, king_t, bishop_rays,
+                                       rook_rays, pawn_attackers):
+                            ok = False
+                            break
+                    if ok:
+                        out[n] = make_move_code(frm, r0 + 2, 0, F_CASTLE)
+                        n += 1
         else:
             # sliders: bishop 3, rook 4, queen 5
             if pt == 3 or pt == 5:
@@ -459,13 +451,18 @@ def make_move(board, state, hash_arr, move, undo, acc_stack, w1, b1, zobrist, z_
     undo[ply, U_HALF] = state[S_HALFMOVE]
     undo[ply, U_HASH] = int64(h)
 
-    # copy accumulator to the next ply and update incrementally
+    # Accumulator update: at most three features leave (captured piece, moving piece,
+    # castling rook) and two arrive (placed piece, rook). Absent ones point at the zero
+    # row appended to w1, so the update is one branch-free pass over the hidden units.
     acc = acc_stack[ply + 1]
     prev = acc_stack[ply]
     n = acc.shape[1]
-    for j in range(n):
-        acc[0, j] = prev[0, j]
-        acc[1, j] = prev[1, j]
+    s2_0 = ZERO_ROW
+    s2_1 = ZERO_ROW
+    s3_0 = ZERO_ROW
+    s3_1 = ZERO_ROW
+    a2_0 = ZERO_ROW
+    a2_1 = ZERO_ROW
 
     # en passant file hashing out
     if state[S_EP] >= 0:
@@ -476,22 +473,26 @@ def make_move(board, state, hash_arr, move, undo, acc_stack, w1, b1, zobrist, z_
         captured = board[cap_sq]
         board[cap_sq] = 0
         h ^= zobrist[captured, cap_sq]
-        acc_sub(acc, w1, b1, captured, cap_sq)
+        s2_0 = feature_index(captured, cap_sq, 0)
+        s2_1 = feature_index(captured, cap_sq, 1)
     elif captured != 0:
         h ^= zobrist[captured, to]
-        acc_sub(acc, w1, b1, captured, to)
+        s2_0 = feature_index(captured, to, 0)
+        s2_1 = feature_index(captured, to, 1)
     undo[ply, U_CAPT] = captured
 
     # move the piece
     board[frm] = 0
     h ^= zobrist[piece, frm]
-    acc_sub(acc, w1, b1, piece, frm)
+    s1_0 = feature_index(piece, frm, 0)
+    s1_1 = feature_index(piece, frm, 1)
     placed = piece
     if promo != 0:
         placed = promo + 6 * turn
     board[to] = int8(placed)
     h ^= zobrist[placed, to]
-    acc_add(acc, w1, b1, placed, to)
+    a1_0 = feature_index(placed, to, 0)
+    a1_1 = feature_index(placed, to, 1)
 
     if flags & F_CASTLE:
         if to == 6:
@@ -507,8 +508,16 @@ def make_move(board, state, hash_arr, move, undo, acc_stack, w1, b1, zobrist, z_
         board[rt] = rook
         h ^= zobrist[rook, rf]
         h ^= zobrist[rook, rt]
-        acc_sub(acc, w1, b1, rook, rf)
-        acc_add(acc, w1, b1, rook, rt)
+        s3_0 = feature_index(rook, rf, 0)
+        s3_1 = feature_index(rook, rf, 1)
+        a2_0 = feature_index(rook, rt, 0)
+        a2_1 = feature_index(rook, rt, 1)
+
+    for j in range(n):
+        acc[0, j] = (prev[0, j] - w1[s1_0, j] + w1[a1_0, j] - w1[s2_0, j] - w1[s3_0, j]
+                     + w1[a2_0, j])
+        acc[1, j] = (prev[1, j] - w1[s1_1, j] + w1[a1_1, j] - w1[s2_1, j] - w1[s3_1, j]
+                     + w1[a2_1, j])
 
     # king square
     if piece == WK:

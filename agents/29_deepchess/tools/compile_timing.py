@@ -30,4 +30,13 @@ import dc_search  # noqa: E402,F401
 
 print(f"dc_search total {time.process_time() - t:.1f}s cpu", flush=True)
 print(f"all: {time.perf_counter() - w:.1f}s wall", flush=True)
+
+# where the time goes inside numba's pipeline for the big functions
+for name in ("gen_moves", "make_move", "quiesce", "search"):
+    fn = getattr(dc_search if hasattr(dc_search, name) else dc_engine, name)
+    for cres in fn.overloads.values():
+        for pipeline, passes in cres.metadata.get("pipeline_times", {}).items():
+            items = sorted(passes.items(), key=lambda kv: -kv[1].run)
+            print(f"{name} [{pipeline}]: " + ", ".join(f"{p}={t.run:.1f}" for p, t in items[:6]),
+                  flush=True)
 print("done", flush=True)

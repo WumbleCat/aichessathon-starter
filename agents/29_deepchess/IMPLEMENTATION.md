@@ -54,7 +54,21 @@ pruning. Two implementations of the same search exist and share the time managem
   `threading.Timer` writing into a `stop` array (search runs with `nogil=True`) plus a node
   cap derived from the measured nodes/s as a backstop. Every function has an explicit
   signature, so all compilation happens at import; `tools/validate_numba.py` cross-checks
-  the incremental evaluation and hashes against the python path, the mates, and nodes/s.
+  perft, the incremental evaluation and hashes against the python path, the mates, and
+  nodes/s.
+
+Compile time was the hard part (`tools/compile_timing.py`, numbers are CPU seconds on the
+loaded dev machine, roughly half that on an idle core): the first version of `search`
+took 85 s because numba's type inference is superlinear in the number of variables and
+call-site arguments of one big recursive function (39 separate array arguments at 5
+recursive call sites), and literal `True`/`False` arguments at recursive call sites made
+numba compile the function three times over. The current layout, all arrays in one
+`ctx` tuple (`CTX_FIELDS`), two recursive call sites, helpers for move scoring and
+selection, no literal arguments, compiles `search` in 19 s and everything in ~60 s.
+`agent.py` compiles the engine in a daemon thread and joins it for what is left of a 70 s
+budget measured from the start of the import; if the compile is not done the python
+engine plays (with a quarter of the time budget while the thread shares the GIL) and the
+compiled engine takes over at the first `get_move` after it is ready.
 
 numba caches compiled kernels on disk when the agent directory is writable
 (`_NUMBA_CACHE` in `agent.py`): the local harness starts a fresh process per game and,

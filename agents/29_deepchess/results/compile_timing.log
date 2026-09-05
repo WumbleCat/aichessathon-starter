@@ -1,0 +1,28 @@
+numba import 2.0s cpu (opt=3)
+compile piece_color: 1.1s cpu
+compile piece_type: 0.2s cpu
+compile make_move_code: 0.2s cpu
+compile is_attacked: 1.4s cpu
+compile gen_moves: 6.8s cpu
+compile feature_index: 0.3s cpu
+compile acc_add: 0.7s cpu
+compile acc_sub: 1.0s cpu
+compile acc_refresh: 1.2s cpu
+compile make_move: 7.0s cpu
+compile unmake_move: 0.9s cpu
+compile in_check: 1.0s cpu
+compile left_king_in_check: 0.8s cpu
+compile perft: 0.0s cpu
+dc_engine total 22.6s cpu
+compile is_repetition: 0.7s cpu
+compile make_null: 1.0s cpu
+compile unmake_null: 0.5s cpu
+compile hand_eval: 0.8s cpu
+compile evaluate_pos: 3.0s cpu
+compile has_non_pawn_material: 0.4s cpu
+compile mvv_lva: 0.5s cpu
+compile quiesce: 9.3s cpu
+compile search: 85.4s cpu
+dc_search total 101.5s cpu
+all: 1332.5s wall
+done
