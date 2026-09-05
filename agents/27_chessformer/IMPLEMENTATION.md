@@ -63,5 +63,26 @@ session; the six `shard_d3_s2000..2005` shards, 24.5k positions, survived). Sess
 - `agent.py` loads `models/chessformer.npz` (numpy only) or `models/chessformer.pt`;
   `train.py` writes both. (Session 1 pointed at a non-existent `.onnx`.)
 - `tests/run_tests.py` understands real pytest parametrize marks (pytest 9 is now in the venv).
-- Next: train on the growing data, integrate, paired arena vs the no-model engine
-  (`CF_USE_MODEL=0`), record in RESULTS.md, then package and size-check.
+- Training runs single-threaded (`--threads 1`; 4 threads is 10x slower on this box) with
+  file-mirror augmentation, label smoothing 0.05 and best-epoch checkpoints.
+- Models so far: `models/smoke_tiny` (3 epochs, 24k pos), `models/tiny_v1` (8 epochs, 40k pos,
+  val top-1 31 %, overfits from epoch 4). `models/chessformer.npz` is currently a copy of
+  smoke_tiny so that `agent.py` exercises the model path; replace it with the final model.
+- `training/match.py` = node-budgeted paired A/B (see RESULTS.md); logs in `results/match_*.log`,
+  summaries appended to `results/match_log.txt`.
+- Data generation keeps running detached (`training/launch_gen.ps1`, 4 workers, ~1-3 pos/s each
+  depending on load); shards accumulate in `training/data/`. Re-running the launcher skips
+  finished shards.
+
+### Remaining work
+
+1. When ~100k+ positions exist: train the final tiny model (64/2/4, smol 32) for ~6 epochs, and
+   try 96/4/4 if the node-budget matches say the tiny policy pays for itself.
+2. Pick `CF_POLICY_MIN_DEPTH` from the d3 vs d4 matches; consider using the value head at the
+   root children.
+3. Copy the chosen `.npz` to `models/chessformer.npz`, run `tests/run_tests.py`, a wall-clock
+   arena vs baselines and vs `variants/nomodel`, then package:
+   `python -m harness.package --include models/chessformer.npz` from the agent directory and
+   check the unzipped size.
+4. Merge `feature/agent-27-chessformer` into `main` with `--no-ff` (the branch is committed
+   from a worktree; the main working tree holds the same files untracked).
