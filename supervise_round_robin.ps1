@@ -10,7 +10,8 @@ param(
     [int]$Workers = 9,
     [int]$BaseMs = 10000,
     [int]$IncrementMs = 100,
-    [int]$PollSeconds = 120
+    [int]$PollSeconds = 120,
+    [int]$SnapshotEvery = 1000
 )
 
 $repo = "E:\sourcecode\ai-chess-original\aichessathon-starter"
@@ -41,10 +42,23 @@ function Get-Driver {
         Where-Object { $_.CommandLine -like '*round_robin.py*' -and $_.CommandLine -notlike '*spawn_main*' }
 }
 
+function Write-Snapshot($played) {
+    # standings the moment they were taken, plus a stable name for "the latest one"
+    $stamp = "{0:d5}" -f $played
+    & $python round_robin.py --report | Out-File -Encoding utf8 "$results\standings_$stamp.txt"
+    Copy-Item "$results\standings_$stamp.txt" "$results\standings_latest.txt" -Force
+    Write-Log "standings snapshot at $played games"
+}
+
 Write-Log "supervisor up, target $target games, $Workers workers"
+$nextSnapshot = 0
 
 while ($true) {
     $played = Get-Played
+    if ($played -ge $nextSnapshot) {
+        Write-Snapshot $played
+        $nextSnapshot = [math]::Ceiling(($played + 1) / $SnapshotEvery) * $SnapshotEvery
+    }
     if ($played -ge $target) {
         Write-Log "all $played games played, supervisor done"
         break
