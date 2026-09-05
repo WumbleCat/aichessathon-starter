@@ -979,23 +979,26 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     soft, hard = _time_budget_ms(board, time_left_ms)
     if _compiling():
-        # The compile thread holds the GIL for long stretches (LLVM), so a python search
-        # here is starved and overshoots its budget. Short clocks get an immediate move;
-        # otherwise wait for the compile for the soft budget, then search with what is left.
-        if time_left_ms < 3000:
-            best = _quick_move(board, moves)  # one static evaluation per move
+        # The compiler holds the GIL almost continuously (measured: one search node in
+        # 3 s), so a python search during the compile is useless. Spend the move's budget
+        # waiting for the compile instead, longer on the first moves of a fresh clock, and
+        # answer with the one-ply static pick if it is still not done.
+        if time_left_ms >= 3000:
+            wait_s = hard / 1000.0
+            if time_left_ms > 100_000:
+                wait_s = max(wait_s, 20.0)
+            assert _compile_thread is not None
+            _compile_thread.join(wait_s)
+            start = time.perf_counter()  # the search budget starts after the wait
+        if not _compiled_ready():
+            best = _quick_move(board, moves)
             _record_stats(board, start, 0, 0, searcher)
             return best.uci()
-        assert _compile_thread is not None
-        _compile_thread.join(soft / 1000.0)
     if ENGINE == "numba" and _compiled_ready():
         best = _get_move_numba(board, moves, start, soft, hard)
         if best not in moves:
             best = fallback
         return best.uci()
-    if _compiling():
-        soft *= 0.25
-        hard *= 0.25
     searcher.deadline = start + hard / 1000.0
     searcher.armed = True
     best = _quick_move(board, moves)
