@@ -339,6 +339,14 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=4, help="games in parallel")
     parser.add_argument("--engine", default=None, help="path to the Stockfish binary")
     parser.add_argument("--out", type=Path, default=DEFAULT_RESULTS)
+    parser.add_argument(
+        "--max-games",
+        type=int,
+        default=0,
+        help="play at most this many games this invocation, then exit. Short invocations "
+        "survive a machine whose low-memory watchdog kills long-lived background jobs; "
+        "nothing is lost either way, since every finished game is appended as it ends",
+    )
     parser.add_argument("--report", action="store_true", help="only print the table")
     parser.add_argument(
         "--redo-failures",
@@ -378,7 +386,10 @@ def main() -> None:
             for agent in agents
             if game_key(Job(agent, game, elo)) not in done
         ]
-        print(f"{len(done)} games already played, {len(pending)} to go")
+        remaining = len(pending)
+        if args.max_games > 0:
+            pending = pending[: args.max_games]
+        print(f"{len(done)} games already played, {remaining} to go, {len(pending)} this run")
         if pending:
             jobs = iter(pending)
             lock = threading.Lock()
