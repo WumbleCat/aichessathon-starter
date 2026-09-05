@@ -67,13 +67,23 @@ evaluation and swaps the compiled one in on the first `get_move` after it finish
 compiled code is cached under the system temp directory (`/tmp` on the platform), so a second
 process on the same machine starts in well under a second.
 
+numba does not create a user-provided cache directory, and a missing one makes every compile
+crash while the cache index is saved. `hce_eval` therefore creates the directory itself, compiles
+without a cache when that is impossible (or when `HCE_NO_CACHE=1`), and `agent.py` retries the
+import once uncached after any failure. With `HCE_INFO=1` the init line names the evaluation in
+use, so a fallback is visible in the validation log.
+
 ## Time management
 
-`soft = (time_left - 25 ms) / 28`, `hard = min(time_left / 4, 3 * soft)`. Depth 1 always runs
-unclocked so a move exists; deeper iterations stop when the soft budget is spent or when the
-next iteration would clearly not fit; the hard deadline aborts inside the search (clock checked
-every 32 nodes) and the board is unwound. Repetitions of any position already seen in the game
-(the harness sends bare FENs, so the agent keeps its own list) score as draws in the search.
+`soft = (time_left - 25 ms) / 28`, `hard = min(time_left / 4, 3 * soft)`. Before any search
+the best-ordered root move (transposition-table move, then the most valuable capture) is held
+as the answer, so every iteration including depth 1 runs under the hard deadline; a depth-1
+search with its quiescence tail can cost seconds on a slow evaluation or a loaded core. Deeper
+iterations stop when the soft budget is spent or when the next iteration would clearly not fit;
+the hard deadline aborts inside the search (clock checked every 32 nodes), the board is unwound,
+and an aborted iteration keeps its best fully-searched move when that beat the previous one.
+Repetitions of any position already seen in the game (the harness sends bare FENs, so the agent
+keeps its own list) score as draws in the search.
 
 ## Running
 
