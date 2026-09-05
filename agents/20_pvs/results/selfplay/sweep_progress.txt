@@ -4,3 +4,5 @@ P_FUTILITY exit 0
 P_RFP exit 0
 P_RAZOR exit 0
 P_LMP exit 0
+P_SEE_PRUNE_MAIN exit 0
+P_SEE_PRUNE_Q exit 0

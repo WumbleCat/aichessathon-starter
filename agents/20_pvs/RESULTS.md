@@ -79,6 +79,8 @@ expected outcome; a clearly negative one would mean a bug. 100 games give roughl
 | reverse futility pruning (`P_RFP`) | +46 =19 -35 | 55.5 % | +38 (-23..+102) | 841 s wall / 135 s cpu |
 | razoring (`P_RAZOR`) | +36 =28 -36 | 50.0 % | 0 (-59..+59) | neutral at fixed nodes; kept for the node saving |
 | late move pruning (`P_LMP`) | +38 =24 -38 | 50.0 % | 0 (-60..+60) | neutral at fixed nodes; kept for the node saving |
+| SEE pruning of losing captures in the main search (`P_SEE_PRUNE_MAIN`) | +39 =32 -29 | 55.0 % | +35 (-21..+93) | |
+| SEE pruning of losing captures in quiescence (`P_SEE_PRUNE_Q`) | +41 =30 -29 | 56.0 % | +42 (-15..+101) | |
 
 The sweep continues over the other toggles in `results/selfplay/off_<P_NAME>.log`.
 
