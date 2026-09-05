@@ -220,8 +220,13 @@ def run(
                 break
 
 
-def bradley_terry(records: list[dict[str, Any]], names: list[str]) -> dict[str, float]:
-    """Fit an Elo rating per agent by maximum likelihood, anchored to a mean of zero."""
+def bradley_terry(
+    records: list[dict[str, Any]], names: list[str]
+) -> tuple[dict[str, float], dict[str, float]]:
+    """Fit an Elo rating per agent by maximum likelihood, anchored to a mean of zero.
+
+    Returns the ratings and one standard error each.
+    """
     index = {name: i for i, name in enumerate(names)}
     scale = math.log(10.0) / 400.0
     # points[i][j] = points agent i took from agent j, games[i][j] = games between them
@@ -259,7 +264,20 @@ def bradley_terry(records: list[dict[str, Any]], names: list[str]) -> dict[str, 
         rating = [value - mean for value in rating]
         if step < 1e-6:
             break
-    return dict(zip(names, rating, strict=True))
+
+    # one standard error per rating, from the curvature of the likelihood at the fit; it treats
+    # the other ratings as known, so it is a floor on the real uncertainty rather than the whole
+    error = []
+    for i in range(len(names)):
+        chance = expected(rating[i], 0.0, scale)
+        curvature = prior * chance * (1.0 - chance)
+        for j in range(len(names)):
+            if counts[i][j] == 0.0:
+                continue
+            chance = expected(rating[i], rating[j], scale)
+            curvature += counts[i][j] * chance * (1.0 - chance)
+        error.append(1.0 / (scale * math.sqrt(max(curvature, 1e-12))))
+    return dict(zip(names, rating, strict=True)), dict(zip(names, error, strict=True))
 
 
 def expected(mine: float, theirs: float, scale: float) -> float:
@@ -303,7 +321,7 @@ def report(path: Path, names: list[str]) -> None:
             black = record["right"] if record["white"] == record["left"] else record["left"]
             faults[black if record["result"] == "white" else record["white"]] += 1
 
-    ratings = bradley_terry(records, names)
+    ratings, errors = bradley_terry(records, names)
     played = {name: wins[name] + draws[name] + losses[name] for name in names}
     scored = {name: wins[name] + draws[name] / 2 for name in names}
     order = sorted(names, key=lambda n: (-(scored[n] / max(played[n], 1)), n))
@@ -311,7 +329,7 @@ def report(path: Path, names: list[str]) -> None:
     print(f"\n{len(records)} games played\n")
     header = (
         f"{'#':>3} {'agent':22} {'games':>6} {'W':>5} {'D':>5} {'L':>5}"
-        f" {'score':>7} {'elo':>7} {'faults':>7}"
+        f" {'score':>7} {'elo':>7} {'+-':>5} {'faults':>7}"
     )
     print(header)
     print("-" * len(header))
@@ -319,7 +337,8 @@ def report(path: Path, names: list[str]) -> None:
         rate = scored[name] / max(played[name], 1)
         print(
             f"{rank:>3} {name:22} {played[name]:>6} {wins[name]:>5} {draws[name]:>5}"
-            f" {losses[name]:>5} {rate:>6.1%} {ratings[name]:>+7.0f} {faults[name]:>7}"
+            f" {losses[name]:>5} {rate:>6.1%} {ratings[name]:>+7.0f} {errors[name]:>5.0f}"
+            f" {faults[name]:>7}"
         )
 
     print("\ncross table, row's score against column, in percent")

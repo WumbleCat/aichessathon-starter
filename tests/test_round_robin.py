@@ -43,20 +43,20 @@ class EloFitTest(unittest.TestCase):
         true_elo = {f"a{i}": value for i, value in enumerate([-600, -300, -100, 0, 150, 400, 700])}
         centred = sum(true_elo.values()) / len(true_elo)
         records = simulate(true_elo, 100, seed=7)
-        fitted = bradley_terry(records, list(true_elo))
+        fitted, _ = bradley_terry(records, list(true_elo))
         for name, value in true_elo.items():
             self.assertAlmostEqual(fitted[name], value - centred, delta=90, msg=f"{name} {fitted}")
 
     def test_order_is_preserved(self) -> None:
         true_elo = {f"a{i}": i * 120.0 for i in range(10)}
         records = simulate(true_elo, 60, seed=11)
-        fitted = bradley_terry(records, list(true_elo))
+        fitted, _ = bradley_terry(records, list(true_elo))
         order = sorted(fitted, key=lambda n: fitted[n])
         self.assertEqual(order, list(true_elo))
 
     def test_stable_with_two_games(self) -> None:
         records = simulate({"a": 0.0, "b": 0.0, "c": 0.0}, 2, seed=3)
-        fitted = bradley_terry(records, ["a", "b", "c"])
+        fitted, _ = bradley_terry(records, ["a", "b", "c"])
         for value in fitted.values():
             self.assertTrue(math.isfinite(value) and abs(value) < 1500, fitted)
 
@@ -71,7 +71,7 @@ class EloFitTest(unittest.TestCase):
             }
             for g in range(100)
         ]
-        fitted = bradley_terry(records, ["a", "b"])
+        fitted, _ = bradley_terry(records, ["a", "b"])
         self.assertTrue(math.isfinite(fitted["a"]))
         self.assertGreater(fitted["a"], fitted["b"])
 
@@ -194,3 +194,19 @@ class ReportTest(unittest.TestCase):
         faulted = [line for line in rows_out if line.rstrip().endswith("3")]
         self.assertEqual(len(faulted), 1, buffer.getvalue())
         self.assertIn("b", faulted[0].split()[1])
+
+
+class ErrorBarTest(unittest.TestCase):
+    def test_error_shrinks_as_games_are_added(self) -> None:
+        true_elo = {"a": 0.0, "b": 100.0, "c": 200.0}
+        _, few = bradley_terry(simulate(true_elo, 4, seed=5), list(true_elo))
+        _, many = bradley_terry(simulate(true_elo, 400, seed=5), list(true_elo))
+        for name in true_elo:
+            self.assertLess(many[name], few[name] / 5.0, f"{name} {few} {many}")
+
+    def test_error_is_finite_and_positive(self) -> None:
+        records = simulate({"a": 0.0, "b": 0.0}, 2, seed=1)
+        _, errors = bradley_terry(records, ["a", "b"])
+        for value in errors.values():
+            self.assertGreater(value, 0.0)
+            self.assertTrue(math.isfinite(value))
