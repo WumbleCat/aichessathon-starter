@@ -1,0 +1,12 @@
+loaded 6 shards, 24555 positions
+config {'dim': 64, 'layers': 2, 'heads': 4, 'mlp_ratio': 2, 'smol_dim': 16, 'smol_hidden': 32, 'policy_dim': 64} params 0.69M
+{"epoch": 1, "train_policy": 5.582002613606603, "train_value": 0.33175529942263954, "policy_loss": 4.429157782494779, "value_mse": 0.186816954671025, "top1": 0.12795436022819887, "top3": 0.25835370823145887, "elapsed_s": 83.03735971450806}
+saved models\smoke_tiny.pt (2.8 MB)
+saved models\smoke_tiny.npz (2.8 MB)
+{{"epoch": 2, "train_policy": 3.964676611708025, "train_value": 0.12023166314646377, "policy_loss": 3.9836041264739968, "value_mse": 0.09662148616327536, "top1": 0.18337408312958436, "top3": 0.35207823960880197, "elapsed_s": 1972.7051067352295}
+saved models/smoke_tiny.pt (2.8 MB)
+saved models/smoke_tiny.npz (7.1 MB)
+epoch 3 step 200/276 policy 3.451 value 0.0935 lr 2.52e-04 2371s
+{"epoch": 3, "train_policy": 3.3361802836995067, "train_value": 0.09061703008225262, "policy_loss": 3.8420735975543754, "value_mse": 0.09066683078259108, "top1": 0.21271393643031786, "top3": 0.39119804400978, "elapsed_s": 4761.928197860718}
+saved models/smoke_tiny.pt (2.8 MB)
+saved models/smoke_tiny.npz (7.1 MB)

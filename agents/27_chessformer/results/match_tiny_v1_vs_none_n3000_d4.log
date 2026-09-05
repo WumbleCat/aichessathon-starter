@@ -1,0 +1,16 @@
+engine 15860 nodes/s (cpu), network 3.9 ms -> policy cost 62 nodes
+pair 1/10: A +1 =0 -1 score 50.0% elo -0 (255s)
+pair 2/10: A +1 =0 -3 score 25.0% elo -191 (654s)
+pair 3/10: A +2 =0 -4 score 33.3% elo -120 (1037s)
+pair 4/10: A +3 =0 -5 score 37.5% elo -89 (1317s)
+pair 5/10: A +3 =1 -6 score 35.0% elo -108 (1819s)
+pair 6/10: A +5 =1 -6 score 45.8% elo -29 (1988s)
+pair 7/10: A +6 =1 -7 score 46.4% elo -25 (2210s)
+pair 8/10: A +7 =1 -8 score 46.9% elo -22 (2613s)
+pair 9/10: A +8 =1 -9 score 47.2% elo -19 (3180s)
+pair 10/10: A +8 =2 -10 score 45.0% elo -35 (3807s)
+A=models\tiny_v1.npz B=none nodes=3000 min_depth=4 policy_cost=62 pairs=10 seed=12
+A: +8 =2 -10 score 45.0% elo -35 [-208, +121]
+A per move: cpu 159 ms, nodes 2363, depth 3.18, policy calls 1.6
+B per move: cpu 156 ms, nodes 2324, depth 3.30, policy calls 0.0
+

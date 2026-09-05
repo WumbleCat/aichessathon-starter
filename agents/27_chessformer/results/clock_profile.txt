@@ -1,0 +1,1 @@
+import 1.0s; 60 moves at 120000+500 ms: median 2443 ms, p95 4200 ms, p99 4413 ms, max 4413 ms; clocks left W 59145 B 59499

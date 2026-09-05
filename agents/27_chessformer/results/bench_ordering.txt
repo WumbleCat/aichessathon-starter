@@ -1,0 +1,38 @@
+model models\tiny_v1.npz depth 5 positions 40
+no model: nodes 427057 cpu 27.4s (15609 nodes/s); network 10.9 ms = 171 nodes per call
+min_depth 3: raw nodes 423345 (0.99x), charged 983883 (2.30x), cpu 57.3s (2.10x), calls 3278 (82.0/pos), same best move 34/40
+min_depth 4: raw nodes 427544 (1.00x), charged 605213 (1.42x), cpu 41.2s (1.50x), calls 1039 (26.0/pos), same best move 32/40
+min_depth 5: raw nodes 420301 (0.98x), charged 439282 (1.03x), cpu 28.1s (1.03x), calls 111 (2.8/pos), same best move 38/40
+
+model models\tiny_v1.npz depth 5 positions 40
+no model: nodes 427057 cpu 25.7s (16645 nodes/s); network 8.9 ms; charging 60 nodes per call
+min_depth 3 rel_depth 64: raw nodes 423167 (0.99x), charged 622187 (1.46x), cpu 67.5s (2.63x), calls 3317 (82.9/pos), same best move 33/40
+
+model models\tiny_v1.npz depth 5 positions 40
+no model: nodes 427057 cpu 27.0s (15799 nodes/s); network 8.9 ms; charging 60 nodes per call
+min_depth 3 rel_depth 2: raw nodes 423167 (0.99x), charged 622187 (1.46x), cpu 73.5s (2.72x), calls 3317 (82.9/pos), same best move 33/40
+
+model models\tiny_v2.npz depth 5 positions 40
+no model: nodes 427057 cpu 33.8s (12636 nodes/s); network 6.8 ms; charging 60 nodes per call
+min_depth 3 rel_depth 0: raw nodes 429839 (1.01x), charged 436919 (1.02x), cpu 29.5s (0.87x), calls 118 (3.0/pos), same best move 34/40
+
+model models\tiny_v2.npz depth 6 positions 16
+no model: nodes 364548 cpu 30.2s (12070 nodes/s); network 11.5 ms; charging 60 nodes per call
+min_depth 3 rel_depth 2: raw nodes 327540 (0.90x), charged 415140 (1.14x), cpu 39.4s (1.30x), calls 1460 (91.2/pos), same best move 11/16
+
+model models\tiny_v2.npz depth 5 positions 40
+no model: nodes 427057 cpu 36.7s (11645 nodes/s); network 10.4 ms; charging 60 nodes per call
+min_depth 3 rel_depth 2: raw nodes 428856 (1.00x), charged 623916 (1.46x), cpu 62.6s (1.71x), calls 3251 (81.3/pos), same best move 32/40
+
+model models\tiny_v2.npz depth 5 positions 40
+no model: nodes 427057 cpu 34.8s (12267 nodes/s); network 3.6 ms; charging 60 nodes per call
+min_depth 3 rel_depth 64: raw nodes 428856 (1.00x), charged 623916 (1.46x), cpu 64.8s (1.86x), calls 3251 (81.3/pos), same best move 32/40
+
+model models\tiny_v2.npz depth 7 positions 8
+no model: nodes 345139 cpu 22.5s (15308 nodes/s); network 8.3 ms; charging 60 nodes per call
+min_depth 4 rel_depth 1: raw nodes 343936 (1.00x), charged 357076 (1.03x), cpu 25.8s (1.14x), calls 219 (27.4/pos), same best move 5/8
+
+model models\tiny_v2.npz depth 6 positions 16
+no model: nodes 364548 cpu 22.4s (16259 nodes/s); network 11.5 ms; charging 60 nodes per call
+min_depth 4 rel_depth 1: raw nodes 392931 (1.08x), charged 423291 (1.16x), cpu 29.5s (1.32x), calls 506 (31.6/pos), same best move 11/16
+

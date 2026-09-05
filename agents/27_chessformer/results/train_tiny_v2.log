@@ -1,0 +1,30 @@
+loaded 14 shards, 57331 positions
+config {'dim': 64, 'layers': 2, 'heads': 4, 'mlp_ratio': 2, 'smol_dim': 16, 'smol_hidden': 32, 'policy_dim': 64} params 0.69M
+epoch 1 step 200/1278 policy 5.641 value 0.2702 lr 9.91e-04 311s
+{"epoch": 1, "train_policy": 5.561881877274418, "train_value": 0.26138603625509416, "policy_loss": 3.9277981360808836, "value_mse": 0.10563770009351625, "top1": 0.16399162595952546, "top3": 0.3325191905094208, "elapsed_s": 339.49004197120667}
+saved models\tiny_v2_last.npz (2.8 MB)
+saved models\tiny_v2.pt (2.8 MB, best)
+saved models\tiny_v2.npz (2.8 MB)
+epoch 2 step 400/1278 policy 3.750 value 0.1089 lr 8.74e-04 631s
+{"epoch": 2, "train_policy": 3.7111072166185126, "train_value": 0.10774870985611229, "policy_loss": 3.0273577629563198, "value_mse": 0.10896054365713116, "top1": 0.2773900907187718, "top3": 0.4989532449406839, "elapsed_s": 678.2120532989502}
+saved models\tiny_v2_last.npz (2.8 MB)
+saved models\tiny_v2.pt (2.8 MB, best)
+saved models\tiny_v2.npz (2.8 MB)
+epoch 3 step 600/1278 policy 3.161 value 0.0878 lr 6.56e-04 951s
+{"epoch": 3, "train_policy": 3.143245043579917, "train_value": 0.08735223564808443, "policy_loss": 2.6926665216247603, "value_mse": 0.08058074863324695, "top1": 0.32309839497557574, "top3": 0.5603628750872296, "elapsed_s": 1020.3043260574341}
+saved models\tiny_v2_last.npz (2.8 MB)
+saved models\tiny_v2.pt (2.8 MB, best)
+saved models\tiny_v2.npz (2.8 MB)
+epoch 4 step 800/1278 policy 2.836 value 0.0829 lr 4.00e-04 1252s
+{"epoch": 4, "train_policy": 2.819887706910153, "train_value": 0.08227363732302034, "policy_loss": 2.590238476664722, "value_mse": 0.08930454467113252, "top1": 0.3314724354501047, "top3": 0.5760642009769714, "elapsed_s": 1330.897884130478}
+saved models\tiny_v2_last.npz (2.8 MB)
+saved models\tiny_v2.pt (2.8 MB, best)
+saved models\tiny_v2.npz (2.8 MB)
+epoch 5 step 1000/1278 policy 2.600 value 0.0744 lr 1.80e-04 1561s
+{"epoch": 5, "train_policy": 2.5938747006430942, "train_value": 0.0739077902526651, "policy_loss": 2.569814890976644, "value_mse": 0.07333222287398324, "top1": 0.34542916957431963, "top3": 0.5921144452198186, "elapsed_s": 1687.3498177528381}
+saved models\tiny_v2_last.npz (2.8 MB)
+saved models\tiny_v2.pt (2.8 MB, best)
+saved models\tiny_v2.npz (2.8 MB)
+epoch 6 step 1200/1278 policy 2.455 value 0.0705 lr 6.07e-05 1905s
+{"epoch": 6, "train_policy": 2.451283214265821, "train_value": 0.07079685612887836, "policy_loss": 2.5726711701781118, "value_mse": 0.07325322230379647, "top1": 0.34473133286810886, "top3": 0.59351011863224, "elapsed_s": 2030.917275428772}
+saved models\tiny_v2_last.npz (2.8 MB)
