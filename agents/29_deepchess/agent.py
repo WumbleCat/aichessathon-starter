@@ -14,10 +14,14 @@ present. Both evaluations share the same kernel signature, so the search never c
 from __future__ import annotations
 
 import os
+import threading
 import time
 from pathlib import Path
+from typing import Any
 
-import chess
+_IMPORT_START = time.perf_counter()
+
+import chess  # noqa: E402
 import numpy as np
 from numba import njit, uint64, int64, float32, int32
 
@@ -32,6 +36,14 @@ DRAW = 0
 MAX_PLY = 64
 
 PIECE_VALUE = np.array([0, 100, 320, 330, 500, 900, 20000], dtype=np.int32)
+
+# numba can keep compiled kernels on disk so a second import skips compilation. That only
+# helps where the agent directory (or NUMBA_CACHE_DIR) is writable: the local harness spawns
+# a fresh process per game, and under machine load a cold compile can exceed the 90 s init
+# budget. The platform's filesystem is read-only apart from /tmp, so the cache is skipped
+# there unless it points the cache directory somewhere writable.
+_NUMBA_CACHE = bool(os.environ.get("NUMBA_CACHE_DIR")) or os.access(
+    os.path.dirname(os.path.abspath(__file__)), os.W_OK)
 
 # Handcrafted piece-square tables, White's point of view, a1 = index 0. Written for this
 # engine; they only exist so the search can play before a model is trained and to give
@@ -120,7 +132,7 @@ for _i, _t in enumerate(
 
 
 @njit(int64(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, int64, int32[:, :]),
-      cache=False, nogil=True)
+      cache=_NUMBA_CACHE, nogil=True)
 def eval_handcrafted(pawns, knights, bishops, rooks, queens, kings, wocc, bocc, turn, pst):
     """Material + piece-square evaluation, side to move perspective, centipawns."""
     occ = wocc | bocc
@@ -177,7 +189,7 @@ def eval_handcrafted(pawns, knights, bishops, rooks, queens, kings, wocc, bocc, 
 
 
 @njit(int64(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, int64, uint64, int64,
-            int32[:, :]), cache=False, nogil=True)
+            int32[:, :]), cache=_NUMBA_CACHE, nogil=True)
 def features_to_indices(pawns, knights, bishops, rooks, queens, kings, wocc, bocc, turn,
                         castling, ep_flag, out):
     """Fill out[0, :] with active feature indices (side-to-move perspective); return count."""
@@ -237,7 +249,7 @@ def features_to_indices(pawns, knights, bishops, rooks, queens, kings, wocc, boc
 @njit(int64(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, int64, uint64, int64,
             float32[:, :], float32[:], float32[:, :], float32[:], float32[:, :], float32[:],
             float32[:], float32[:], float32[:], float32[:], float32[:]),
-      cache=False, nogil=True)
+      cache=_NUMBA_CACHE, nogil=True)
 def eval_network(pawns, knights, bishops, rooks, queens, kings, wocc, bocc, turn, castling,
                  ep_flag, w1, b1, w2, b2, w3, b3, w4, b4, acc, h2, h3):
     """DeepChess scalar head: 773 sparse binary features -> 256 -> 32 -> 32 -> 1.
@@ -714,6 +726,166 @@ class Searcher:
 
 
 # ---------------------------------------------------------------------------------------
+# Compiled engine driver (dc_engine + dc_search): the same search, ~50x the nodes/s
+# ---------------------------------------------------------------------------------------
+
+ENGINE = os.environ.get("DEEPCHESS_ENGINE", "numba")  # numba | python
+_MODE_CODE = {"auto": 0, "net": 0, "hand": 1, "blend": 2}
+
+
+def _move_code(board: chess.Board, move: chess.Move) -> int:
+    """Encode a python-chess move the way dc_engine expects it."""
+    flags = 0
+    if board.is_en_passant(move):
+        flags |= dc_engine.F_CAPTURE | dc_engine.F_EP
+    elif board.is_capture(move):
+        flags |= dc_engine.F_CAPTURE
+    if board.is_castling(move):
+        flags |= dc_engine.F_CASTLE
+    if (board.piece_type_at(move.from_square) == chess.PAWN
+            and abs(move.to_square - move.from_square) == 16):
+        flags |= dc_engine.F_DOUBLE
+    promo = move.promotion or 0
+    return move.from_square | (move.to_square << 6) | (promo << 12) | (flags << 16)
+
+
+class NumbaSearcher:
+    """Owns the arrays of one compiled search and runs the root move loop."""
+
+    def __init__(self, model: dict[str, np.ndarray]) -> None:
+        self.model = model
+        hidden = int(model["w1"].shape[1])
+        self.pos = dc_engine.Position(hidden)
+        self.mscore = np.zeros(dc_engine.MOVE_STACK, dtype=np.int64)
+        self.work = np.zeros(dc_search.WORK_SIZE, dtype=np.float32)
+        self.params = np.zeros(dc_search.PARAMS_SIZE, dtype=np.int64)
+        self.stats = np.zeros(dc_search.STATS_SIZE, dtype=np.int64)
+        self.stop = np.zeros(1, dtype=np.int64)
+        self.tt_key = np.zeros(dc_search.TT_SIZE, dtype=np.uint64)
+        self.tt_data = np.zeros(dc_search.TT_SIZE, dtype=np.int64)
+        self.killers = np.zeros((dc_engine.MAX_PLY + 2, 2), dtype=np.int32)
+        self.history = np.zeros((2, 64, 64), dtype=np.int64)
+        self.game_hashes: list[int] = []
+        self.nps_estimate = 200_000.0
+
+    def new_game(self) -> None:
+        self.tt_key[:] = 0
+        self.history[:] = 0
+        self.game_hashes = []
+
+    def _args(self) -> tuple:
+        m = self.model
+        p = self.pos
+        return (p.board, p.state, p.hash, p.undo, p.moves, self.mscore, p.acc, m["w1"], m["b1"],
+                m["w2"], m["b2"], m["w3"], m["b3"], m["w4"], m["b4"], p.hist, self.work, PST,
+                self.params, self.stats, self.stop, dc_engine.KNIGHT_T, dc_engine.KING_T,
+                dc_engine.BISHOP_RAYS, dc_engine.ROOK_RAYS, dc_engine.PAWN_ATTACKERS,
+                dc_engine.ZOBRIST, dc_engine.Z_CASTLE, dc_engine.Z_EP, dc_engine.CASTLE_MASK,
+                self.tt_key, self.tt_data, self.killers, self.history)
+
+    def prepare(self, board: chess.Board, max_nodes: int) -> None:
+        m = self.model
+        self.pos.set_board(board, m["w1"], m["b1"], self.game_hashes)
+        self.game_hashes.append(int(self.pos.hash[0]))
+        self.params[dc_search.P_MODE] = _MODE_CODE.get(EVAL_MODE, 0)
+        self.params[dc_search.P_BLEND] = int(round(BLEND_NET_WEIGHT * 100))
+        self.killers[:] = 0
+        self.history //= 2
+        self.stats[:] = 0
+        self.stats[dc_search.ST_MAX_NODES] = max_nodes
+        self.stop[0] = 0
+
+    def evaluate(self, board: chess.Board) -> int:
+        """Static evaluation of a python-chess board through the compiled kernels."""
+        m = self.model
+        self.pos.set_board(board, m["w1"], m["b1"], None)
+        self.params[dc_search.P_MODE] = _MODE_CODE.get(EVAL_MODE, 0)
+        self.params[dc_search.P_BLEND] = int(round(BLEND_NET_WEIGHT * 100))
+        p = self.pos
+        return int(dc_search.evaluate_pos(
+            p.board, p.state, p.acc[0], m["w1"], m["b1"], m["w2"], m["b2"], m["w3"], m["b3"],
+            m["w4"], m["b4"], self.work, PST, self.params))
+
+    def search_root(self, depth: int, root_moves: list[tuple[int, chess.Move]],
+                    ) -> tuple[int, chess.Move, list[tuple[int, chess.Move]]]:
+        """One iteration: (score, best move, root moves ordered best first)."""
+        args = self._args()
+        p = self.pos
+        m = self.model
+        alpha, beta = -INF, INF
+        best = -INF
+        best_move = root_moves[0][1]
+        scored: list[tuple[int, int, chess.Move]] = []
+        stats = self.stats
+
+        def child(code: int, lo: int, hi: int) -> int:
+            dc_engine.make_move(p.board, p.state, p.hash, code, p.undo, p.acc, m["w1"], m["b1"],
+                                dc_engine.ZOBRIST, dc_engine.Z_CASTLE, dc_engine.Z_EP,
+                                dc_engine.Z_SIDE, dc_engine.CASTLE_MASK, p.hist)
+            score = -dc_search.search(*args, depth - 1, -hi, -lo, 1, True)
+            dc_engine.unmake_move(p.board, p.state, p.hash, p.undo)
+            return int(score)
+
+        for i, (code, move) in enumerate(root_moves):
+            if i == 0:
+                score = child(code, alpha, beta)
+            else:
+                score = child(code, alpha, alpha + 1)
+                if score > alpha and stats[dc_search.ST_ABORT] == 0:
+                    score = child(code, alpha, beta)
+            if stats[dc_search.ST_ABORT] != 0:
+                raise OutOfTime()
+            scored.append((int(score), code, move))
+            if score > best:
+                best = int(score)
+                best_move = move
+                if score > alpha:
+                    alpha = int(score)
+        scored.sort(key=lambda t: t[0], reverse=True)
+        return best, best_move, [(c, m) for _, c, m in scored]
+
+
+dc_engine: Any = None
+dc_search: Any = None
+_numba_searcher: NumbaSearcher | None = None
+_compile_thread: threading.Thread | None = None
+_compile_error: BaseException | None = None
+# how long import waits for the compile; the rest of the budget covers numba's own import
+# and the python-path kernels. On the platform's idle core the compile finishes well inside
+# this, locally under load the python engine plays until the thread is done.
+NUMBA_WAIT_S = float(os.environ.get("DEEPCHESS_NUMBA_WAIT", "70"))
+
+
+def _compile_engine() -> None:
+    """Import (and so compile) the engine modules, then warm them up with one search."""
+    global dc_engine, dc_search, _numba_searcher, _compile_error
+    try:
+        import dc_engine as engine_module
+        import dc_search as search_module
+
+        dc_engine = engine_module
+        dc_search = search_module
+        assert _MODEL is not None
+        ns = NumbaSearcher(_MODEL)
+        warm = chess.Board()
+        ns.prepare(warm, max_nodes=5000)
+        ns.search_root(2, [(_move_code(warm, mv), mv) for mv in warm.legal_moves])
+        ns.new_game()
+        _numba_searcher = ns
+    except BaseException as exc:  # noqa: BLE001 - any failure means the python engine plays
+        _compile_error = exc
+        print(f"compiled engine unavailable: {exc!r}")
+
+
+def _compiled_ready() -> bool:
+    return _numba_searcher is not None
+
+
+def _compiling() -> bool:
+    return _compile_thread is not None and _compile_thread.is_alive()
+
+
+# ---------------------------------------------------------------------------------------
 # Game state and time management
 # ---------------------------------------------------------------------------------------
 
@@ -730,9 +902,13 @@ def _reset_game_if_needed(board: chess.Board) -> None:
     if board.fullmove_number <= 1 and len(_game_history) > 2:
         _game_history = {}
         _searcher = Searcher()
+        if _numba_searcher is not None:
+            _numba_searcher.new_game()
     elif board.fullmove_number == 1 and board.turn == chess.WHITE:
         _game_history = {}
         _searcher = Searcher()
+        if _numba_searcher is not None:
+            _numba_searcher.new_game()
 
 
 def _time_budget_ms(board: chess.Board, time_left_ms: int) -> tuple[float, float]:
@@ -799,6 +975,15 @@ def get_move(fen: str, time_left_ms: int) -> str:
         return best.uci()
 
     soft, hard = _time_budget_ms(board, time_left_ms)
+    if ENGINE == "numba" and _compiled_ready():
+        best = _get_move_numba(board, moves, start, soft, hard)
+        if best not in moves:
+            best = fallback
+        return best.uci()
+    if _compiling():
+        # the compile thread shares the GIL with this search: spend less and check often
+        soft *= 0.25
+        hard *= 0.25
     searcher.deadline = start + hard / 1000.0
     searcher.armed = True
     best = _quick_move(board, moves)
@@ -827,6 +1012,65 @@ def get_move(fen: str, time_left_ms: int) -> str:
     if best not in moves:
         best = fallback
     return best.uci()
+
+
+def _get_move_numba(board: chess.Board, moves: list[chess.Move], start: float,
+                    soft: float, hard: float) -> chess.Move:
+    """Iterative deepening on the compiled engine with a timer-driven stop flag."""
+    import threading
+
+    ns = _numba_searcher
+    assert ns is not None
+    hard_s = hard / 1000.0
+    # node cap as a backstop should the timer thread be starved
+    ns.prepare(board, max_nodes=int(max(20_000, ns.nps_estimate * hard_s * 3)))
+    root_moves = [(_move_code(board, m), m) for m in moves]
+    best = moves[0]
+    best_score = 0
+    depth_reached = 0
+    timer = threading.Timer(hard_s, ns.stop.__setitem__, (0, 1))
+    timer.daemon = True
+    timer.start()
+    try:
+        for depth in range(1, dc_engine.MAX_PLY - 4):
+            try:
+                score, move, root_moves = ns.search_root(depth, root_moves)
+            except OutOfTime:
+                break
+            best, best_score = move, score
+            depth_reached = depth
+            elapsed = (time.perf_counter() - start) * 1000.0
+            if abs(score) > MATE_BOUND and depth >= 4:
+                break
+            if elapsed > soft:
+                break
+            if elapsed * 2.5 > hard:
+                break
+            if time.perf_counter() >= start + hard_s:
+                break
+    finally:
+        timer.cancel()
+    if depth_reached == 0:
+        best = _quick_move(board, moves)
+    elapsed = time.perf_counter() - start
+    nodes = int(ns.stats[dc_search.ST_NODES])
+    if elapsed > 0.05 and nodes > 1000:
+        ns.nps_estimate = 0.5 * ns.nps_estimate + 0.5 * nodes / elapsed
+    STATS.update({
+        "depth": depth_reached,
+        "seldepth": int(ns.stats[dc_search.ST_SELDEPTH]),
+        "score": best_score,
+        "nodes": nodes,
+        "qnodes": int(ns.stats[dc_search.ST_QNODES]),
+        "tt_hits": int(ns.stats[dc_search.ST_TT_HITS]),
+        "time_ms": elapsed * 1000.0,
+        "nps": nodes / elapsed if elapsed > 0 else 0.0,
+    })
+    if os.environ.get("DEEPCHESS_VERBOSE"):
+        print(f"[numba] depth {depth_reached}/{STATS['seldepth']} score {best_score} "
+              f"nodes {nodes} qnodes {STATS['qnodes']} tt {STATS['tt_hits']} "
+              f"time {elapsed * 1000:.0f}ms nps {STATS['nps']:.0f}")
+    return best
 
 
 def _remember(board: chess.Board) -> None:
@@ -873,3 +1117,17 @@ if _MODEL is not None:
                  _warm.castling_rights, 0, _m["w1"], _m["b1"], _m["w2"], _m["b2"], _m["w3"],
                  _m["b3"], _m["w4"], _m["b4"], _ACC, _H2, _H3)
 del _warm
+if ENGINE == "numba" and _MODEL is not None:
+    # the compiled engine needs weights; compile it in a thread and wait a bounded time so
+    # the process is always ready inside the init budget. Every kernel has an explicit
+    # signature, so importing the modules compiles everything; the thread then runs one
+    # shallow search before publishing the searcher.
+    _compile_thread = threading.Thread(target=_compile_engine, name="dc-compile", daemon=True)
+    _compile_thread.start()
+    # the wait is measured from the start of the import so numba's own import and the
+    # python-path kernels (slow on a loaded machine) count against the same budget
+    _wait = max(5.0, NUMBA_WAIT_S - (time.perf_counter() - _IMPORT_START))
+    _compile_thread.join(_wait)
+    if _compiling():
+        print(f"compiled engine not ready {time.perf_counter() - _IMPORT_START:.0f}s into "
+              "the import; the python engine plays until it is")

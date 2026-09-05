@@ -19,6 +19,22 @@ from __future__ import annotations
 import numpy as np
 from numba import njit, uint64, int64, int32, int8, float32, boolean
 
+
+import os as _os
+import time as _time
+
+_TIMING = bool(_os.environ.get("DEEPCHESS_COMPILE_TIMING"))
+_t_last = _time.process_time()
+
+
+def _mark(name: str) -> None:
+    """Print the CPU seconds spent compiling since the previous mark (opt-in)."""
+    global _t_last
+    if _TIMING:
+        now = _time.process_time()
+        print(f"compile {name}: {now - _t_last:.1f}s cpu", flush=True)
+        _t_last = now
+
 # ------------------------------------------------------------------------------ constants
 
 WHITE, BLACK = 0, 1
@@ -134,16 +150,22 @@ def piece_color(p):
     return 0 if p <= 6 else 1
 
 
+_mark("piece_color")
+
 @njit(int64(int64), cache=False, nogil=True, inline="always")
 def piece_type(p):
     """0 pawn .. 5 king (p must be non-empty)."""
     return (p - 1) % 6
 
 
+_mark("piece_type")
+
 @njit(int32(int64, int64, int64, int64), cache=False, nogil=True, inline="always")
 def make_move_code(frm, to, promo, flags):
     return int32(frm | (to << 6) | (promo << 12) | (flags << 16))
 
+
+_mark("make_move_code")
 
 @njit(boolean(int8[:], int64, int64, int64[:, :], int64[:, :], int64[:, :, :], int64[:, :, :],
               int64[:, :, :]), cache=False, nogil=True)
@@ -193,6 +215,8 @@ def is_attacked(board, sq, by_color, knight_t, king_t, bishop_rays, rook_rays, p
                 break
     return False
 
+
+_mark("is_attacked")
 
 @njit(int64(int8[:], int64[:], int32[:], int64, boolean, int64[:, :], int64[:, :],
             int64[:, :, :], int64[:, :, :], int64[:, :, :]), cache=False, nogil=True)
@@ -351,6 +375,8 @@ def gen_moves(board, state, out, start, captures_only, knight_t, king_t, bishop_
     return n
 
 
+_mark("gen_moves")
+
 # ---------------------------------------------------------------- accumulator (NN layer 1)
 
 
@@ -363,6 +389,8 @@ def feature_index(piece, sq, perspective):
     return (pt * 2 + ours) * 64 + (sq ^ flip)
 
 
+_mark("feature_index")
+
 @njit((float32[:, :], float32[:, :], float32[:], int64, int64), cache=False, nogil=True,
       inline="always")
 def acc_add(acc, w1, b1, piece, sq):
@@ -373,6 +401,8 @@ def acc_add(acc, w1, b1, piece, sq):
         acc[0, j] += w1[i0, j]
         acc[1, j] += w1[i1, j]
 
+
+_mark("acc_add")
 
 @njit((float32[:, :], float32[:, :], float32[:], int64, int64), cache=False, nogil=True,
       inline="always")
@@ -385,6 +415,8 @@ def acc_sub(acc, w1, b1, piece, sq):
         acc[1, j] -= w1[i1, j]
 
 
+_mark("acc_sub")
+
 @njit((int8[:], float32[:, :], float32[:, :], float32[:]), cache=False, nogil=True)
 def acc_refresh(board, acc, w1, b1):
     n = acc.shape[1]
@@ -396,6 +428,8 @@ def acc_refresh(board, acc, w1, b1):
         if p != 0:
             acc_add(acc, w1, b1, p, sq)
 
+
+_mark("acc_refresh")
 
 # ------------------------------------------------------------------------- make / unmake
 
@@ -511,6 +545,8 @@ def make_move(board, state, hash_arr, move, undo, acc_stack, w1, b1, zobrist, z_
     state[S_HIST_LEN] += 1
 
 
+_mark("make_move")
+
 @njit((int8[:], int64[:], uint64[:], int64[:, :]), cache=False, nogil=True)
 def unmake_move(board, state, hash_arr, undo):
     ply = state[S_PLY] - 1
@@ -555,6 +591,8 @@ def unmake_move(board, state, hash_arr, undo):
     state[S_HIST_LEN] -= 1
 
 
+_mark("unmake_move")
+
 @njit(boolean(int8[:], int64[:], int64[:, :], int64[:, :], int64[:, :, :], int64[:, :, :],
               int64[:, :, :]), cache=False, nogil=True, inline="always")
 def in_check(board, state, knight_t, king_t, bishop_rays, rook_rays, pawn_attackers):
@@ -563,6 +601,8 @@ def in_check(board, state, knight_t, king_t, bishop_rays, rook_rays, pawn_attack
     return is_attacked(board, ksq, 1 - turn, knight_t, king_t, bishop_rays, rook_rays,
                        pawn_attackers)
 
+
+_mark("in_check")
 
 @njit(boolean(int8[:], int64[:], int64[:, :], int64[:, :], int64[:, :, :], int64[:, :, :],
               int64[:, :, :]), cache=False, nogil=True, inline="always")
@@ -575,13 +615,12 @@ def left_king_in_check(board, state, knight_t, king_t, bishop_rays, rook_rays,
                        pawn_attackers)
 
 
+_mark("left_king_in_check")
+
 # ------------------------------------------------------------------------------- perft
 
 
-@njit(int64(int8[:], int64[:], uint64[:], int64[:, :], int32[:], float32[:, :, :],
-            float32[:, :], float32[:], uint64[:, :], uint64[:], uint64[:], uint64, int64[:],
-            uint64[:], int64, int64[:, :], int64[:, :], int64[:, :, :], int64[:, :, :],
-            int64[:, :, :]), cache=False, nogil=True)
+@njit(cache=False, nogil=True)  # no signature: perft is a test tool, compiled on first use
 def perft(board, state, hash_arr, undo, moves, acc_stack, w1, b1, zobrist, z_castle, z_ep,
           z_side, castle_mask, hist, depth, knight_t, king_t, bishop_rays, rook_rays,
           pawn_attackers):
@@ -603,6 +642,8 @@ def perft(board, state, hash_arr, undo, moves, acc_stack, w1, b1, zobrist, z_cas
         unmake_move(board, state, hash_arr, undo)
     return total
 
+
+_mark("perft")
 
 # ------------------------------------------------------------------------ python glue
 

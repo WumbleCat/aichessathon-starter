@@ -38,22 +38,59 @@ loaded at import, ~0.8 MB.
 
 ## Search
 
-Negamax alpha-beta with iterative deepening, transposition table keyed on
-`board._transposition_key()`, MVV-LVA captures first, killer and history move ordering,
-quiescence search with delta pruning, null-move pruning, late move reductions, check
-extension. Time budget from `time_left_ms`, deadline checked every <= 128 nodes, depth 1
-finished unclocked so a legal fallback move always exists. Root repetition avoidance from a
-module-level history of positions seen this game.
+Negamax alpha-beta with iterative deepening, transposition table, MVV-LVA captures first,
+killer and history move ordering, quiescence search with delta pruning, null-move pruning,
+late move reductions, reverse futility and futility pruning, check extension, mate distance
+pruning. Two implementations of the same search exist and share the time management in
+`agent.py`:
 
-## Phases
+- **python** (`Searcher` in `agent.py`): python-chess board, numba leaf evaluation. About
+  7k nodes/s. Selected with `DEEPCHESS_ENGINE=python`; also the automatic fallback if the
+  compiled modules fail to import.
+- **numba** (`dc_engine.py` + `dc_search.py`, default): mailbox board, own move generator
+  (perft-verified), make/unmake with incremental first-layer accumulators for both
+  perspectives (NNUE style), the whole tree search compiled. Root move loop stays in
+  Python (`NumbaSearcher.search_root`), one compiled call per root move. The clock is a
+  `threading.Timer` writing into a `stop` array (search runs with `nogil=True`) plus a node
+  cap derived from the measured nodes/s as a backstop. Every function has an explicit
+  signature, so all compilation happens at import; `tools/validate_numba.py` cross-checks
+  the incremental evaluation and hashes against the python path, the mates, and nodes/s.
 
-1. Minimal agent: handcrafted material + PST eval, alpha-beta, fallback move. Legal in all
-   the mandatory positions and at all the mandatory clocks.
-2. Training pipeline: `training/gen_data.py` (random-walk / self-play positions labelled by
-   Stockfish offline), `training/train.py` (pairwise + value loss in torch, exports npz),
-   numba inference in `agent.py`. Debug checks: A==B gives 0.5, swap inverts, Spearman vs
-   teacher.
-3. `tests/test_agent.py`: move legality tests, clock tests, repeated calls, model sanity.
-4. Runtime optimisation: nps, eval latency, TT.
-5. Arena benchmarks vs baselines (paired colours), recorded in `RESULTS.md`.
-6. Weakness hunting and re-benchmark; compare handcrafted vs DeepChess scalar vs blend.
+numba caches compiled kernels on disk when the agent directory is writable
+(`_NUMBA_CACHE` in `agent.py`): the local harness starts a fresh process per game and,
+under machine load, a cold compile can exceed the 90 s init budget (games lost "by init").
+The platform filesystem is read-only, so there the cache is off and the compile runs on the
+idle core (a few seconds of CPU).
+
+Only a FEN arrives per move, so repetition memory is kept in the agent: the compiled engine
+stores the Zobrist hashes of the positions it was asked to move in (`game_hashes`) and the
+search path in one `hist` array (`is_repetition` in `dc_search.py`).
+
+Evaluation modes (`DEEPCHESS_EVAL`): `net` (default), `hand`, `blend` with
+`DEEPCHESS_BLEND` as the network weight. `tools/selfplay.py` compares modes and engines
+with paired openings at fixed nodes or fixed CPU time per move, which is what the shared,
+overloaded dev machine allows (wall-clock results there measure load, not strength).
+
+## Phases and status (2026-09-05)
+
+1. Done. Minimal agent: handcrafted material + PST eval, alpha-beta, fallback move. Legal in
+   all the mandatory positions and at all the mandatory clocks.
+2. Done. Training pipeline: `training/gen_data.py` (random-walk / self-play positions
+   labelled by Stockfish offline, 1M positions at depth 8, `data_gen.log`),
+   `training/train.py` (pairwise + value loss in torch, exports npz). Model v1
+   (`models/deepchess_v1.*`, `train_v1.log`): 207k parameters, 20 epochs on 697k
+   non-check non-capture positions, validation pairwise accuracy 0.93, Spearman 0.954
+   against the teacher, MAE 97 cp. `models/deepchess.npz` is v1.
+3. Done. `tests/test_agent.py`: move legality, special moves, clocks, repeated calls,
+   model sanity (run the file directly; the venv has no pytest). Two tests depend on the
+   search reaching depth 2-3 and can fail on the overloaded machine.
+4. In progress. Compiled engine (`dc_engine.py` perft-verified, `dc_search.py` written,
+   driver in `agent.py`), being validated with `tools/validate_numba.py`. Open questions:
+   import/compile time on an idle core, nodes/s, equal-CPU-time match vs the python engine.
+5. Partly. Harness games so far only checked the protocol (wins vs greedy as White, "init"
+   losses as Black from cold numba compiles under load, since fixed by the disk cache).
+   Real arena runs need a quieter machine; results go in `RESULTS.md`.
+6. Open. Handcrafted vs DeepChess scalar vs blend (`tools/selfplay.py`). Known weakness:
+   the network saturates in very lopsided positions (all moves in a K+2R vs K position
+   score +835), so conversions rely on the mate search; a blend with the handcrafted PST
+   is the candidate fix and is what the self-play comparison is for.

@@ -37,6 +37,9 @@ sys.path.insert(0, str(AGENT_DIR))
 
 import agent  # noqa: E402
 
+if agent._compile_thread is not None:
+    agent._compile_thread.join()  # the compiled engine is needed before any game starts
+
 PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 
 
@@ -44,33 +47,92 @@ class NodeLimitedSearcher(agent.Searcher):
     """The agent's searcher, stopped by a node budget instead of the clock."""
 
     max_nodes = 10**9
+    cpu_deadline = float("inf")
 
     def _check_time(self) -> None:
-        if self.armed and self.nodes >= self.max_nodes:
+        if self.armed and (self.nodes >= self.max_nodes
+                           or time.process_time() >= self.cpu_deadline):
             raise agent.OutOfTime()
 
 
 class Player:
-    def __init__(self, spec: str, nodes: int) -> None:
-        mode, _, weight = spec.partition(":")
+    """One side: ``[engine:]mode[:weight]`` with engine numba (default) or python.
+
+    The budget is either ``nodes`` per move or, when ``cpu_ms`` is given, process CPU
+    time per move: exact for the python engine (checked every node) and approximated for
+    the compiled engine through a node cap derived from its measured CPU nodes/s.
+    """
+
+    def __init__(self, spec: str, nodes: int, cpu_ms: float | None) -> None:
+        parts = spec.split(":")
+        engine = "numba"
+        if parts and parts[0] in ("numba", "python"):
+            engine = parts.pop(0)
+        mode = parts[0] if parts else "net"
         if mode not in ("net", "hand", "blend"):
             raise SystemExit(f"unknown mode {mode!r}; use net, hand or blend[:weight]")
         self.spec = spec
+        self.engine = engine
         self.mode = mode
-        self.weight = float(weight) if weight else 0.5
+        self.weight = float(parts[1]) if len(parts) > 1 else 0.5
         self.nodes = nodes
+        self.cpu_ms = cpu_ms
         self.searcher = NodeLimitedSearcher()
+        self.numba: agent.NumbaSearcher | None = None
+        if engine == "numba":
+            if agent._MODEL is None:
+                raise SystemExit("numba engine needs the model weights")
+            self.numba = agent.NumbaSearcher(agent._MODEL)
+        self.nps_cpu = 300_000.0
         self.depths: list[int] = []
         self.game_history: dict[int, int] = {}
 
     def new_game(self) -> None:
         self.searcher = NodeLimitedSearcher()
         self.game_history = {}
+        if self.numba is not None:
+            self.numba.new_game()
 
     def choose(self, board: chess.Board) -> chess.Move:
         agent.EVAL_MODE = self.mode
         agent.BLEND_NET_WEIGHT = self.weight
+        if self.numba is not None:
+            return self._choose_numba(board)
+        return self._choose_python(board)
+
+    def _choose_numba(self, board: chess.Board) -> chess.Move:
+        ns = self.numba
+        assert ns is not None
+        budget = self.nodes
+        if self.cpu_ms is not None:
+            budget = max(2000, int(self.nps_cpu * self.cpu_ms / 1000.0))
+        ns.prepare(board, max_nodes=budget)
+        root = [(agent._move_code(board, m), m) for m in board.legal_moves]
+        best = root[0][1]
+        depth_reached = 0
+        c0 = time.process_time()
+        for depth in range(1, agent.dc_engine.MAX_PLY - 4):
+            try:
+                score, move, root = ns.search_root(depth, root)
+            except agent.OutOfTime:
+                break
+            best = move
+            depth_reached = depth
+            if abs(score) > agent.MATE_BOUND and depth >= 4:
+                break
+            if ns.stats[agent.dc_search.ST_NODES] >= budget:
+                break
+        cpu = time.process_time() - c0
+        nodes = int(ns.stats[agent.dc_search.ST_NODES])
+        if cpu > 0.05 and nodes > 5000:
+            self.nps_cpu = 0.7 * self.nps_cpu + 0.3 * nodes / cpu
+        self.depths.append(depth_reached)
+        return best
+
+    def _choose_python(self, board: chess.Board) -> chess.Move:
         s = self.searcher
+        if self.cpu_ms is not None:
+            s.cpu_deadline = time.process_time() + self.cpu_ms / 1000.0
         key = board._transposition_key()
         self.game_history[key] = self.game_history.get(key, 0) + 1
         s.game_history = self.game_history
@@ -83,7 +145,7 @@ class Player:
         moves = list(board.legal_moves)
         best = agent._quick_move(board, moves)
         ordered = moves
-        s.max_nodes = self.nodes
+        s.max_nodes = self.nodes if self.cpu_ms is None else 10**9
         s.armed = True
         depth_reached = 0
         stack_len = len(board.move_stack)
@@ -173,6 +235,8 @@ def main() -> None:
     parser.add_argument("--a", required=True, help="net | hand | blend[:weight]")
     parser.add_argument("--b", required=True)
     parser.add_argument("--nodes", type=int, default=3000)
+    parser.add_argument("--cpu-ms", type=float, default=None,
+                        help="CPU time per move instead of a node budget")
     parser.add_argument("--games", type=int, default=40, help="total games (pairs x 2)")
     parser.add_argument("--opening-plies", type=int, default=6)
     parser.add_argument("--seed", type=int, default=29)
@@ -186,8 +250,8 @@ def main() -> None:
     if log.exists():
         done = [json.loads(line) for line in log.read_text().splitlines() if line.strip()]
 
-    pa = Player(args.a, args.nodes)
-    pb = Player(args.b, args.nodes)
+    pa = Player(args.a, args.nodes, args.cpu_ms)
+    pb = Player(args.b, args.nodes, args.cpu_ms)
     openings = make_openings((args.games + 1) // 2, args.seed, args.opening_plies)
 
     started = time.time()
@@ -230,7 +294,7 @@ def write_summary(args: argparse.Namespace, done: list[dict], pa: Player, pb: Pl
     for r in done:
         terms[r["termination"]] = terms.get(r["termination"], 0) + 1
     summary = {
-        "a": args.a, "b": args.b, "nodes": args.nodes, "games": n,
+        "a": args.a, "b": args.b, "nodes": args.nodes, "cpu_ms": args.cpu_ms, "games": n,
         "a_wins": wins, "draws": draws, "a_losses": losses, "a_score": round(score, 4),
         "elo_a_minus_b": round(diff, 1), "elo_95_half_width": round(half, 1),
         "terminations": terms,
