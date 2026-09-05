@@ -1,0 +1,28 @@
+﻿compiled engine not ready 70s into the import; the python engine plays until it is
+import returned after wall 70.3s cpu 16.2s; compiling=True engine=numba
+[   3.3s] compiling=True  start                            move=e2e4   depth=0 nodes=1 took=3270ms
+[   6.7s] compiling=True  queen hangs on g7 after Qxg7?    move=d4g7   depth=0 nodes=1 took=3465ms
+[  13.0s] compiling=True  KQB vs K                         move=e6f6   depth=0 nodes=1 took=6297ms
+[  16.3s] compiling=True  start                            move=e2e4   depth=0 nodes=1 took=3266ms
+[  19.8s] compiling=True  queen hangs on g7 after Qxg7?    move=d4g7   depth=0 nodes=1 took=3453ms
+[  26.1s] compiling=True  KQB vs K                         move=e6f6   depth=0 nodes=1 took=6309ms
+[  29.3s] compiling=True  start                            move=e2e4   depth=0 nodes=1 took=3282ms
+[  32.8s] compiling=True  queen hangs on g7 after Qxg7?    move=d4g7   depth=0 nodes=1 took=3487ms
+[  39.2s] compiling=True  KQB vs K                         move=e6f6   depth=0 nodes=1 took=6356ms
+[  42.5s] compiling=True  start                            move=e2e4   depth=0 nodes=1 took=3273ms
+[  45.9s] compiling=True  queen hangs on g7 after Qxg7?    move=d4g7   depth=0 nodes=1 took=3490ms
+[  53.4s] compiling=True  KQB vs K                         move=e6f6   depth=0 nodes=1 took=7437ms
+[  56.7s] compiling=True  start                            move=e2e4   depth=0 nodes=1 took=3286ms
+[  60.2s] compiling=True  queen hangs on g7 after Qxg7?    move=d4g7   depth=0 nodes=1 took=3495ms
+[  66.5s] compiling=True  KQB vs K                         move=e6f6   depth=0 nodes=1 took=6374ms
+[  69.9s] compiling=True  start                            move=e2e4   depth=0 nodes=1 took=3331ms
+[  74.5s] compiling=True  queen hangs on g7 after Qxg7?    move=d4g7   depth=0 nodes=1 took=4574ms
+[  80.8s] compiling=True  KQB vs K                         move=e6f6   depth=0 nodes=1 took=6308ms
+[  84.1s] compiling=True  start                            move=e2e4   depth=0 nodes=1 took=3282ms
+[  87.6s] compiling=True  queen hangs on g7 after Qxg7?    move=d4g7   depth=0 nodes=1 took=3492ms
+[  93.5s] compiling=True  KQB vs K                         move=e6g4   depth=4 nodes=9743 took=5955ms
+compile thread alive=False after 94s; process cpu 50.9s
+compiled engine: start                            move=e2e4   depth=10 nodes=360299 took=6921ms
+compiled engine: queen hangs on g7 after Qxg7?    move=d4d1   depth=7 nodes=699207 took=8621ms
+compiled engine: KQB vs K                         move=e6g4   depth=4 nodes=9724 took=488ms
+probe exit 0 2026-09-05T10:20:04.7299457+01:00

@@ -1,0 +1,24 @@
+{
+ "agent": "E:\\sourcecode\\ai-chess-original\\aichessathon-starter\\agents\\29_deepchess",
+ "opponent": "E:\\sourcecode\\ai-chess-original\\aichessathon-starter\\baselines\\minimax",
+ "games": 2,
+ "base_ms": 120000,
+ "increment_ms": 500,
+ "score": "+0 =0 -2",
+ "terminations": {
+  "checkmate": 2
+ },
+ "agent29_moves": 62,
+ "init_s": [
+  72.7,
+  70.8
+ ],
+ "move_ms": {
+  "median": 2848.6,
+  "mean": 2868.7,
+  "p90": 3364.2,
+  "p99": 5250.4,
+  "max": 5713.7
+ },
+ "max_clock_fraction": 0.1266
+}

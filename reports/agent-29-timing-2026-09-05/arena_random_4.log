@@ -1,0 +1,8 @@
+game 1/4: draw by threefold_repetition
+game 2/4: black by checkmate
+game 3/4: white by checkmate
+game 4/4: black by checkmate
+
+agents\29_deepchess vs baselines\random over 4 games
++3 =1 -0, score 87.5%
+terminations: threefold_repetition 1, checkmate 3

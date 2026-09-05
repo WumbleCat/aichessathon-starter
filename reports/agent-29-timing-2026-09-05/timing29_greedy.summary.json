@@ -1,0 +1,25 @@
+{
+ "agent": "E:\\sourcecode\\ai-chess-original\\aichessathon-starter\\agents\\29_deepchess",
+ "opponent": "E:\\sourcecode\\ai-chess-original\\aichessathon-starter\\baselines\\greedy",
+ "games": 2,
+ "base_ms": 120000,
+ "increment_ms": 500,
+ "score": "+0 =2 -0",
+ "terminations": {
+  "insufficient_material": 1,
+  "threefold_repetition": 1
+ },
+ "agent29_moves": 80,
+ "init_s": [
+  77.0,
+  70.8
+ ],
+ "move_ms": {
+  "median": 2725.6,
+  "mean": 2719.0,
+  "p90": 3253.3,
+  "p99": 3566.1,
+  "max": 3968.0
+ },
+ "max_clock_fraction": 0.074
+}

@@ -1,0 +1,17 @@
+python.exe : your agent failed to finish a game: flag 5
+At C:\Users\USER\.claude\jobs\885c3931\tmp\arena29.ps1:7 char:1
++ & $py -m harness.arena --agent agents/29_deepchess --opponent baselin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (your agent fail... a game: flag 5:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+game 1/6: white by flag
+game 2/6: white by checkmate
+game 3/6: white by flag
+game 4/6: black by flag
+game 5/6: white by flag
+game 6/6: black by flag
+
+agents\29_deepchess vs baselines\numba over 6 games
++5 =0 -1, score 83.3%
+terminations: flag 5, checkmate 1

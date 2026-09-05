@@ -1,0 +1,3 @@
+-rw-r--r-- 1 USER 197121 44697 2026-09-05 09:48:22.204950300 +0100 E:/sourcecode/ai-chess-original/aichessathon-starter/agents/29_deepchess/agent.py
+-rw-r--r-- 1 USER 197121 23049 2026-09-05 09:40:37.002436000 +0100 E:/sourcecode/ai-chess-original/aichessathon-starter/agents/29_deepchess/dc_search.py
+39c09be8f359e8488bebd9a3f3209dc0 *E:/sourcecode/ai-chess-original/aichessathon-starter/agents/29_deepchess/agent.py
