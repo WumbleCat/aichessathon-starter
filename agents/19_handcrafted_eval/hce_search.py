@@ -87,18 +87,26 @@ class Searcher:
         max_depth: int = 64,
         info: bool = False,
     ) -> tuple[chess.Move, int]:
-        """Iterative deepening. Depth 1 runs unclocked so a move always exists."""
+        """Iterative deepening under the hard deadline.
+
+        Every iteration, depth 1 included, can be cut short by the clock: with a slow
+        evaluation (the pure-Python fallback) or a loaded core even a depth-1 search with its
+        quiescence tail can cost seconds, which is a lost game at a 50 ms clock. A move always
+        exists because the fallback is the best-ordered root move (transposition-table move,
+        then the most valuable capture) before any search starts, and an aborted iteration
+        keeps its best fully-searched move when that beat the previous iteration.
+        """
         self.new_search()
         root_len = len(board.move_stack)
         started = time.monotonic()
-        legal = list(board.legal_moves)
-        if not legal:
+        if not any(board.generate_legal_moves()):
             raise ValueError("search_root called with no legal moves")
-        best_move = legal[0]
+        entry = self.tt.get(board._transposition_key())
+        best_move = self._ordered_moves(board, entry[3] if entry is not None else None, 0)[0]
         best_score = -INF
         score = 0
         for depth in range(1, max_depth + 1):
-            self.deadline = float("inf") if depth == 1 else hard_deadline
+            self.deadline = hard_deadline
             self.iteration_best: chess.Move | None = None
             self.iteration_score = -INF
             self.iteration_moves_done = 0
