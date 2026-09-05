@@ -1,0 +1,8 @@
+time_left     50 ms -> used     2.3 ms
+time_left    100 ms -> used     6.8 ms
+time_left    500 ms -> used    48.2 ms
+time_left   1000 ms -> used   147.2 ms
+time_left   5000 ms -> used   423.3 ms
+time_left  30000 ms -> used   830.4 ms
+time_left 120000 ms -> used  2551.8 ms
+perft 4 kiwipete: 4085603 nodes in 2.55s = 1.60 Mnps
