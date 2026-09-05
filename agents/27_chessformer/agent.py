@@ -22,12 +22,23 @@ if _HERE not in sys.path:
 
 from cf_search import Searcher  # noqa: E402
 
-MODEL_PATH = os.path.join(_HERE, "models", "chessformer.onnx")
+# the .npz (numpy-only, no torch import on the init clock) is preferred over the .pt checkpoint
+MODEL_PATH = next(
+    (
+        path
+        for path in (
+            os.path.join(_HERE, "models", "chessformer.npz"),
+            os.path.join(_HERE, "models", "chessformer.pt"),
+        )
+        if os.path.exists(path)
+    ),
+    "",
+)
 POLICY_MIN_DEPTH = int(os.environ.get("CF_POLICY_MIN_DEPTH", "3"))
 USE_MODEL = os.environ.get("CF_USE_MODEL", "1") == "1"
 
 _policy = None
-if USE_MODEL and os.path.exists(MODEL_PATH):
+if USE_MODEL and MODEL_PATH:
     try:
         from cf_infer import PolicyModel
 

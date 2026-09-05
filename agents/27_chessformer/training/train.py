@@ -7,7 +7,8 @@ blend of the teacher score and the game result.
     python training/train.py --data training/data --out models/chessformer.pt \
         --dim 64 --layers 2 --heads 4 --smol-hidden 32 --epochs 6
 
-Checkpoints hold {"config", "state_dict", "meta"}; cf_infer loads them with torch.load.
+Checkpoints hold {"config", "state_dict", "meta"}; a numpy .npz twin (config + arrays) is written
+next to each checkpoint and is what agent.py loads at import (no torch on the init clock).
 """
 
 import argparse
@@ -76,6 +77,13 @@ def evaluate(model: Chessformer, x: np.ndarray, move: np.ndarray, vt: np.ndarray
         "top1": correct / total,
         "top3": top3 / total,
     }
+
+
+def export_npz(model: Chessformer, cfg: Config, path: str) -> None:
+    """Write the weights as a numpy archive so cf_infer can load them without importing torch."""
+    arrays = {k: v.detach().cpu().numpy().astype(np.float32) for k, v in model.state_dict().items()}
+    np.savez(path, __config__=np.array(json.dumps(cfg.as_dict())), **arrays)
+    print(f"saved {path} ({os.path.getsize(path) / 1e6:.1f} MB)", flush=True)
 
 
 def main() -> None:
@@ -203,6 +211,7 @@ def main() -> None:
             args.out,
         )
         print(f"saved {args.out} ({os.path.getsize(args.out) / 1e6:.1f} MB)", flush=True)
+        export_npz(model, cfg, os.path.splitext(args.out)[0] + ".npz")
 
 
 if __name__ == "__main__":
