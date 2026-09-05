@@ -1,0 +1,7 @@
+model E:\sourcecode\ai-chess-original\aichessathon-starter\agents\22_policy\models\policy.npz: channels 48 blocks 4 params 215,166
+validation shards: 11
+all         n   9290  top1 0.383  top3 0.665  top5 0.769  ce 2.662  lost-cp   86.8  |  handcrafted top1 0.194 lost-cp  211.1
+opening     n   3102  top1 0.423  top3 0.742  top5 0.831  ce 2.869  lost-cp   63.5  |  handcrafted top1 0.171 lost-cp  220.1
+middlegame  n   3319  top1 0.357  top3 0.611  top5 0.715  ce 2.682  lost-cp  106.4  |  handcrafted top1 0.211 lost-cp  226.8
+endgame     n   2869  top1 0.369  top3 0.645  top5 0.766  ce 2.415  lost-cp   89.2  |  handcrafted top1 0.198 lost-cp  183.3
+inference: 36.24 ms per position (wall, loaded machine)

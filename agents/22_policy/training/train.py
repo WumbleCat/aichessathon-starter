@@ -6,8 +6,8 @@ Loss = soft cross-entropy over legal moves (illegal moves masked out)
 
     python training/train.py --data training/data --channels 64 --blocks 5 --epochs 8
 
-Outputs models/policy.npz (numpy weights for the engine), models/policy.pt (torch state) and
-training/train_log.txt.
+Outputs models/policy.npz (numpy weights for the engine), models/train_log.txt and torch
+states in training/checkpoints/ (git-ignored, outside the shipped models/ directory).
 """
 
 from __future__ import annotations
@@ -131,6 +131,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default=os.path.join(HERE, "data"))
     parser.add_argument("--out", default=os.path.join(ROOT, "models"))
+    parser.add_argument("--ckpt-dir", default=os.path.join(HERE, "checkpoints"))
     parser.add_argument("--channels", type=int, default=64)
     parser.add_argument("--blocks", type=int, default=5)
     parser.add_argument("--epochs", type=int, default=8)
@@ -154,7 +155,9 @@ def main() -> None:
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     torch.set_num_threads(args.threads)
+    ckpt_dir = args.ckpt_dir
     os.makedirs(args.out, exist_ok=True)
+    os.makedirs(ckpt_dir, exist_ok=True)
 
     files = sorted(glob.glob(os.path.join(args.data, "shard_*.npz")))
     if not files:
@@ -240,10 +243,10 @@ def main() -> None:
         print("VAL", json.dumps(metrics), flush=True)
         log.write(json.dumps(metrics) + "\n")
         log.flush()
-        torch.save(model.state_dict(), os.path.join(args.out, "policy_last.pt"))
+        torch.save(model.state_dict(), os.path.join(ckpt_dir, "policy_last.pt"))
         if metrics["loss"] < best_val:
             best_val = metrics["loss"]
-            torch.save(model.state_dict(), os.path.join(args.out, "policy.pt"))
+            torch.save(model.state_dict(), os.path.join(ckpt_dir, "policy.pt"))
             export_numpy(model, os.path.join(args.out, "policy.npz"))
             print("exported models/policy.npz", flush=True)
         if stop:

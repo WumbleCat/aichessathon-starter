@@ -1,34 +1,32 @@
 # 22_policy — status checkpoint (for a fresh session)
 
-Updated: 2026-09-05 03:50 (session 2)
+Updated: 2026-09-05 07:15 (session 2)
 
 ## Where things stand
 
-- Engine (`pn_search.py`, `pn_eval.py`), encoding, numpy inference, data generator, trainer: written
-  and committed on branch `feature/agent-22-policy` (6 commits, not yet merged into main).
-- `tests/test_agent.py` and `tests/test_encoding.py` pass; `tests/test_policy_inference.py` passes
-  (numpy == torch to 5e-7; ONNX export fails on this machine with
-  `onnx has no attribute load_model_from_string`, numpy backend is the default so it does not matter).
-- Search speed: ~14k nodes/s CPU time at depth 4 (`tests/bench_search.py 4 0`) on the loaded box.
-- Training data: 224 shards, 239,323 positions, 6.3M move labels in `training/data/`
-  (git-ignored). Teacher depth histogram {1: 52k, 2: 132k, 3: 48k, 4: 7k}.
-- Inference cost (CPU ms per prior call, numpy): C32B3 1.6, C48B4 2.3, C64B4 3.3, C64B5 3.9.
+- Everything is implemented and tested; the trained network ships in `models/policy.npz`
+  (48x4 residual CNN, 215k params, held-out top-1 0.383). See `RESULTS.md` for the numbers.
+- Branch `feature/agent-22-policy` holds the work (commits 852b44c, 748187a and later); it is
+  built with a throwaway git index so the shared working tree is never checked out. Merge into
+  main with `git merge --no-ff feature/agent-22-policy` once the last results are committed.
+- `tests/check_submission.py` passes: zip 0.92 MB unzipped, import < 2 s, network loaded.
+- Torch checkpoints live in `training/checkpoints/` (git-ignored, outside the zip).
 
-## Not done yet (in order)
+## Open items
 
-1. TRAIN the network: `models/policy.npz` does not exist. Command:
-   `python training/train.py --min-depth 2 --channels 64 --blocks 5 --epochs 6 --threads 4`
-   (writes models/policy.npz + models/train_log.txt; the trainer exports on every val improvement,
-   so a partially trained model is usable at any time).
-2. Paired A/B arena: policy vs `variants/nopolicy` (`tests/paired_arena.py`), plus `variants/searchless`.
-3. Write RESULTS.md (README refers to it), merge the branch into main.
-4. Build the zip and check size (< 50 MB) and init time (< 90 s).
+1. `results/cpu_policy_vs_nopolicy_b1.json` (if present): a 4-pair match at 1.0 s CPU per move
+   launched at the end of session 2 (`results/cpu_policy_vs_nopolicy_b1.log`). Add its summary to
+   RESULTS.md next to the 0.25 s result (8.0/16, a dead heat).
+2. Optional: `tests/cpu_match.py --a d3|d5|rootonly --b nopolicy` to tune `PN_POLICY_MIN_DEPTH`.
+3. Optional: re-run `tests/paired_arena.py` against baselines on a quiet machine (wall clock).
+4. Next model: label positions with the policy-ordered engine at depth 4-5 and retrain.
 
 ## Known issues
 
-- Earlier arena results in `results/control_vs_15ext.json` were run on a machine with 100+
-  concurrent processes: depth 1, 128 nodes per move, 10 flags. They say nothing about the engine.
-  Re-run when the box is quieter, or compare variants pairwise at the same time.
+- ONNX export fails on this machine (`onnx has no attribute load_model_from_string`); the numpy
+  back end is the default and was verified equal to torch to 5e-7, so nothing depends on it.
+- Old wall-clock arena results in `results/control_vs_15ext.json` were taken under extreme load
+  (depth 1, 10 flags) and are not meaningful.
 
 ## Session 2 log
 

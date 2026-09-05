@@ -1,0 +1,10 @@
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\22_policy\submission.zip (818,315 bytes zipped, 922,764 unzipped)
+  agent.py
+  pn_encoding.py
+  pn_eval.py
+  pn_policy.py
+  pn_search.py
+  models\policy.npz
+  models\train_log.txt
+RESULT init 1.93s worst_move 0.08s policy yes
+submission check OK

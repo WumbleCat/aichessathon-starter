@@ -1,0 +1,127 @@
+{
+ "summary": {
+  "a": {
+   "name": "policy",
+   "moves": 799,
+   "avg_depth": 3.6758448060075093,
+   "avg_nodes": 2956.3617021276596,
+   "avg_policy_calls": 6.112640801001252,
+   "avg_cpu_s": 0.20468945556946183
+  },
+  "b": {
+   "name": "nopolicy",
+   "moves": 800,
+   "avg_depth": 3.85,
+   "avg_nodes": 3200.75875,
+   "avg_policy_calls": 0.0,
+   "avg_cpu_s": 0.199921875
+  },
+  "games": 16,
+  "a_wins": 7,
+  "draws": 2,
+  "a_losses": 7,
+  "a_score": 0.5,
+  "a_elo_diff": -0.0,
+  "budget_cpu_s": 0.25,
+  "seed": 11,
+  "minutes": 57.85694860219955
+ },
+ "games": [
+  {
+   "fen": "rn1qkbnr/pppbp1pp/8/3p1p2/2P2P2/P7/1PQPP1PP/RNB1KBNR b KQkq - 2 4",
+   "a_white": true,
+   "score_a": 1.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rn1qkbnr/pppbp1pp/8/3p1p2/2P2P2/P7/1PQPP1PP/RNB1KBNR b KQkq - 2 4",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "2bqkbnr/1ppppp1p/B1n5/p4Pp1/4P3/8/PPPP2PP/RNBQK1NR w KQk - 1 5",
+   "a_white": true,
+   "score_a": 1.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "2bqkbnr/1ppppp1p/B1n5/p4Pp1/4P3/8/PPPP2PP/RNBQK1NR w KQk - 1 5",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rnbqkb1r/pp1ppppp/2p2n2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+   "a_white": true,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rnbqkb1r/pp1ppppp/2p2n2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+   "a_white": false,
+   "score_a": 1.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkb1r/pppppp1p/2n3pn/8/P1P4P/8/1P1PPPPR/RNBQKBN1 b Qkq - 2 4",
+   "a_white": true,
+   "score_a": 1.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkb1r/pppppp1p/2n3pn/8/P1P4P/8/1P1PPPPR/RNBQKBN1 b Qkq - 2 4",
+   "a_white": false,
+   "score_a": 0.5,
+   "termination": "threefold_repetition"
+  },
+  {
+   "fen": "rnbqkbnr/pppp1p1p/4p3/6p1/8/5P1N/PPPPP1PP/RNBQKB1R w KQkq - 0 3",
+   "a_white": true,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rnbqkbnr/pppp1p1p/4p3/6p1/8/5P1N/PPPPP1PP/RNBQKB1R w KQkq - 0 3",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rnbqkbnr/ppppp3/6pp/5p2/1P1P4/4P3/P1P2PPP/RNBQKBNR b KQkq - 0 4",
+   "a_white": true,
+   "score_a": 1.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "rnbqkbnr/ppppp3/6pp/5p2/1P1P4/4P3/P1P2PPP/RNBQKBNR b KQkq - 0 4",
+   "a_white": false,
+   "score_a": 0.5,
+   "termination": "insufficient_material"
+  },
+  {
+   "fen": "r1bqkb1r/pppppp1p/n5pn/8/4P3/1P6/PBPP1PPP/RN1QKBNR w KQkq - 0 4",
+   "a_white": true,
+   "score_a": 1.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkb1r/pppppp1p/n5pn/8/4P3/1P6/PBPP1PPP/RN1QKBNR w KQkq - 0 4",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkbnr/ppppp2p/2n2p2/2P3p1/8/5P1P/PP1PP1P1/RNBQKBNR b KQkq - 0 4",
+   "a_white": true,
+   "score_a": 1.0,
+   "termination": "checkmate"
+  },
+  {
+   "fen": "r1bqkbnr/ppppp2p/2n2p2/2P3p1/8/5P1P/PP1PP1P1/RNBQKBNR b KQkq - 0 4",
+   "a_white": false,
+   "score_a": 0.0,
+   "termination": "checkmate"
+  }
+ ]
+}
