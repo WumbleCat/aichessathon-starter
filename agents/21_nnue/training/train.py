@@ -4,6 +4,8 @@
 
 Data: every ``training/data/positions_*.txt`` line ``fen,stm_cp,stm_result,ply``.
 Features are encoded once into ``training/data/encoded_<hash>.npz`` (int16 index lists).
+Validation is split by game (consecutive lines sharing the game-length field), not by
+position, so adjacent plies of one game cannot leak across the split.
 Target: sigmoid(cp / SCALE) blended with the game result; loss is MSE in that space.
 """
 
@@ -55,7 +57,7 @@ def load_dataset(pattern: str, limit: int | None) -> dict[str, np.ndarray]:
     if not files:
         raise SystemExit(f"no data files match {pattern}")
     sizes = [os.path.getsize(f) for f in files]
-    tag = hashlib.md5((pattern + json.dumps([files, sizes, limit])).encode()).hexdigest()[:10]
+    tag = hashlib.md5((pattern + json.dumps([files, sizes, limit, "v2"])).encode()).hexdigest()[:10]
     cache = os.path.join(HERE, "data", f"encoded_{tag}.npz")
     if os.path.exists(cache):
         print(f"loading cached features {cache}")
@@ -73,11 +75,18 @@ def load_dataset(pattern: str, limit: int | None) -> dict[str, np.ndarray]:
     nstm_idx = np.full((n, MAX_PIECES), PAD, dtype=np.int16)
     cp = np.zeros(n, dtype=np.float32)
     res = np.zeros(n, dtype=np.float32)
+    game = np.zeros(n, dtype=np.int32)
+    prev_len = None
+    game_id = -1
     w = np.zeros(MAX_PIECES, dtype=np.int64)
     b = np.zeros(MAX_PIECES, dtype=np.int64)
     t0 = time.time()
     for i, line in enumerate(lines):
-        fen, cp_s, res_s, _ = line.rsplit(",", 3)
+        fen, cp_s, res_s, len_s = line.rsplit(",", 3)
+        if len_s != prev_len:
+            game_id += 1
+            prev_len = len_s
+        game[i] = game_id
         encode_fen(fen, w, b)
         white_to_move = fen.split(" ")[1] == "w"
         if white_to_move:
@@ -90,8 +99,14 @@ def load_dataset(pattern: str, limit: int | None) -> dict[str, np.ndarray]:
         res[i] = float(res_s)
         if i % 200000 == 0 and i:
             print(f"  {i}/{n} ({time.time() - t0:.0f}s)")
-    data = {"stm": stm_idx, "nstm": nstm_idx, "cp": cp, "res": res}
-    np.savez(cache, **data)
+    data: dict[str, np.ndarray] = {
+        "stm": stm_idx,
+        "nstm": nstm_idx,
+        "cp": cp,
+        "res": res,
+        "game": game,
+    }
+    np.savez(cache, stm=stm_idx, nstm=nstm_idx, cp=cp, res=res, game=game)
     return data
 
 
@@ -108,7 +123,8 @@ class NNUE(nn.Module):
     def forward(self, stm: torch.Tensor, nstm: torch.Tensor) -> torch.Tensor:
         a = torch.clamp(self.ft(stm).sum(1) + self.ft_bias, 0.0, 1.0)
         b = torch.clamp(self.ft(nstm).sum(1) + self.ft_bias, 0.0, 1.0)
-        return self.out(torch.cat([a, b], dim=1)).squeeze(1)
+        out: torch.Tensor = self.out(torch.cat([a, b], dim=1)).squeeze(1)
+        return out
 
     def clip(self) -> None:
         with torch.no_grad():
@@ -139,9 +155,18 @@ def main() -> None:
     torch.set_num_threads(args.threads)
     data = load_dataset(args.data, args.limit)
     n = len(data["cp"])
-    perm = np.random.permutation(n)
-    n_val = min(50_000, n // 20)
-    val_ix, train_ix = perm[:n_val], perm[n_val:]
+    if "game" in data:
+        games = np.unique(data["game"])
+        val_games = np.random.permutation(games)[: max(1, len(games) // 20)]
+        is_val = np.isin(data["game"], val_games)
+        val_ix = np.flatnonzero(is_val)
+        train_ix = np.flatnonzero(~is_val)
+        print(f"{len(games)} games; validation holds out {len(val_games)} whole games")
+    else:  # old feature cache without game ids
+        perm = np.random.permutation(n)
+        n_val = min(50_000, n // 20)
+        val_ix, train_ix = perm[:n_val], perm[n_val:]
+    n_val = len(val_ix)
     stm = torch.from_numpy(data["stm"].astype(np.int64))
     nstm = torch.from_numpy(data["nstm"].astype(np.int64))
     cp = torch.from_numpy(data["cp"])

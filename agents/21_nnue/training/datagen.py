@@ -67,10 +67,11 @@ def worker(index: int, target: int, nodes: int, seed: int, out_path: str) -> Non
                 score = result.info.get("score")
                 if score is not None:
                     pov = score.pov(board.turn)
-                    if pov.is_mate():
-                        cp = MAX_CP if pov.mate() > 0 else -MAX_CP
+                    mate = pov.mate()
+                    if mate is not None:
+                        cp = MAX_CP if mate > 0 else -MAX_CP
                     else:
-                        cp = max(-MAX_CP, min(MAX_CP, pov.score()))
+                        cp = max(-MAX_CP, min(MAX_CP, pov.score() or 0))
                     quiet = (
                         not board.is_capture(move)
                         and move.promotion is None

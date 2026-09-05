@@ -124,8 +124,18 @@ reader (no torch import at runtime).
   (results/ab_run3.log), `selfplay_ab --movetime 0.1` shipped net vs PSQT (results/ab_run4.log),
   `tools/vs_bot.py --bot ../../my-agents/10_principal_variation_search --movetime 0.5`
   (results/vs_bot_run.log).
-- Next: if the long net wins the net-vs-net A/B, copy it to `weights/nnue.safetensors`, re-run
-  `tests.test_agent`, rebuild the zip, update RESULTS.md and commit. Then more data
-  (datagen with more workers/nodes when the box is free) and an H=384 or king-bucket experiment, re-export final weights, A/B NNUE vs
+- Results: long net vs shipped net +17 =5 -18 (48.8%), so the epoch-12 net stays shipped.
+  Shipped net vs PSQT at equal time (0.1 s/move): +23 =6 -11, +108 Elo. Engine vs
+  my-agents/10_principal_variation_search at 0.5 s/move: +9 =0 -1. Game-replay profile: NNUE
+  539-567 knps vs PSQT 708 knps in CPU time (1.3x per node); the A/B tool's CPU figures are
+  unreliable for 0.1 s moves (15.6 ms process_time ticks).
+- train.py now holds out whole games for validation (the old position split leaked adjacent
+  plies, which is the likely reason the 30-epoch net's better MAE bought no strength).
+- Final full test suite relaunched on the current code (scratch agent_tests5.txt).
+- Next (for a fresh session): more training games (datagen with more workers when the box is
+  free; 865k positions from ~12k games is the limiting factor), retrain with the game split and
+  lambda 0.1, A/B vs weights/nnue.safetensors with tools/selfplay_ab.py --weights-b before
+  shipping; consider H=384 or king-bucketed inputs once data exceeds a few million positions.
+  Merge of feature/agent-21-nnue into main is pending (left to the user, see memory)., re-export final weights, A/B NNUE vs
   PSQT and vs baselines with `harness.arena`, record numbers in `RESULTS.md`, commit on
   `feature/agent-21-nnue` (throwaway index, see memory) and note "merge pending".

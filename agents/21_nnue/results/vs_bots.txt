@@ -1,0 +1,13 @@
+
+# 2026-09-05 07:32 21_nnue (nnue.safetensors) vs 10_principal_variation_search movetime=0.5 games=10 seed=1
+game  1 engine=white result=1.0 by mate (45 plies)  running +1 =0 -0 (100.0%, elo n/a)
+game  2 engine=black result=0.0 by adjudicated (240 plies)  running +1 =0 -1 (50.0%, elo -0)
+game  3 engine=white result=1.0 by mate (41 plies)  running +2 =0 -1 (66.7%, elo +120)
+game  4 engine=black result=1.0 by mate (48 plies)  running +3 =0 -1 (75.0%, elo +191)
+game  5 engine=white result=1.0 by mate (55 plies)  running +4 =0 -1 (80.0%, elo +241)
+game  6 engine=black result=1.0 by mate (102 plies)  running +5 =0 -1 (83.3%, elo +280)
+game  7 engine=white result=1.0 by mate (65 plies)  running +6 =0 -1 (85.7%, elo +311)
+game  8 engine=black result=1.0 by mate (74 plies)  running +7 =0 -1 (87.5%, elo +338)
+game  9 engine=white result=1.0 by mate (67 plies)  running +8 =0 -1 (88.9%, elo +361)
+game 10 engine=black result=1.0 by mate (64 plies)  running +9 =0 -1 (90.0%, elo +382)
+TOTAL 21_nnue vs 10_principal_variation_search: +9 =0 -1 score 90.0% elo +382

@@ -42,6 +42,14 @@ both colours per random 8-ply opening.
 |---|---|---|---|---|---|---|---|---|
 | h256 epoch 4 | old nnue.py | 20,000 | 40 | +28 =3 -9 | 73.8% | +179 | 46.8k | 724k |
 | h256 epoch 12 | row-view nnue.py | 20,000 | 40 | +28 =4 -8 | 75.0% | +191 | 48.7k | 732k |
+| h256 epoch 12 | row-view nnue.py | equal time 0.1 s | 40 | +23 =6 -11 | 65.0% | +108 | 114k (cpu) | 694k (cpu) |
+| h256_long (30 ep) vs h256 epoch 12 | row-view nnue.py | 20,000 | 40 | +17 =5 -18 | 48.8% | -9 | 32.4k (wall) | 78.3k (wall) |
+
+The 30-epoch net's 20 cp better validation error bought no playing strength (its train/val
+gap was three times larger; the validation split was by position, so adjacent plies of the
+~12k source games leak across it), so the epoch-12 net stays shipped and `train.py` now splits
+validation by game. Two nets of identical shape also differed 2.4x in wall node rate, so the
+per-node cost depends on how the search behaves under a given evaluation, not on arithmetic.
 
 The node-rate gap did not move with the `evaluate`/`update` rewrite because it was never in
 the engine: the A/B tool timed each side by wall clock on a swapping machine. Measured in
@@ -53,8 +61,17 @@ CPU time in one process (`prof_search.py`, 150k nodes from three positions each)
 | NNUE searcher (H=256) | NNUE | 451,585 | 0.83 | 545 |
 | NNUE searcher (H=256) | PSQT | 451,584 | 0.53 | 850 |
 
-So the network costs 1.5x per node, worth well under a ply, against +190 Elo at equal nodes.
+Replaying a 136-ply game through both searchers with the TT kept between moves (20k nodes
+per move, `prof_game.py`): NNUE 2,586,861 nodes in 4.56-4.80 s CPU (539-567 knps), PSQT
+2,544,234 nodes in 3.59 s (708 knps). So the network costs 1.3-1.5x per node, worth well
+under a ply, against +190 Elo at equal nodes. The 6x CPU ratio printed by the equal-time A/B
+is an artefact of Windows `process_time` ticking in 15.6 ms steps on 0.1 s moves.
 `selfplay_ab.py` now reports node rates by CPU time as well as wall time.
+
+`tools/vs_bot.py` against `my-agents/10_principal_variation_search` (the team's python PVS
+bot, a 40-0 scorer against the four baselines) at 0.5 s per move, both sides, 10 games:
++9 =0 -1 (90%, about +380 Elo); the loss was a material adjudication at the 240-ply cap.
+Under this load the python bot only reached depth 1-3, so the margin is inflated.
 
 `harness.play` vs `baselines/greedy` at 120 s + 0.5 s: draw by threefold repetition, played
 entirely by the python fallback (the compile outlasted the game on this box). The fallback now
