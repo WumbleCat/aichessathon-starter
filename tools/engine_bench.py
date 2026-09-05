@@ -213,6 +213,10 @@ def play_one(job: Job, engine_path: Path, args: argparse.Namespace) -> dict[str,
         result, termination, plies = outcome.result, outcome.termination, plies_of(outcome.pgn)
     except Exception as error:  # a broken agent must not stop the benchmark
         result, termination, plies = ("black" if plays_white else "white"), f"error:{error!r}", 0
+    # whatever went wrong, the agent's own stderr is the only thing that explains it
+    detail = ""
+    if termination.startswith(("error", "crash", "illegal", "flag", "init")):
+        detail = (agent_side.stderr_tail or "")[-1500:]
     if result == "draw" or result == "void":
         points = 0.5
     elif (result == "white") == plays_white:
@@ -231,6 +235,7 @@ def play_one(job: Job, engine_path: Path, args: argparse.Namespace) -> dict[str,
         "points": points,
         "plies": plies,
         "seconds": round(time.monotonic() - started, 1),
+        "stderr": detail,
     }
 
 
@@ -257,7 +262,15 @@ def worker(jobs: Iterator[Job], engine_path: Path, args: argparse.Namespace, out
 # ---------------------------------------------------------------------------- reporting
 
 
+FAILURE_PREFIXES = ("error", "crash", "illegal", "flag", "init")
+
+
+def is_failure(entry: dict[str, object]) -> bool:
+    return str(entry["termination"]).startswith(FAILURE_PREFIXES)
+
+
 def load_results(path: Path) -> dict[str, dict[str, object]]:
+    """The last line written for a key wins, so a replayed game replaces the earlier one."""
     done: dict[str, dict[str, object]] = {}
     if path.exists():
         with open(path) as fh:
@@ -298,11 +311,7 @@ def report(results: dict[str, dict[str, object]], agents: list[AgentEntry]) -> s
             losses = n - wins - draws
             score = sum(float(g["points"]) for g in games) / n
             rating, half = elo_of(score, n, elo)
-            bad = sum(
-                1
-                for g in games
-                if str(g["termination"]).startswith(("error", "crash", "illegal", "flag", "init"))
-            )
+            bad = sum(1 for g in games if is_failure(g))
             table.append((rating, agent, n, wins, draws, losses, score, half, bad))
         for rating, agent, n, wins, draws, losses, score, half, bad in sorted(
             table, key=lambda t: -t[0]
@@ -331,6 +340,12 @@ def main() -> None:
     parser.add_argument("--engine", default=None, help="path to the Stockfish binary")
     parser.add_argument("--out", type=Path, default=DEFAULT_RESULTS)
     parser.add_argument("--report", action="store_true", help="only print the table")
+    parser.add_argument(
+        "--redo-failures",
+        action="store_true",
+        help="replay games that ended in a crash/flag/illegal/init, which on a loaded machine "
+        "are usually the machine rather than the agent (a replay overwrites the earlier result)",
+    )
     parser.add_argument("--report-file", type=Path, default=None, help="also write the table here")
     args = parser.parse_args()
 
@@ -343,6 +358,11 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     done = load_results(args.out)
+    if args.redo_failures:
+        stale = [key for key, entry in done.items() if is_failure(entry)]
+        for key in stale:
+            del done[key]
+        print(f"replaying {len(stale)} failed games")
 
     if not args.report:
         engine_path = find_stockfish(args.engine)
