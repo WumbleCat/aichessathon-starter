@@ -14,6 +14,8 @@ are load independent and are the yardstick for search changes.
 | ruff / mypy strict on the agent directory | clean |
 | `harness.arena` vs `baselines/greedy`, 6 games, 10 s + 0.1 s | +6 =0 -0, all by checkmate |
 | `harness.arena` vs `baselines/minimax`, 6 games, 10 s + 0.1 s | +6 =0 -0, the baseline flagged every game under the load |
+| `harness.arena` vs `baselines/numba`, 4 games, 10 s + 0.1 s | +4 =0 -0, the baseline flagged every game under the load |
+| our clock over those 16 harness games at 100 % machine load | never flagged, never illegal, never crashed |
 | submission zip | 20.5 KB compressed, 69 KB unzipped, `agent.py` at the root |
 | init, cold numba cache, loaded machine | 23.8 s (compile), agent ready with the compiled evaluation |
 | init, cache directory not creatable (`HCE_NO_CACHE` path) | 13.0 s, compiled uncached |
