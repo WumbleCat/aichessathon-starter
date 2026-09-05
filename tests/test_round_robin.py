@@ -85,3 +85,112 @@ class EloFitTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class ReportTest(unittest.TestCase):
+    """The report has to survive every termination, including the ones that score a fault."""
+
+    def test_report_runs_over_every_termination(self) -> None:
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stdout
+
+        import round_robin
+
+        rows = [
+            {
+                "left": "a",
+                "right": "b",
+                "game": 0,
+                "white": "a",
+                "result": "white",
+                "termination": "checkmate",
+                "seconds": 1.0,
+            },
+            {
+                "left": "a",
+                "right": "b",
+                "game": 1,
+                "white": "b",
+                "result": "white",
+                "termination": "flag",
+                "seconds": 1.0,
+            },
+            {
+                "left": "a",
+                "right": "c",
+                "game": 0,
+                "white": "a",
+                "result": "draw",
+                "termination": "adjudication",
+                "seconds": 1.0,
+            },
+            {
+                "left": "b",
+                "right": "c",
+                "game": 0,
+                "white": "b",
+                "result": "void",
+                "termination": "both_failed",
+                "seconds": 1.0,
+            },
+            {
+                "left": "b",
+                "right": "c",
+                "game": 1,
+                "white": "c",
+                "result": "black",
+                "termination": "crash",
+                "seconds": 1.0,
+            },
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "games.jsonl"
+            path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                round_robin.report(path, ["a", "b", "c"])
+        text = buffer.getvalue()
+        self.assertIn("5 games played", text)
+        # game 1 was won by white, who was b, so a flagged; game 4 was won by black, who was b,
+        # so the crash was c's
+        line_a = next(line for line in text.splitlines() if line.strip().endswith(" 1"))
+        self.assertIn(" a ", line_a)
+        self.assertIn("flag 1", text)
+
+    def test_faults_land_on_the_agent_that_failed(self) -> None:
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stdout
+
+        import round_robin
+
+        # b is white in every game and loses every one of them to a flag
+        rows = [
+            {
+                "left": "a",
+                "right": "b",
+                "game": 1,
+                "white": "b",
+                "result": "black",
+                "termination": "flag",
+                "seconds": 1.0,
+            }
+            for _ in range(3)
+        ]
+        for index, row in enumerate(rows):
+            row["game"] = 1 + 2 * index
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "games.jsonl"
+            path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                round_robin.report(path, ["a", "b"])
+        rows_out = [
+            line for line in buffer.getvalue().splitlines() if " a " in line or " b " in line
+        ]
+        faulted = [line for line in rows_out if line.rstrip().endswith("3")]
+        self.assertEqual(len(faulted), 1, buffer.getvalue())
+        self.assertIn("b", faulted[0].split()[1])

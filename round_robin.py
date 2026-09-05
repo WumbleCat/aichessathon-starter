@@ -121,6 +121,7 @@ def play_one(payload: tuple[str, str, int, int, int, int]) -> dict[str, Any]:
         "result": result,
         "termination": termination,
         "seconds": round(time.monotonic() - started, 1),
+        "finished": round(time.time(), 1),  # lets throughput be measured over any window later
     }
 
 
@@ -299,8 +300,8 @@ def report(path: Path, names: list[str]) -> None:
                 losses[name] += 1
             cross.setdefault((name, other), []).append(share)
         if record["termination"] in ("crash", "illegal", "flag", "init"):
-            loser = record["black"] if record["result"] == "white" else record["white"]
-            faults[loser] += 1
+            black = record["right"] if record["white"] == record["left"] else record["left"]
+            faults[black if record["result"] == "white" else record["white"]] += 1
 
     ratings = bradley_terry(records, names)
     played = {name: wins[name] + draws[name] + losses[name] for name in names}
