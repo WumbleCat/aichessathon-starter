@@ -229,25 +229,31 @@ def _castle_bits(castling: np.uint64) -> tuple[int, int, int, int]:
 # ---------------------------------------------------------------------------------------
 
 
-@njit("void(uint64[::1], float32[::1])", cache=CACHE)
-def features(bb: np.ndarray, x: np.ndarray) -> None:
+@njit(
+    "void(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, boolean, uint64, int64, float32[::1])",
+    cache=CACHE,
+)
+def features(
+    pawns: np.uint64,
+    knights: np.uint64,
+    bishops: np.uint64,
+    rooks: np.uint64,
+    queens: np.uint64,
+    kings: np.uint64,
+    occ_w: np.uint64,
+    occ_b: np.uint64,
+    white_to_move: bool,
+    castling: np.uint64,
+    ep_square: int,
+    x: np.ndarray,
+) -> None:
     """Fill ``x`` (float32[N_INPUT]) with the side-to-move normalised feature vector.
 
-    ``bb`` is the packed board (see ``pack``): pawns, knights, bishops, rooks, queens,
-    kings, white occupancy, black occupancy, side to move (1 = white), castling rights
-    bitboard, en passant square + 1 (0 = none).
+    Arguments are the raw bitboards of a ``chess.Board`` (see ``_bitboards``): piece
+    type boards, white/black occupancy, side to move, castling-rights bitboard and the
+    en passant square (-1 = none).
     """
-    pawns = bb[0]
-    knights = bb[1]
-    bishops = bb[2]
-    rooks = bb[3]
-    queens = bb[4]
-    kings = bb[5]
-    occ_w = bb[6]
-    occ_b = bb[7]
-    white_to_move = bb[8] != ZERO
-    wk, wq, bk, bq = _castle_bits(bb[9])
-    ep_present = bb[10] != ZERO
+    wk, wq, bk, bq = _castle_bits(castling)
     if white_to_move:
         us = occ_w
         them = occ_b
