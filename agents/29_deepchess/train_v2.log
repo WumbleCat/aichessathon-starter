@@ -1,0 +1,63 @@
+﻿loaded data\chunk_00_0000.npz: kept 34836/50001
+loaded data\chunk_00_0001.npz: kept 34779/50098
+loaded data\chunk_00_0002.npz: kept 34791/50008
+loaded data\chunk_00_0003.npz: kept 34811/50130
+loaded data\chunk_01_0000.npz: kept 35204/50133
+loaded data\chunk_01_0001.npz: kept 34766/50043
+loaded data\chunk_01_0002.npz: kept 34674/50058
+loaded data\chunk_01_0003.npz: kept 35047/50087
+loaded data\chunk_02_0000.npz: kept 34822/50061
+loaded data\chunk_02_0001.npz: kept 35213/50058
+loaded data\chunk_02_0002.npz: kept 34812/50055
+loaded data\chunk_02_0003.npz: kept 34767/50104
+loaded data\chunk_03_0000.npz: kept 35052/50019
+loaded data\chunk_03_0001.npz: kept 35040/50067
+loaded data\chunk_03_0002.npz: kept 34906/50041
+loaded data\chunk_03_0003.npz: kept 34928/50074
+loaded data\chunk_04_0000.npz: kept 34754/50094
+loaded data\chunk_04_0001.npz: kept 34770/50013
+loaded data\chunk_04_0002.npz: kept 34980/50121
+loaded data\chunk_04_0003.npz: kept 34556/50083
+loaded data\eg_00_0000.npz: kept 13826/20085
+loaded data\eg_00_0001.npz: kept 14173/20078
+loaded data\eg_00_0002.npz: kept 13967/20014
+loaded data\eg_00_0003.npz: kept 13870/19884
+loaded data\eg_01_0000.npz: kept 14357/20143
+loaded data\eg_01_0001.npz: kept 14088/20042
+loaded data\eg_01_0002.npz: kept 14227/20080
+loaded data\eg_01_0003.npz: kept 13721/19837
+loaded data\eg_02_0000.npz: kept 14154/20095
+loaded data\eg_02_0001.npz: kept 14053/20041
+loaded data\eg_02_0002.npz: kept 13746/20005
+loaded data\eg_02_0003.npz: kept 13877/19928
+loaded data\eg_03_0000.npz: kept 13896/20015
+loaded data\eg_03_0001.npz: kept 14211/20061
+loaded data\eg_03_0002.npz: kept 14316/20151
+loaded data\eg_03_0003.npz: kept 13811/19790
+loaded data\eg_04_0000.npz: kept 14038/20000
+loaded data\eg_04_0001.npz: kept 13978/20010
+loaded data\eg_04_0002.npz: kept 14180/20035
+loaded data\eg_04_0003.npz: kept 14048/19971
+978045 positions, 36079 games, 44839 validation positions
+initialised from models/deepchess_v1.pt
+parameters: 207458
+python.exe : E:\sourcecode\ai-chess-original\aichessathon-starter\agents\29_deepchess\training\train.py:180: 
+UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+At line:1 char:379
++ ... _deepchess; & E:\sourcecode\ai-chess-original\aichessathon-starter\.v ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:\sourcecode\a...ected behavior.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Consider using tensor.detach() first. (Triggered internally at 
+C:\actions-runner\_work\pytorch\pytorch\torch\csrc\autograd\generated\python_variable_methods.cpp:823.)
+  "offset": float(b), "tau": float(tau),
+{"epoch": 1, "train_pair_loss": 0.1523919787290877, "train_value_loss": 0.5406880030589821, "train_pair_acc": 0.938224153181093, "val_pair_loss": 0.1497674137353897, "val_pair_acc": 0.9387683868408203, "val_pairs": 42870, "val_spearman": 0.9630835062865686, "val_mae_cp": 89.81734490941196, "val_scale": 104.83684583613744, "val_offset": 1.802009206745944, "val_tau": 0.8327116966247559, "elapsed_s": 32.44255566596985}
+{"epoch": 2, "train_pair_loss": 0.14878900138150275, "train_value_loss": 0.5178783546506831, "train_pair_acc": 0.9400187983977056, "val_pair_loss": 0.14944764971733093, "val_pair_acc": 0.9402605295181274, "val_pairs": 42836, "val_spearman": 0.9630592216307549, "val_mae_cp": 88.74430581506236, "val_scale": 103.91547455368867, "val_offset": -2.2465399890436792, "val_tau": 0.8276686668395996, "elapsed_s": 64.62261080741882}
+{"epoch": 3, "train_pair_loss": 0.14571710102326046, "train_value_loss": 0.4999601405806246, "train_pair_acc": 0.9410639247008129, "val_pair_loss": 0.14984822273254395, "val_pair_acc": 0.9391056299209595, "val_pairs": 42779, "val_spearman": 0.9637486190095738, "val_mae_cp": 87.64297427688298, "val_scale": 103.33296602585582, "val_offset": -5.166424838621376, "val_tau": 0.8186497092247009, "elapsed_s": 99.73444175720215}
+{"epoch": 4, "train_pair_loss": 0.14355998624742558, "train_value_loss": 0.48687780510007805, "train_pair_acc": 0.942322313785553, "val_pair_loss": 0.14792366325855255, "val_pair_acc": 0.9412025809288025, "val_pairs": 42791, "val_spearman": 0.9638835865239594, "val_mae_cp": 86.72719701096716, "val_scale": 103.10532017333756, "val_offset": 6.0986956862709505, "val_tau": 0.8120110630989075, "elapsed_s": 120.63283038139343}
+{"epoch": 5, "train_pair_loss": 0.14061656858013794, "train_value_loss": 0.4769738596097558, "train_pair_acc": 0.9436341814235248, "val_pair_loss": 0.14735037088394165, "val_pair_acc": 0.9413893818855286, "val_pairs": 42825, "val_spearman": 0.9642907129062039, "val_mae_cp": 86.22830606631982, "val_scale": 102.8004844478953, "val_offset": 2.33553371363628, "val_tau": 0.8045555949211121, "elapsed_s": 139.37458205223083}
+{"epoch": 6, "train_pair_loss": 0.1407394844346342, "train_value_loss": 0.47071478324653826, "train_pair_acc": 0.9436250033631789, "val_pair_loss": 0.1483226716518402, "val_pair_acc": 0.9399672746658325, "val_pairs": 42810, "val_spearman": 0.9642172668037519, "val_mae_cp": 85.9484019042416, "val_scale": 102.71514180076451, "val_offset": 6.557150188321829, "val_tau": 0.8014956116676331, "elapsed_s": 160.0646107196808}
+{"epoch": 7, "train_pair_loss": 0.13912058179884884, "train_value_loss": 0.46694670999999593, "train_pair_acc": 0.9443113408257476, "val_pair_loss": 0.14833040535449982, "val_pair_acc": 0.9407490491867065, "val_pairs": 42801, "val_spearman": 0.9644098040726131, "val_mae_cp": 85.75758770408763, "val_scale": 102.71006406480569, "val_offset": 3.0600310332572245, "val_tau": 0.7998843193054199, "elapsed_s": 178.59290647506714}
+{"epoch": 8, "train_pair_loss": 0.1397952662896266, "train_value_loss": 0.4654947788314482, "train_pair_acc": 0.9441630439420717, "val_pair_loss": 0.14821425080299377, "val_pair_acc": 0.9413756132125854, "val_pairs": 42832, "val_spearman": 0.9644569614360784, "val_mae_cp": 85.72845504433928, "val_scale": 102.70995588315047, "val_offset": 2.3202630537635596, "val_tau": 0.7996776700019836, "elapsed_s": 195.67250680923462}
+done

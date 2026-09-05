@@ -352,7 +352,9 @@ def eval_network(pawns, knights, bishops, rooks, queens, kings, wocc, bocc, turn
 # Model loading
 # ---------------------------------------------------------------------------------------
 
-MODEL_PATH = Path(__file__).resolve().parent / "models" / "deepchess.npz"
+MODEL_PATH = Path(__file__).resolve().parent / "models" / os.environ.get(
+    "DEEPCHESS_MODEL", "deepchess.npz"
+)
 _MODEL: dict[str, np.ndarray] | None = None
 _ACC = np.zeros(256, dtype=np.float32)
 _H2 = np.zeros(32, dtype=np.float32)

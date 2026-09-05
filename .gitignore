@@ -32,3 +32,6 @@ agents/*/training/_data/
 agents/*/training/_teacher/
 agents/24_alphazero/models/data/
 agents/32_auxiliary/tables_ext/
+
+# GPU training environment (training only; the agent and harness use .venv)
+.venv-cuda/

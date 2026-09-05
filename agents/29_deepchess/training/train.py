@@ -169,7 +169,7 @@ def evaluate_model(model: DeepChessNet, feats: torch.Tensor, cp_stm: torch.Tenso
     tau = model.log_tau.exp()
     with torch.no_grad():
         pl, pacc, npairs = pairwise_loss(v_w, cp_w, tau, margin)
-    v_np, cp_np = v.numpy(), cp_stm.numpy()
+    v_np, cp_np = v.detach().cpu().numpy(), cp_stm.detach().cpu().numpy()
     # linear calibration V -> cp on this set (used to report MAE in centipawns)
     a, b = np.polyfit(v_np, cp_np, 1)
     mae = float(np.abs(a * v_np + b - cp_np).mean())
@@ -221,6 +221,12 @@ def main() -> None:
         default=None,
         help="a .pt checkpoint to fine-tune from (default: random initialisation)",
     )
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="auto (cuda when the installed torch can see a GPU), cpu, or cuda. The shipped "
+        "weights are a device-independent .npz, and the agent always runs on CPU.",
+    )
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -253,6 +259,24 @@ def main() -> None:
         print(f"initialised from {args.init}", flush=True)
     n_params = sum(p.numel() for p in model.parameters()) - model.embed.weight[PAD].numel()
     print(f"parameters: {n_params}", flush=True)
+
+    device = torch.device(
+        ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
+    )
+    if device.type == "cuda":
+        # the whole dataset is a few hundred MB of int16/float32 and fits in 6 GB, so it is
+        # moved once rather than per batch; the model is tiny, so the copy is the only cost
+        print(f"device: {torch.cuda.get_device_name(device)}", flush=True)
+        torch.backends.cudnn.benchmark = True
+    else:
+        print(f"device: cpu ({torch.__version__})", flush=True)
+    model = model.to(device)
+    feats_t = feats_t.to(device)
+    cp_t = cp_t.to(device)
+    turn_t = turn_t.to(device)
+    tr = tr.to(device)
+    va = va.to(device)
+
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     steps_per_epoch = max(1, len(tr) // args.batch)
     total_steps = steps_per_epoch * args.epochs
@@ -263,7 +287,7 @@ def main() -> None:
     step = 0
     started = time.time()
     for epoch in range(args.epochs):
-        perm = tr[torch.randperm(len(tr))]
+        perm = tr[torch.randperm(len(tr), device=tr.device)]
         sums = {"pair": 0.0, "value": 0.0, "acc": 0.0}
         count = 0
         for i in range(steps_per_epoch):
