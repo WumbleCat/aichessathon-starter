@@ -162,3 +162,38 @@ Move-time profile (`training/clock_profile.py`, self-play, 60 plies at 120 s + 0
 box): import 1.0 s; **median 2.4 s, p95 4.2 s, p99 4.4 s, max 4.4 s** per move; both sides
 had 59 s left after 30 moves each. The budget is deliberately conservative (about 1/28 of the
 remaining time in the middlegame) because the clock is wall time and a flag loses the game.
+
+## Shipped model: tiny_v3
+
+64/2/4, MLP ratio 2, smolgen 16/32, policy dim 64; 0.69 M parameters; `models/chessformer.npz`
+2.79 MB. Trained 6 epochs on 22 shards / 90,288 positions (5 % held out), mirror augmentation,
+label smoothing 0.05, AdamW lr 1e-3 wd 0.05, batch 256, single thread, 39 minutes on the loaded
+box. Best epoch = 6:
+
+| epoch | val policy loss | val top-1 | val top-3 | value MSE |
+|---|---|---|---|---|
+| 1 | 3.45 | 21.9 % | 41.6 % | 0.099 |
+| 2 | 2.63 | 33.2 % | 56.7 % | 0.153 |
+| 3 | 2.44 | 35.8 % | 61.1 % | 0.081 |
+| 4 | 2.33 | 37.4 % | 63.0 % | 0.077 |
+| 5 | 2.34 | 38.3 % | 63.8 % | 0.075 |
+| 6 | **2.31** | **38.9 %** | **64.3 %** | **0.072** |
+
+(tiny_v1 on 40k positions without augmentation: 31 % / 51 %; tiny_v2 on 57k: 34.5 % / 59 %.
+Data is the lever: the curve has not flattened. 29 shards / 119.5k positions exist now; a
+`tiny_v4` run on all of them is in `results/train_tiny_v4.log` if it finished.)
+
+Submission: `python -m harness.package --include models/chessformer.npz` from the agent
+directory -> 2,595,390 bytes zipped, **2,848,897 bytes unzipped** (limit 50 MB); the zip's
+contents import in 1.6 s without torch, load the model and play. 41/41 tests pass with these
+weights.
+
+## Summary
+
+- Chessformer-style network (64 square tokens, geometric attention bias, smolgen-style dynamic
+  bias, attention policy head with promotion offsets, value head) implemented from scratch,
+  trained from random initialisation on self-play labelled by this repository's own search.
+- Batch-1 numpy inference ~4 ms of CPU for the shipped size; everything else was 2-3x slower.
+- Measured honestly: in this alpha-beta engine the policy prior does not reduce the tree, so
+  the network is consulted at the root only and the strength is the search's. The tools to
+  re-measure (`training/bench_ordering.py`, `training/match.py`) ship with the agent.

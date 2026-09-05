@@ -40,7 +40,7 @@ Following Monroe et al. (Chessformer, ICLR 2026; "Mastering Chess with a Transfo
 ## How the model is used at move time
 
 The search runs on the handcrafted evaluation. The network is a numpy forward pass at batch 1
-(about 4 ms of CPU for the shipped 0.69 M-parameter model) that returns a prior over the legal
+(about 4 ms of CPU for the shipped 0.69 M-parameter model, val top-1 39 % / top-3 64 % against the depth-3 teacher) that returns a prior over the legal
 moves; the search orders quiet moves by that prior (hash move, captures by MVV-LVA and killers
 keep their classic order first) and steers late-move reductions by it (low-prior quiet moves are
 reduced more, high-prior ones less).

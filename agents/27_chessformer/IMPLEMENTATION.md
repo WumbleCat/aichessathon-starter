@@ -85,13 +85,15 @@ session; the six `shard_d3_s2000..2005` shards, 24.5k positions, survived). Sess
   engine's strength is that of the alpha-beta search. A stronger teacher (deeper search, or an
   external engine when available) is the lever that would change this, not more epochs.
 
-### Remaining work
+### Status: complete (2026-09-05)
 
-1. When `models/tiny_v3` (all shards, 6 epochs) finishes: copy `models/tiny_v3.npz` to
-   `models/chessformer.npz`, re-run `tests/run_tests.py`, and record the numbers.
-2. Collect the wall-clock arena results in `results/arena_p2_*.txt` (greedy, minimax, numba,
-   the no-model variant, and 2 games at the contest control) into RESULTS.md.
-3. Package: `python -m harness.package --include models/chessformer.npz` from the agent
-   directory (tested: 7 MB unzipped, imports without torch in 2-14 s).
-4. Merge `feature/agent-27-chessformer` into `main` with `--no-ff` (the branch is committed
-   from a worktree; the main working tree holds the same files untracked).
+- `models/chessformer.npz` = tiny_v3 (val top-1 38.9 %, top-3 64.3 %); 41/41 tests; zip 2.85 MB
+  unzipped; wall-clock arenas and the contest-clock profile are in RESULTS.md.
+- Data generation was stopped at 29 shards / 119.5k positions (`training/data/`, git-ignored).
+  Resume with `powershell -File training/launch_gen.ps1` (it skips finished shards).
+- If `models/tiny_v4.npz` (all 29 shards) exists and its log shows a better validation policy
+  loss than 2.31, copy it over `models/chessformer.npz`, re-run `tests/run_tests.py` and update
+  RESULTS.md.
+- Ideas not pursued, in order of expected value: a stronger teacher (deeper self-play search or
+  an external engine if one becomes available), policy-based late-move pruning at cut nodes,
+  and a numba port of the move loop (the search, not the network, is the bottleneck).
