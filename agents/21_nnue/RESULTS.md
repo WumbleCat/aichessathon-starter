@@ -26,7 +26,9 @@ are worth +40 to +158 each versus -9 to +140 for h256. Queen 997, KQ v K 553, KR
 
 - Compile of the numba search: 119-125 s CPU (fresh process, no cache). `agent.py` builds it
   in a thread, waits up to 70 s at import, and plays a python-chess alpha-beta meanwhile.
-- Tests: 25 of 25 pass (`tests/`); perft 4 kiwipete 4,085,603 nodes, 8.6 Mnps.
+- Tests: 26 of 26 pass on the final code (`tests/`, 2026-09-05 08:40 run); perft 4 kiwipete
+  4,085,603 nodes, 8.6 Mnps when the box was quieter (1.1 Mnps in the final run).
+- Compile in that final run: 152.6 s CPU under ~80 competing processes (119 s when quieter).
 - Clock levels (time_left -> used): 50 ms 2.9 ms, 100 ms 8.0 ms, 1 s 34 ms, 5 s 334 ms,
   30 s 1.24 s, 120 s 4.24 s.
 - Micro-benchmark after the row-view rewrite of `nnue.py` (same process, low contention):
@@ -79,5 +81,5 @@ treats root moves that repeat a seen position as draws.
 
 ## Submission
 
-`harness.package` from `agents/21_nnue`: 6 files, 217,540 bytes zipped, 467,703 unzipped
+`harness.package` from `agents/21_nnue`: 6 files, 217,821 bytes zipped, 468,036 unzipped
 (limit 50,000,000): `agent.py cboard.py csearch.py jitconf.py nnue.py weights/nnue.safetensors`.

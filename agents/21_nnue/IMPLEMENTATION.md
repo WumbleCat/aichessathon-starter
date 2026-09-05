@@ -131,7 +131,7 @@ reader (no torch import at runtime).
   unreliable for 0.1 s moves (15.6 ms process_time ticks).
 - train.py now holds out whole games for validation (the old position split leaked adjacent
   plies, which is the likely reason the 30-epoch net's better MAE bought no strength).
-- Final full test suite relaunched on the current code (scratch agent_tests5.txt).
+- Final full test suite on the current code: 26 of 26 pass (agent, perft, nnue). Zip rebuilt.
 - Next (for a fresh session): more training games (datagen with more workers when the box is
   free; 865k positions from ~12k games is the limiting factor), retrain with the game split and
   lambda 0.1, A/B vs weights/nnue.safetensors with tools/selfplay_ab.py --weights-b before
