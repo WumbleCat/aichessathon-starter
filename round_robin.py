@@ -236,20 +236,27 @@ def bradley_terry(records: list[dict[str, Any]], names: list[str]) -> dict[str, 
     # a half point each against a phantom 0-rated opponent keeps a perfect record finite
     prior = 2.0
     rating = [0.0] * len(names)
-    for _ in range(4000):
+    for _ in range(500):
         step = 0.0
         for i in range(len(names)):
-            gradient = prior * (0.5 - expected(rating[i], 0.0, scale))
+            # the step is Newton's: residual over curvature, so it does not depend on how many
+            # games have been played and stays stable from a handful up to thousands
+            chance = expected(rating[i], 0.0, scale)
+            residual = prior * (0.5 - chance)
+            curvature = prior * chance * (1.0 - chance)
             for j in range(len(names)):
                 if counts[i][j] == 0.0:
                     continue
-                gradient += points[i][j] - counts[i][j] * expected(rating[i], rating[j], scale)
-            move = gradient * 4.0
+                chance = expected(rating[i], rating[j], scale)
+                residual += points[i][j] - counts[i][j] * chance
+                curvature += counts[i][j] * chance * (1.0 - chance)
+            move = residual / (scale * max(curvature, 1e-12))
+            move = max(-200.0, min(200.0, move))  # a cap keeps the first steps from overshooting
             rating[i] += move
             step = max(step, abs(move))
         mean = sum(rating) / len(rating)
         rating = [value - mean for value in rating]
-        if step < 1e-4:
+        if step < 1e-6:
             break
     return dict(zip(names, rating, strict=True))
 
