@@ -93,6 +93,16 @@ reader (no torch import at runtime).
 - Quantised net sanity (stm centipawns): start +49, +queen +1008 / -918, KQ v K +678, symmetric
   under colour flip. ruff (dir `ruff.toml` ignores the `P` naming rules) and strict mypy clean.
 - `variants/psqt/agent.py`: same engine with the PSQT eval, for A/B arena runs.
+- Training finished: epoch 12 val MSE 0.00494, MAE 134 cp, sign accuracy 95.0%. Exported to
+  `weights/nnue.safetensors` (|W1| max 91, worst-case accumulator 1931).
+- Probe of the final net (stm cp, start = +31): removing a black pawn gives a7 0, b7 +91,
+  c7 +61, d7 +54, e7 +48, f7 +151, g7 +123, h7 +9. Rook pawns are worth ~nothing and f/g
+  pawns carry king-safety weight; material is compressed (queen ~1000, rook ~560, KQvK 600).
+  Likely under-training / data volume (865k positions, 12 epochs). Second run started:
+  `train.py --epochs 30 --threads 1 --lambda-result 0.0 --seed 2 --out models/nnue_h256_long.pt`
+  (log `models/train_h256_long.log`); compare val loss and the pawn probe before swapping.
+- `tools/selfplay_ab.py --games 40 --nodes 20000` (NNUE vs PSQT, epoch-4 weights loaded at
+  start) running; log `results/ab_run.log`, summary `results/ab_nnue_vs_psqt.txt`.
 - Next: finish `tests.test_agent` under the new agent.py, re-export final weights, A/B NNUE vs
   PSQT and vs baselines with `harness.arena`, record numbers in `RESULTS.md`, commit on
   `feature/agent-21-nnue` (throwaway index, see memory) and note "merge pending".
