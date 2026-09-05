@@ -4,3 +4,31 @@ __pycache__/
 .ruff_cache/
 submission.zip
 *.pgn
+
+# Claude Code worktrees and caches
+.claude/worktrees/
+.pytest_cache/
+*.pyc
+*.nbc
+*.nbi
+
+# build artifacts and arena output
+*.zip
+*.err
+*.out
+submission/
+round_robin_results/
+
+# engine binaries, training data and torch checkpoints (models ship as .npz/.onnx)
+*.exe
+*.zst
+*.pt
+**/stockfish/
+agents/*/data/
+agents/*/data_seed*/
+agents/*/teacher/
+agents/*/training/data/
+agents/*/training/_data/
+agents/*/training/_teacher/
+agents/24_alphazero/models/data/
+agents/32_auxiliary/tables_ext/
