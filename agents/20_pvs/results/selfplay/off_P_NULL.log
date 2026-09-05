@@ -1,0 +1,17 @@
+game 1/100: A white -> win (checkmate, 115 plies)  |  A vs B: +1 =0 -0 over 1 games, score 100.0%, elo +2400 (95% -676..+2400), avg plies 115, checkmate 1
+game 2/100: A black -> loss (checkmate, 71 plies)  |  A vs B: +1 =0 -1 over 2 games, score 50.0%, elo -0 (95% -2400..+2400), avg plies 93, checkmate 2
+game 3/100: A white -> win (checkmate, 89 plies)  |  A vs B: +2 =0 -1 over 3 games, score 66.7%, elo +120 (95% -748..+2400), avg plies 92, checkmate 3
+game 4/100: A black -> loss (checkmate, 97 plies)  |  A vs B: +2 =0 -2 over 4 games, score 50.0%, elo -0 (95% -2400..+2400), avg plies 93, checkmate 4
+game 5/100: A white -> win (checkmate, 111 plies)  |  A vs B: +3 =0 -2 over 5 games, score 60.0%, elo +70 (95% -346..+2400), avg plies 97, checkmate 5
+game 6/100: A black -> loss (checkmate, 91 plies)  |  A vs B: +3 =0 -3 over 6 games, score 50.0%, elo -0 (95% -473..+473), avg plies 96, checkmate 6
+game 7/100: A white -> win (checkmate, 131 plies)  |  A vs B: +4 =0 -3 over 7 games, score 57.1%, elo +50 (95% -269..+589), avg plies 101, checkmate 7
+game 8/100: A black -> loss (checkmate, 137 plies)  |  A vs B: +4 =0 -4 over 8 games, score 50.0%, elo -0 (95% -331..+331), avg plies 105, checkmate 8
+game 9/100: A white -> win (checkmate, 53 plies)  |  A vs B: +5 =0 -4 over 9 games, score 55.6%, elo +39 (95% -229..+381), avg plies 99, checkmate 9
+game 10/100: A black -> loss (checkmate, 63 plies)  |  A vs B: +5 =0 -5 over 10 games, score 50.0%, elo -0 (95% -271..+271), avg plies 96, checkmate 10
+game 11/100: A white -> loss (checkmate, 100 plies)  |  A vs B: +5 =0 -6 over 11 games, score 45.5%, elo -32 (95% -307..+203), avg plies 96, checkmate 11
+game 12/100: A black -> loss (checkmate, 145 plies)  |  A vs B: +5 =0 -7 over 12 games, score 41.7%, elo -58 (95% -338..+154), avg plies 100, checkmate 12
+game 13/100: A white -> win (checkmate, 89 plies)  |  A vs B: +6 =0 -7 over 13 games, score 46.2%, elo -27 (95% -264..+185), avg plies 99, checkmate 13
+game 14/100: A black -> loss (checkmate, 97 plies)  |  A vs B: +6 =0 -8 over 14 games, score 42.9%, elo -50 (95% -289..+145), avg plies 99, checkmate 14
+game 15/100: A white -> loss (checkmate, 118 plies)  |  A vs B: +6 =0 -9 over 15 games, score 40.0%, elo -70 (95% -311..+113), avg plies 100, checkmate 15
+game 16/100: A black -> win (checkmate, 88 plies)  |  A vs B: +7 =0 -9 over 16 games, score 43.8%, elo -44 (95% -256..+138), avg plies 100, checkmate 16
+game 17/100: A white -> loss (checkmate, 152 plies)  |  A vs B: +7 =0 -10 over 17 games, score 41.2%, elo -62 (95% -275..+110), avg plies 103, checkmate 17

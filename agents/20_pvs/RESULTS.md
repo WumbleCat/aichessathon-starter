@@ -58,6 +58,7 @@ loading the cached recursive search crashed with an access violation (see README
 |---|---|---|
 | play as White vs `baselines/greedy` | 120 s + 0.5 s | win by checkmate |
 | arena vs `baselines/greedy`, 4 games | 10 s + 0.1 s | +0 =3 -1: the compile outlasted each game, so the fallback played |
+| arena vs `baselines/numba`, 6 games (3 per colour) | 60 s + 0.5 s | +6 =0 -0: 2 checkmates, 4 wins on the baseline's clock (it has no time management); no crash, illegal move or flag on our side |
 
 More arena runs are recorded below as they finish.
 
