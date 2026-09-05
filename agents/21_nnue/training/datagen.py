@@ -71,7 +71,11 @@ def worker(index: int, target: int, nodes: int, seed: int, out_path: str) -> Non
                         cp = MAX_CP if pov.mate() > 0 else -MAX_CP
                     else:
                         cp = max(-MAX_CP, min(MAX_CP, pov.score()))
-                    quiet = not board.is_capture(move) and move.promotion is None and not board.is_check()
+                    quiet = (
+                        not board.is_capture(move)
+                        and move.promotion is None
+                        and not board.is_check()
+                    )
                     if quiet:
                         records.append((board.fen(), cp, board.turn))
                     # adjudicate hopeless games to save teacher time
@@ -97,7 +101,11 @@ def worker(index: int, target: int, nodes: int, seed: int, out_path: str) -> Non
             out.flush()
             if games % 10 == 0:
                 rate = written / max(1e-9, time.time() - t0)
-                print(f"[worker {index}] games {games} positions {written} ({rate:.0f}/s)", file=sys.stderr, flush=True)
+                print(
+                    f"[worker {index}] games {games} positions {written} ({rate:.0f}/s)",
+                    file=sys.stderr,
+                    flush=True,
+                )
     engine.quit()
 
 

@@ -65,3 +65,34 @@ reader (no torch import at runtime).
 - `training/teacher/` holds the Stockfish binary used only for labelling; it is
   excluded from the submission (`harness/package.py` only ships root `*.py` and
   `weights/`).
+
+## Status log (checkpoint for a fresh session; newest first)
+
+### 2026-09-05 (session 3)
+
+- Found on disk: engine (`cboard.py`, `csearch.py`, `nnue.py`, `agent.py`), tests, training
+  scripts, and 865k Stockfish-labelled positions in `training/data/positions_sf6k_*.txt`
+  (datagen ran with `--nodes 6000 --tag sf6k --workers 8`, stopped before its 1M target).
+  No model had been trained and `weights/` was empty. Code on disk == branch
+  `feature/agent-21-nnue` apart from CRLF line endings.
+- `tests.test_perft` and `tests.test_nnue` pass (perft 4 kiwipete ~4.9 Mnps under heavy load).
+- `tests.test_agent`: three tests used wrong positions (the "hanging queen" was not attackable,
+  the "stalemate" FEN had no legal moves, and in `k7/8/1K6/8/8/8/8/1Q6 w` the own king on b6
+  blocks Qb7, so the engine's Qh1+ Kb8 Qh8# is right). All three rewritten.
+- Intermittent "Windows fatal exception: access violation" in the compiled search on the
+  second process that loaded numba's on-disk cache (also seen by agent 20). Fix: `jitconf.py`
+  makes `cache=` opt-in (`NNUE21_NUMBA_CACHE=1`), default off, matching the platform.
+- Measured a fresh compile at ~118 s CPU on the loaded box (wall 15+ min). Too close to the
+  90 s init budget, so `agent.py` now compiles in a background thread, waits up to 70 s at
+  import, and answers with a pure python-chess alpha-beta (`_python_search`) until the engine
+  is ready. Tests call `agent.wait_ready()`.
+- Training: `train.py --hidden 256 --epochs 12 --threads 4 --out models/nnue_h256.pt`
+  (log `models/train_h256.log`). Epoch 8: val MSE 0.0051, MAE 135 cp, sign accuracy 94.9%.
+  The epoch-4 checkpoint is exported to `weights/nnue.safetensors` (396 KB) so integration
+  runs can start; re-export from the final checkpoint when training ends.
+- Quantised net sanity (stm centipawns): start +49, +queen +1008 / -918, KQ v K +678, symmetric
+  under colour flip. ruff (dir `ruff.toml` ignores the `P` naming rules) and strict mypy clean.
+- `variants/psqt/agent.py`: same engine with the PSQT eval, for A/B arena runs.
+- Next: finish `tests.test_agent` under the new agent.py, re-export final weights, A/B NNUE vs
+  PSQT and vs baselines with `harness.arena`, record numbers in `RESULTS.md`, commit on
+  `feature/agent-21-nnue` (throwaway index, see memory) and note "merge pending".

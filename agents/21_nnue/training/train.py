@@ -17,7 +17,6 @@ import os
 import sys
 import time
 
-import chess
 import numpy as np
 import torch
 from torch import nn
@@ -127,7 +126,9 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=12)
     parser.add_argument("--batch", type=int, default=8192)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--lambda-result", type=float, default=0.1, help="weight of game result in target")
+    parser.add_argument(
+        "--lambda-result", type=float, default=0.1, help="weight of game result in target"
+    )
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--out", default=os.path.join(os.path.dirname(HERE), "models", "nnue.pt"))
@@ -145,12 +146,17 @@ def main() -> None:
     nstm = torch.from_numpy(data["nstm"].astype(np.int64))
     cp = torch.from_numpy(data["cp"])
     res = torch.from_numpy(data["res"])
-    target = (1 - args.lambda_result) * torch.sigmoid(cp / SCALE) + args.lambda_result * (res + 1) / 2
+    target = (1 - args.lambda_result) * torch.sigmoid(cp / SCALE) + args.lambda_result * (
+        res + 1
+    ) / 2
 
     model = NNUE(args.hidden)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     sched = torch.optim.lr_scheduler.StepLR(opt, step_size=max(1, args.epochs // 3), gamma=0.3)
-    print(f"train {len(train_ix)} val {n_val} hidden {args.hidden} params {sum(p.numel() for p in model.parameters())}")
+    print(
+        f"train {len(train_ix)} val {n_val} hidden {args.hidden} "
+        f"params {sum(p.numel() for p in model.parameters())}"
+    )
     history = []
     for epoch in range(args.epochs):
         model.train()
@@ -176,11 +182,27 @@ def main() -> None:
             vloss = ((torch.sigmoid(out) - target[vix]) ** 2).mean().item()
             mae_cp = (out * SCALE - cp[vix]).abs().clamp(max=2000).mean().item()
             sign_acc = ((out.sign() == cp[vix].sign()) | (cp[vix].abs() < 30)).float().mean().item()
-        rec = {"epoch": epoch + 1, "train_loss": total / batches, "val_loss": vloss, "val_mae_cp": mae_cp, "val_sign_acc": sign_acc, "seconds": time.time() - t0}
+        rec = {
+            "epoch": epoch + 1,
+            "train_loss": total / batches,
+            "val_loss": vloss,
+            "val_mae_cp": mae_cp,
+            "val_sign_acc": sign_acc,
+            "seconds": time.time() - t0,
+        }
         history.append(rec)
         print(json.dumps(rec), flush=True)
         os.makedirs(os.path.dirname(args.out), exist_ok=True)
-        torch.save({"hidden": args.hidden, "state": model.state_dict(), "history": history, "args": vars(args), "positions": n}, args.out)
+        torch.save(
+            {
+                "hidden": args.hidden,
+                "state": model.state_dict(),
+                "history": history,
+                "args": vars(args),
+                "positions": n,
+            },
+            args.out,
+        )
     print(f"saved {args.out}")
 
 
