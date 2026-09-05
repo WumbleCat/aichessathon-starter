@@ -27,8 +27,27 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 
-from cf_encode import expand  # noqa: E402
+from cf_encode import expand, mirror_tables  # noqa: E402
 from cf_model import Chessformer, Config, count_params  # noqa: E402
+
+_MIRROR_SQ, _MIRROR_MOVE = mirror_tables()
+
+
+def mirror_augment(
+    x: np.ndarray, move: np.ndarray, rng: np.random.Generator
+) -> tuple[np.ndarray, np.ndarray]:
+    """Mirror files (a <-> h) of a random half of the positions that have no castling rights."""
+    x = x.copy()
+    move = move.copy()
+    flip = (x[:, 64] == 0) & (rng.random(len(x)) < 0.5)
+    rows = np.nonzero(flip)[0]
+    if len(rows) == 0:
+        return x, move
+    x[rows, :64] = x[rows][:, _MIRROR_SQ]
+    ep = x[rows, 65]
+    x[rows, 65] = np.where(ep == 255, 255, ep ^ 7).astype(np.uint8)
+    move[rows] = _MIRROR_MOVE[move[rows].astype(np.int64)].astype(move.dtype)
+    return x, move
 
 
 def load_shards(pattern: str) -> dict[str, np.ndarray]:
@@ -122,6 +141,10 @@ def main() -> None:
     )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--max-positions", type=int, default=0)
+    parser.add_argument("--label-smoothing", type=float, default=0.05)
+    parser.add_argument(
+        "--no-augment", action="store_true", help="disable the file-mirror augmentation"
+    )
     args = parser.parse_args()
 
     torch.set_num_threads(args.threads)
@@ -168,6 +191,8 @@ def main() -> None:
     history = []
     step = 0
     t0 = time.time()
+    best_val = float("inf")
+    stem = os.path.splitext(args.out)[0]
     model.train()
     for epoch in range(args.epochs):
         order = rng.permutation(train_idx)
@@ -175,13 +200,16 @@ def main() -> None:
         seen = 0
         for i in range(0, len(order), args.batch):
             idx = order[i : i + args.batch]
-            xb = torch.from_numpy(expand(data["x"][idx]))
-            mb = torch.from_numpy(data["move"][idx].astype(np.int64))
+            x_np, m_np = data["x"][idx], data["move"][idx]
+            if not args.no_augment:
+                x_np, m_np = mirror_augment(x_np, m_np, rng)
+            xb = torch.from_numpy(expand(x_np))
+            mb = torch.from_numpy(m_np.astype(np.int64))
             vb = torch.from_numpy(vt[idx])
             for g in opt.param_groups:
                 g["lr"] = lr_at(step)
             logits, value = model(xb)
-            p_loss = F.cross_entropy(logits, mb)
+            p_loss = F.cross_entropy(logits, mb, label_smoothing=args.label_smoothing)
             v_loss = F.mse_loss(value, vb)
             loss = p_loss + args.value_weight * v_loss
             opt.zero_grad(set_to_none=True)
@@ -209,25 +237,27 @@ def main() -> None:
         history.append(record)
         print(json.dumps(record), flush=True)
         os.makedirs(os.path.dirname(args.out), exist_ok=True)
-        torch.save(
-            {
-                "config": cfg.as_dict(),
-                "state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},
-                "meta": {
-                    "positions": int(n),
-                    "epochs": epoch + 1,
-                    "history": history,
-                    "args": vars(args),
-                    "data_shards": sorted(
-                        os.path.basename(f)
-                        for f in glob.glob(os.path.join(args.data, args.pattern))
-                    ),
-                },
+        blob = {
+            "config": cfg.as_dict(),
+            "state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},
+            "meta": {
+                "positions": int(n),
+                "epochs": epoch + 1,
+                "history": history,
+                "args": vars(args),
+                "data_shards": sorted(
+                    os.path.basename(f) for f in glob.glob(os.path.join(args.data, args.pattern))
+                ),
             },
-            args.out,
-        )
-        print(f"saved {args.out} ({os.path.getsize(args.out) / 1e6:.1f} MB)", flush=True)
-        export_npz(model, cfg, os.path.splitext(args.out)[0] + ".npz")
+        }
+        # <out> holds the best epoch by validation policy loss; <stem>_last.pt the latest one
+        torch.save(blob, stem + "_last.pt")
+        export_npz(model, cfg, stem + "_last.npz")
+        if val["policy_loss"] < best_val:
+            best_val = val["policy_loss"]
+            torch.save(blob, args.out)
+            print(f"saved {args.out} ({os.path.getsize(args.out) / 1e6:.1f} MB, best)", flush=True)
+            export_npz(model, cfg, stem + ".npz")
 
 
 if __name__ == "__main__":

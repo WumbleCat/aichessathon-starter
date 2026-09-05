@@ -176,6 +176,24 @@ def promo_tables() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return base, dst, piece
 
 
+def mirror_tables() -> tuple[np.ndarray, np.ndarray]:
+    """Left-right (file a <-> h) mirror: square permutation [64], move permutation [NUM_MOVES].
+
+    Chess is symmetric under this mirror except for castling, so training may use it as data
+    augmentation on positions without castling rights.
+    """
+    squares = np.arange(64, dtype=np.int64) ^ 7
+    moves = np.zeros(NUM_MOVES, dtype=np.int64)
+    for f in range(64):
+        for t in range(64):
+            moves[f * 64 + t] = (f ^ 7) * 64 + (t ^ 7)
+    for j in range(96):
+        rest, p = divmod(j, 4)
+        ff, d = divmod(rest, 3)
+        moves[PROMO_BASE + j] = PROMO_BASE + ((7 - ff) * 3 + (2 - d)) * 4 + p
+    return squares, moves
+
+
 def geometry_tables() -> dict[str, np.ndarray]:
     """Index tables [64, 64] describing the geometric relation between source and target squares."""
     dx = np.zeros((64, 64), dtype=np.int64)

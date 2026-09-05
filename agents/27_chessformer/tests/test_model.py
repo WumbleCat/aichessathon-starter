@@ -140,3 +140,32 @@ def test_compact_expand_matches_encode():
     full = expand(rows)
     for i, fen in enumerate(FENS):
         assert np.array_equal(full[i], encode(chess.Board(fen))), fen
+
+
+def test_file_mirror_tables_match_python_chess():
+    """Mirroring files with the tables equals python-chess transform(flip_horizontal) on moves."""
+    from cf_encode import compact, mirror_tables
+
+    squares, moves = mirror_tables()
+    assert sorted(moves.tolist()) == list(range(NUM_MOVES))  # a permutation
+    for fen in FENS:
+        board = chess.Board(fen)
+        if board.castling_rights:
+            continue
+        flipped = board.transform(chess.flip_horizontal)
+        c = compact(board)
+        cf = compact(flipped)
+        # pieces: cf[sq] == c[sq ^ 7]; castling bits 0; ep mirrored; check flag equal
+        assert np.array_equal(cf[:64], c[squares])
+        assert cf[64] == 0 == c[64]
+        assert cf[65] == (255 if c[65] == 255 else c[65] ^ 7)
+        assert cf[66] == c[66]
+        mirror = not board.turn
+        for m in board.legal_moves:
+            fm = chess.Move(
+                m.from_square ^ 7,
+                m.to_square ^ 7,
+                promotion=m.promotion,
+            )
+            assert fm in flipped.legal_moves
+            assert moves[move_index(m, mirror)] == move_index(fm, mirror)
