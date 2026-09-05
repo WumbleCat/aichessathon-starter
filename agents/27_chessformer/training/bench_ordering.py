@@ -99,6 +99,15 @@ def main() -> None:
     parser.add_argument("--positions", type=int, default=40)
     parser.add_argument("--depth", type=int, default=5)
     parser.add_argument("--min-depths", default="3,4,5")
+    parser.add_argument(
+        "--pv-only", action="store_true", help="consult the network at PV nodes only"
+    )
+    parser.add_argument(
+        "--rel-depth", type=int, default=64, help="network only within this many plies of the root"
+    )
+    parser.add_argument(
+        "--policy-cost", type=int, default=-1, help="nodes charged per network call (-1: measure)"
+    )
     parser.add_argument("--seed", type=int, default=3)
     parser.add_argument("--out", default=None)
     args = parser.parse_args()
@@ -114,21 +123,26 @@ def main() -> None:
     for _ in range(30):
         model.priors(boards[0])
     latency = (time.process_time() - c0) / 30
-    cost = round(latency * nps)
+    # CPU-time measurements on the shared box swing several-fold with the load (hyper-thread
+    # and cache contention), so the charge can be pinned for comparable runs
+    cost = round(latency * nps) if args.policy_cost < 0 else args.policy_cost
     lines = [
         f"model {args.model} depth {args.depth} positions {len(boards)}",
         f"no model: nodes {n0} cpu {cpu0:.1f}s ({nps:.0f} nodes/s); "
-        f"network {latency * 1000:.1f} ms = {cost} nodes per call",
+        f"network {latency * 1000:.1f} ms; charging {cost} nodes per call",
     ]
     print(lines[-1], flush=True)
     for md in (int(x) for x in args.min_depths.split(",")):
         eng = Searcher(policy_fn=model.priors, policy_min_depth=md)
         eng.policy_node_cost = cost
+        eng.policy_pv_only = args.pv_only
+        eng.policy_rel_depth = args.rel_depth
         n1, cpu1, calls, moves1 = run(eng, boards, args.depth)
         raw = n1 - calls * cost
         agree = sum(a == b for a, b in zip(moves0, moves1, strict=True))
+        tag = f"min_depth {md} rel_depth {args.rel_depth}{' pv-only' if args.pv_only else ''}"
         line = (
-            f"min_depth {md}: raw nodes {raw} ({raw / n0:.2f}x), charged {n1} ({n1 / n0:.2f}x), "
+            f"{tag}: raw nodes {raw} ({raw / n0:.2f}x), charged {n1} ({n1 / n0:.2f}x), "
             f"cpu {cpu1:.1f}s ({cpu1 / cpu0:.2f}x), calls {calls} ({calls / len(boards):.1f}/pos), "
             f"same best move {agree}/{len(boards)}"
         )

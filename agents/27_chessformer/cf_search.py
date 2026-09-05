@@ -67,6 +67,12 @@ class Searcher:
         # consulting the network is part of the budget
         self.node_limit = float("inf")
         self.policy_node_cost = 0
+        # consult the network only at PV nodes (open window) instead of every node deep enough
+        self.policy_pv_only = False
+        # ... and only within policy_rel_depth plies of the root, where subtrees are large enough
+        # for better ordering to pay for a network call (64 = everywhere)
+        self.policy_rel_depth = 64
+        self.root_depth = 0
         # harvesting of exact nodes for training data (list of (fen, best_uci, score, depth))
         self.harvest: list[tuple[str, str, int, int]] | None = None
         self.harvest_min_depth = 2
@@ -112,6 +118,7 @@ class Searcher:
         result.move = legal[0]
         prev_score = 0
         for depth in range(1, max_depth + 1):
+            self.root_depth = depth
             self.root_best: chess.Move | None = None
             self.root_score = -INF
             self.root_moves_done = 0
@@ -303,7 +310,7 @@ class Searcher:
         moves = list(board.legal_moves)
         if not moves:
             return -MATE + ply if in_check else 0
-        moves = self._order_moves(board, moves, tt_move, ply, depth)
+        moves = self._order_moves(board, moves, tt_move, ply, depth, pv_node)
         priors = self._priors_cache if self._priors_valid_key == key else None
 
         best = -INF
@@ -497,9 +504,19 @@ class Searcher:
         tt_move: chess.Move | None,
         ply: int,
         depth: int,
+        pv_node: bool = True,
     ) -> list[chess.Move]:
         self._priors_valid_key = None
-        if self.policy_fn is not None and depth >= self.policy_min_depth and len(moves) > 1:
+        killers = self.killers[ply]
+        hist = self.history[board.turn]
+        priors: dict[chess.Move, float] | None = None
+        if (
+            self.policy_fn is not None
+            and depth >= self.policy_min_depth
+            and depth >= self.root_depth - self.policy_rel_depth
+            and len(moves) > 1
+            and (pv_node or not self.policy_pv_only)
+        ):
             key = self.path[-1] if self.path else board._transposition_key()
             priors = self.policy_cache.get(key)
             if priors is None:
@@ -509,39 +526,23 @@ class Searcher:
                 self.policy_cache[key] = priors
             self._priors_cache = priors
             self._priors_valid_key = key
-            killers = self.killers[ply]
-            hist = self.history[board.turn]
 
-            def pscore(m: chess.Move) -> float:
-                if m == tt_move:
-                    return 10.0
-                s = priors.get(m, 0.0)
-                if board.is_capture(m):
-                    v = board.piece_type_at(m.to_square)
-                    a = board.piece_type_at(m.from_square)
-                    if v is not None and a is not None and PIECE_VALUE_MG[v] >= PIECE_VALUE_MG[a]:
-                        s += 0.15
-                if m == killers[0] or m == killers[1]:
-                    s += 0.03
-                s += hist[m.from_square][m.to_square] / 200000.0
-                return s
-
-            moves.sort(key=pscore, reverse=True)
-            return moves
-
-        killers = self.killers[ply]
-        hist = self.history[board.turn]
-
-        def score(m: chess.Move) -> int:
+        # staged ordering: hash move, captures/promotions by MVV-LVA, killers, then quiet moves.
+        # Quiet moves go by the network prior when one is available (history breaks ties),
+        # otherwise by history alone.
+        def score(m: chess.Move) -> float:
             if m == tt_move:
-                return 1_000_000_000
+                return 1_000_000_000.0
             if board.is_capture(m) or m.promotion is not None:
-                return 1_000_000 + self._mvv_lva(board, m)
+                return 1_000_000.0 + self._mvv_lva(board, m)
             if m == killers[0]:
-                return 900_000
+                return 900_000.0
             if m == killers[1]:
-                return 890_000
-            return hist[m.from_square][m.to_square]
+                return 890_000.0
+            h = hist[m.from_square][m.to_square]
+            if priors is not None:
+                return priors.get(m, 0.0) * 500_000.0 + min(h, 99_999)
+            return float(h)
 
         moves.sort(key=score, reverse=True)
         return moves

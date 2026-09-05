@@ -30,13 +30,16 @@ from cf_search import Searcher  # noqa: E402
 MATERIAL = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 
 
-def make_engine(spec: str, min_depth: int, policy_cost: int) -> tuple[Searcher, PolicyModel | None]:
+def make_engine(
+    spec: str, min_depth: int, policy_cost: int, pv_only: bool = False
+) -> tuple[Searcher, PolicyModel | None]:
     if spec == "none":
         return Searcher(), None
     model = PolicyModel(spec)
     model.warm_up()
     engine = Searcher(policy_fn=model.priors, policy_min_depth=min_depth)
     engine.policy_node_cost = policy_cost
+    engine.policy_pv_only = pv_only
     return engine, model
 
 
@@ -116,6 +119,7 @@ def main() -> None:
     parser.add_argument(
         "--policy-cost", type=int, default=-1, help="nodes charged per network call (-1: measure)"
     )
+    parser.add_argument("--pv-only", action="store_true", help="network at PV nodes only (A and B)")
     parser.add_argument("--max-plies", type=int, default=200)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--out", default=None, help="append the summary to this file")
@@ -145,8 +149,8 @@ def main() -> None:
                 f"-> policy cost {policy_cost} nodes"
             )
 
-    eng_a, _ = make_engine(args.a, args.min_depth, policy_cost)
-    eng_b, _ = make_engine(args.b, args.min_depth, policy_cost)
+    eng_a, _ = make_engine(args.a, args.min_depth, policy_cost, args.pv_only)
+    eng_b, _ = make_engine(args.b, args.min_depth, policy_cost, args.pv_only)
     rng = random.Random(args.seed)
     wins = draws = losses = 0
     stats_a: Stats = {"cpu": [], "nodes": [], "depth": [], "policy_calls": []}
@@ -189,7 +193,7 @@ def main() -> None:
 
     summary = (
         f"A={args.a} B={args.b} nodes={args.nodes} min_depth={args.min_depth} "
-        f"policy_cost={policy_cost} pairs={args.pairs} seed={args.seed}\n"
+        f"pv_only={args.pv_only} policy_cost={policy_cost} pairs={args.pairs} seed={args.seed}\n"
         f"A: +{wins} ={draws} -{losses} score {score:.1%} "
         f"elo {elo(score):+.0f} [{lo:+.0f}, {hi:+.0f}]\n"
         + per_move("A", stats_a)
