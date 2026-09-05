@@ -1,0 +1,9 @@
+20_pvs import returned in 0.1s (engine_ok=True compiling=False )
+import + warm-up cpu 0.1s
+start        depth  7/12 score     35 move b1c3   nodes      8466 q%  50 cpu   0.03s (   271 knps) wall   0.93s tt 2617 cut1 93% null 429 lmr_re 14
+kiwipete     depth  7/27 score    -29 move d5e6   nodes     54947 q%  77 cpu   0.17s (   320 knps) wall   3.90s tt 6836 cut1 93% null 330 lmr_re 17
+middlegame   depth  7/17 score   -256 move f1d3   nodes     14992 q%  61 cpu   0.05s (   320 knps) wall   0.09s tt 2265 cut1 89% null 517 lmr_re 40
+endgame      depth  7/12 score     16 move b4f4   nodes      4852 q%  46 cpu   0.03s (   155 knps) wall   0.03s tt 1618 cut1 91% null 240 lmr_re 5
+rook endgame depth  7/12 score      0 move d2e3   nodes     19912 q%  57 cpu   0.06s (   319 knps) wall   0.08s tt 5520 cut1 78% null 506 lmr_re 115
+tactics      depth  7/18 score     25 move c3d5   nodes     13150 q%  64 cpu   0.06s (   210 knps) wall   0.07s tt 2216 cut1 91% null 205 lmr_re 14
+TOTAL nodes 116319 q% 67 cpu 0.41s knps(cpu) 286 avg depth 7.0 avg seldepth 16.3 cut1 87%

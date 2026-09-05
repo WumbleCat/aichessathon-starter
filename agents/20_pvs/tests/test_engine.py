@@ -16,6 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 import chess  # noqa: E402
+import numpy as np  # noqa: E402
 
 import agent  # noqa: E402
 
@@ -287,6 +288,58 @@ class SearchBehaviour(unittest.TestCase):
         move, _score, _depth, info = s.search(pos, max_depth=30, node_limit=20000)
         self.assertLess(info["nodes"], 40000)
         self.assertNotEqual(move, 0)
+
+
+class PonderTests(unittest.TestCase):
+    FEN = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"
+
+    def test_ponder_stops_quickly_and_fills_the_table(self) -> None:
+        from pvs_search import Ponderer
+
+        main = Searcher()
+        pos = pb.Position(self.FEN)
+        move, _score, _depth, _info = main.search(pos, max_depth=5)
+        ponderer = Ponderer(main)
+        ponderer.start(pos, move, [])
+        time.sleep(0.5)
+        start = time.perf_counter()
+        self.assertTrue(ponderer.stop())
+        self.assertLess(time.perf_counter() - start, 0.5)
+        self.assertGreater(ponderer.nodes, 1000)
+        # the pondered position is the one after our move: its TT entries must now help
+        pos.push(move)
+        pos.st[pb.ST_PLY] = 0
+        keys_before = int(np.count_nonzero(main.tt_keys))
+        self.assertGreater(keys_before, 100)
+        _m, _s, _d, info = main.search(pos, max_depth=6)
+        self.assertGreater(info["tt_hits"], 0)
+        # stopping twice, or before starting, is harmless
+        self.assertTrue(ponderer.stop())
+
+    def test_ponder_position_is_a_copy(self) -> None:
+        from pvs_search import Ponderer
+
+        main = Searcher()
+        pos = pb.Position(self.FEN)
+        move = pos.legal_moves()[0]
+        before = pos.st.copy()
+        ponderer = Ponderer(main)
+        ponderer.start(pos, move, [])
+        time.sleep(0.2)
+        ponderer.stop()
+        self.assertTrue((pos.st == before).all())
+        self.assertNotEqual(int(ponderer.pos.st[pb.ST_HASH]), int(pos.st[pb.ST_HASH]))
+
+    def test_get_move_with_pondering_between_calls(self) -> None:
+        board = chess.Board()
+        agent.PONDER = True
+        for _ in range(6):
+            uci = agent.get_move(board.fen(), 20000)
+            self.assertIn(chess.Move.from_uci(uci), board.legal_moves)
+            board.push(chess.Move.from_uci(uci))
+            time.sleep(0.2)  # the opponent "thinks"; the ponder thread runs meanwhile
+        self.assertIsNotNone(agent._ponderer)
+        self.assertTrue(agent._ponderer.stop())
 
 
 def pos_fen(pos: pb.Position) -> str:

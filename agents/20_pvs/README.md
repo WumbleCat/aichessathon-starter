@@ -19,6 +19,7 @@ the legality safety net.
 | `pvs_search.py` | jitted PVS search with all selective features, Python iterative-deepening driver |
 | `tests/test_engine.py` | perft, mandatory chess tests, clock tests, search behaviour |
 | `bench.py` | node/depth benchmark and feature A/B on fixed positions |
+| `selfplay.py` | paired self-play between two parameter sets at a fixed node budget (load-independent A/B) |
 | `IMPLEMENTATION.md` | plan and design decisions |
 | `RESULTS.md` | measurements and arena results |
 
@@ -75,13 +76,27 @@ Below 120 ms on the clock the python-chess fallback move is played instantly.
 
 ## Initialisation
 
-All jitted functions carry explicit signatures and compile at import (eager), then two short
-warm-up searches run. See RESULTS.md for the measured import time.
+All jitted functions carry explicit signatures and compile eagerly when `pvs_board` and
+`pvs_search` are imported. `agent.py` does that import in a daemon thread started at its own
+import, joins it for at most 60 s, and returns; the platform then sees the agent as ready
+inside the 90 s budget no matter how slow the compile is. `get_move` waits a bounded share of
+a long clock (30 %, at most 40 s, never on a clock under 30 s) for the thread and otherwise
+plays the one-ply python-chess fallback until the engine is ready. Two short warm-up searches
+run inside the thread. numba's on-disk cache is deliberately off: cached code for the
+recursive search crashed with an access violation when a second process loaded it, so every
+process compiles from source. See RESULTS.md for the measured times.
+
+## Status
+
+Merge into `main` is pending: the code lives on `feature/agent-20-pvs` (commits made through a
+throwaway index because the shared checkout stays on `main`), and the working-tree copy in
+`agents/20_pvs/` matches it. See RESULTS.md for what has been measured and what is next.
 
 ## Running
 
 ```powershell
 & .venv\Scripts\python.exe -m unittest discover -s agents/20_pvs/tests -v
 & .venv\Scripts\python.exe agents/20_pvs/bench.py
+& .venv\Scripts\python.exe agents/20_pvs/selfplay.py --b P_NULL=0 --nodes 4000 --games 100
 & .venv\Scripts\python.exe -m harness.arena --agent agents/20_pvs --opponent baselines/minimax --games 10
 ```

@@ -20,6 +20,7 @@ disable it. All search state lives in numpy arrays passed to the jitted function
 
 from __future__ import annotations
 
+import threading
 import time
 
 import numpy as np
@@ -443,6 +444,7 @@ def qsearch(
     int64(A1, A1, A1, A1, A1, A1, A2, A1, A1, A1, A1, A1, A1, A1, A1, float64[::1], A1, A1,
           int64, int64, int64, int64, boolean),
     cache=False,
+    nogil=True,  # the ponder thread searches while the main thread waits for the next request
 )
 def negamax(
     tab, etab, bb, occ, sq, st, undo, moves, scores, tt_keys, tt_data, killers, history,
@@ -888,3 +890,70 @@ class Searcher:
         for _ in range(pushed):
             pos.pop()
         return " ".join(pv)
+
+
+# ------------------------------------------------------------------------ pondering
+
+
+class Ponderer:
+    """Searches the position after our move on the opponent's time, filling the shared TT.
+
+    The rules let the process keep its core while the opponent thinks. Instead of guessing
+    the reply, the ponder search simply runs iterative deepening from the opponent's side
+    with no clock and no depth target; whatever it stores in the transposition table (which
+    it shares with the main searcher) makes the next real search deeper. ``negamax`` is
+    compiled with ``nogil=True`` so the thread does not block the main thread's stdin loop.
+    """
+
+    def __init__(self, main: Searcher) -> None:
+        self.main = main
+        self.searcher = Searcher(main.params)
+        self.searcher.tt_keys = main.tt_keys  # shared table, everything else is private
+        self.searcher.tt_data = main.tt_data
+        self.pos = Position()
+        self.thread: threading.Thread | None = None
+        self.keys: list[int] = []
+        self.started = 0
+        self.nodes = 0
+
+    def start(self, pos: Position, move: int, history_keys: list[int]) -> None:
+        """Begin pondering the position reached by playing ``move`` on ``pos``."""
+        self.stop()
+        pos.push(move)
+        self.pos.bb[:] = pos.bb
+        self.pos.occ[:] = pos.occ
+        self.pos.sq[:] = pos.sq
+        self.pos.st[:] = pos.st
+        pos.pop()
+        self.pos.st[ST_PLY] = 0
+        self.keys = list(history_keys)
+        # the main search will bump its age on the next move; store ponder entries under
+        # that age so they are treated as current rather than stale
+        self.searcher.age = self.main.age
+        self.started += 1
+        self.thread = threading.Thread(target=self._run, name="20_pvs-ponder", daemon=True)
+        self.thread.start()
+
+    def _run(self) -> None:
+        try:
+            _move, _score, _depth, info = self.searcher.search(
+                self.pos, time_budget=None, max_depth=MAX_PLY - 16, history_keys=self.keys
+            )
+            self.nodes = info.get("nodes", 0)
+        except Exception:  # pragma: no cover - never let a ponder bug reach the game
+            pass
+
+    def stop(self, timeout: float = 3.0) -> bool:
+        """Stop the ponder search and wait for it. True when the thread is gone."""
+        thread = self.thread
+        if thread is None or not thread.is_alive():
+            self.thread = None
+            return True
+        deadline = time.perf_counter() + timeout
+        while thread.is_alive() and time.perf_counter() < deadline:
+            # search() zeroes sinfo once at its start, so keep raising the flag until the
+            # thread has actually left the search
+            self.searcher.sinfo[S_STOP] = 1
+            thread.join(0.02)
+        self.thread = None
+        return not thread.is_alive()

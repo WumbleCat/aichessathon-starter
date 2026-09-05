@@ -38,6 +38,8 @@ NUMBA_WAIT_S = 60.0  # how long import blocks on the compile thread (init budget
 COMPILE_WAIT_FRACTION = 0.3  # share of the clock a move may spend waiting for the compile
 COMPILE_WAIT_MAX_S = 40.0
 COMPILE_WAIT_MIN_CLOCK_MS = 30_000  # on a short clock, do not wait: play the fallback at once
+PONDER = True  # search on the opponent's time (allowed by the rules); toggle for A/B games
+PONDER_MIN_CLOCK_MS = 2_000  # stopping the ponder thread costs a few ms; skip it when low
 
 
 def think_time_ms(time_left_ms: int, move_number: int) -> float:
@@ -61,16 +63,17 @@ _ENGINE_LOAD_S = 0.0
 _engine: dict[str, Any] = {}  # Searcher, Position, ST_HASH, move_to_uci once compiled
 _searcher: Any = None
 _position: Any = None
+_ponderer: Any = None
 _history_keys: list[int] = []
 
 
 def _load_engine() -> None:
     """Thread target: import (= compile) the jitted modules and warm every search path."""
-    global _ENGINE_OK, _ENGINE_ERROR, _ENGINE_LOAD_S, _searcher, _position
+    global _ENGINE_OK, _ENGINE_ERROR, _ENGINE_LOAD_S, _searcher, _position, _ponderer
     started = time.perf_counter()
     try:
         from pvs_board import ST_HASH, Position, move_to_uci
-        from pvs_search import Searcher
+        from pvs_search import Ponderer, Searcher
 
         searcher = Searcher()
         position = Position("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1")
@@ -79,11 +82,18 @@ def _load_engine() -> None:
         searcher.search(position, time_budget=0.1, max_depth=6)
         searcher.clear()
         searcher.age = 0
+        ponderer = Ponderer(searcher)
+        # warm the ponder path too: start, let it run briefly, stop
+        ponderer.start(position, position.legal_moves()[0], [])
+        time.sleep(0.05)
+        ponderer.stop()
+        searcher.clear()
         _engine.update(
             ST_HASH=ST_HASH, Position=Position, move_to_uci=move_to_uci, Searcher=Searcher
         )
         _searcher = searcher
         _position = position
+        _ponderer = ponderer
         _ENGINE_OK = True
     except Exception as exc:  # pragma: no cover - only on a broken platform
         _ENGINE_ERROR = repr(exc)
@@ -114,8 +124,10 @@ def _engine_move(board: chess.Board, fen: str, time_left_ms: int) -> str | None:
     global _history_keys
     if not _engine_ready(time_left_ms):
         return None
-    searcher, position = _searcher, _position
+    searcher, position, ponderer = _searcher, _position, _ponderer
     st_hash = _engine["ST_HASH"]
+    if not ponderer.stop():
+        print("20_pvs ponder thread did not stop in time")
     position.set_fen(fen)
     key = int(position.st[st_hash])
     # a new game in the same process (should not happen on the platform) resets the memory
@@ -141,8 +153,11 @@ def _engine_move(board: chess.Board, fen: str, time_left_ms: int) -> str | None:
     print(
         f"20_pvs depth {depth}/{info.get('seldepth', 0)} score {score} "
         f"nodes {info.get('nodes', 0)} nps {info.get('nps', 0)} "
-        f"time {info.get('time', 0):.2f}s clock {time_left_ms}ms"
+        f"time {info.get('time', 0):.2f}s clock {time_left_ms}ms "
+        f"tt_hits {info.get('tt_hits', 0)} pondered {ponderer.nodes}"
     )
+    if PONDER and time_left_ms >= PONDER_MIN_CLOCK_MS:
+        ponderer.start(position, move, _history_keys)
     return str(_engine["move_to_uci"](move))
 
 

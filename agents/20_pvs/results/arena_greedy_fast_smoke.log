@@ -1,0 +1,8 @@
+game 1/4: black by checkmate
+game 2/4: draw by threefold_repetition
+game 3/4: draw by threefold_repetition
+game 4/4: draw by threefold_repetition
+
+agents\20_pvs vs baselines\greedy over 4 games
++0 =3 -1, score 37.5%
+terminations: checkmate 1, threefold_repetition 3

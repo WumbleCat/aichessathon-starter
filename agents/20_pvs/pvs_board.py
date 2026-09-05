@@ -24,6 +24,14 @@ Move encoding (int64):
 
 from __future__ import annotations
 
+import os
+
+# One core on the platform; numba's threading layer must not spawn workers. numba's on-disk
+# cache is deliberately NOT used: cached machine code for the recursive search crashed with
+# an access violation when loaded by a second process (numba 0.67, Windows, 2026-09-05), so
+# every process compiles from source (see agent.py for how that fits the init budget).
+os.environ.setdefault("NUMBA_NUM_THREADS", "1")
+
 import chess
 import numpy as np
 from numba import boolean, int64, njit, void
