@@ -39,7 +39,7 @@ class NNUETest(unittest.TestCase):
                     if board.is_castling(m) or board.is_en_passant(m) or m.promotion
                 ]
                 mv = rng.choice(special) if special and rng.random() < 0.8 else rng.choice(moves)
-                n = cb.gen_moves(P, self.moves[ply], False)
+                n = cb.gen_moves(P, self.moves[ply], cb.ALL_MOVES)
                 idx = [i for i in range(n) if cb.move_to_uci(int(self.moves[ply, i])) == mv.uci()]
                 self.assertEqual(len(idx), 1, mv.uci())
                 self.assertTrue(cb.make_move(P, self.undo, ply, self.moves[ply, idx[0]]))

@@ -164,8 +164,11 @@ def update(acc, ply, P, W1):  # type: ignore[no-untyped-def]
 
 @jit
 def copy_acc(acc, ply):  # type: ignore[no-untyped-def]
-    """acc[ply+1] = acc[ply] (null move)."""
-    acc[ply + 1] = acc[ply]
+    """acc[ply+1] = acc[ply] (null move).  Explicit loops: the array-slice assignment made
+    numba lower a generic broadcasting copy that cost more compile time than the search."""
+    for p in range(2):
+        for i in range(acc.shape[2]):
+            acc[ply + 1, p, i] = acc[ply, p, i]
 
 
 @jit

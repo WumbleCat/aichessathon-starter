@@ -63,7 +63,7 @@ class PerftTest(unittest.TestCase):
             P = cboard.from_board(board)
             for _ply in range(120):
                 legal = {m.uci() for m in board.legal_moves}
-                n = cboard.gen_moves(P, moves[0], False)
+                n = cboard.gen_moves(P, moves[0], cboard.ALL_MOVES)
                 ours = set()
                 for i in range(n):
                     if cboard.make_move(P, undo, 0, moves[0, i]):

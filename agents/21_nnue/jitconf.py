@@ -18,3 +18,9 @@ CACHE = os.environ.get("NNUE21_NUMBA_CACHE", "0") == "1"
 
 def jit(fn: Callable[..., Any]) -> Any:
     return njit(cache=CACHE)(fn)
+
+
+def jit_inline(fn: Callable[..., Any]) -> Any:
+    """For tiny helpers called with literal arguments: inlined at the numba IR level, so no
+    separate specialisation is compiled per distinct literal."""
+    return njit(cache=CACHE, inline="always")(fn)

@@ -36,7 +36,7 @@ NODES_PER_CLOCK_CHECK = 1024
 # ctl slots
 C_NODES, C_QNODES, C_ABORT, C_NODE_LIMIT, C_SELDEPTH, C_TT_HITS, C_NEXT_CHECK = 0, 1, 2, 3, 4, 5, 6
 C_GHIST_N, C_ROOT_MOVE, C_ROOT_SCORE, C_USE_NNUE, C_ROOT_DEPTH, C_PV_LEN = 7, 8, 9, 10, 11, 12
-C_ROOT_MOVES_DONE = 13
+C_ROOT_MOVES_DONE, C_NULL_PLY = 13, 14
 CTL_SIZE = 32
 F_DEADLINE = 0
 
@@ -634,32 +634,25 @@ def do_move(P, undo, ply, move, acc, net, ctl):  # type: ignore[no-untyped-def]
 
 # ----------------------------------------------------------------------------- quiescence
 
+# The search state travels as ONE tuple ``S`` (see ``Searcher.search``) so that numba's type
+# inference sees one argument instead of fourteen: the compile of the recursive functions is
+# dominated by inference over their arguments.  Indices into that tuple:
+X_P, X_UNDO, X_MV, X_MS, X_ACC, X_NET, X_TT_KEY, X_TT_VAL = 0, 1, 2, 3, 4, 5, 6, 7
+X_KILLERS, X_HISTORY, X_KEYS, X_GHIST, X_CTL, X_CTF = 8, 9, 10, 11, 12, 13
+
 
 @jit
-def qsearch(  # type: ignore[no-untyped-def]
-    P,
-    undo,
-    mv,
-    ms,
-    acc,
-    net,
-    tt_key,
-    tt_val,
-    killers,
-    history,
-    keys,
-    ghist,
-    ctl,
-    ctf,
-    ply,
-    alpha,
-    beta,
-):
+def qsearch(S, ply, alpha, beta):  # type: ignore[no-untyped-def]
+    P = S[X_P]
+    undo = S[X_UNDO]
+    acc = S[X_ACC]
+    net = S[X_NET]
+    ctl = S[X_CTL]
     ctl[C_NODES] += 1
     ctl[C_QNODES] += 1
     if ply > ctl[C_SELDEPTH]:
         ctl[C_SELDEPTH] = ply
-    check_clock(ctl, ctf)
+    check_clock(ctl, S[X_CTF])
     if ctl[C_ABORT] != 0:
         return 0
     if ply >= cb.MAX_PLY - 1:
@@ -669,10 +662,11 @@ def qsearch(  # type: ignore[no-untyped-def]
         return stand
     if stand > alpha:
         alpha = stand
-    moves = mv[ply]
-    scores = ms[ply]
-    n = cb.gen_moves(P, moves, True)
-    score_moves(P, moves, scores, n, 0, killers, history, ply)
+    moves = S[X_MV][ply]
+    scores = S[X_MS][ply]
+    n = cb.gen_moves(P, moves, cb.CAPTURES_ONLY)
+    score_moves(P, moves, scores, n, np.int64(0), S[X_KILLERS], S[X_HISTORY], ply)
+    keys = S[X_KEYS]
     best = stand
     for i in range(n):
         m = pick_next(moves, scores, n, i)
@@ -686,25 +680,7 @@ def qsearch(  # type: ignore[no-untyped-def]
             cb.unmake_move(P, undo, ply)
             continue
         keys[ply + 1] = P[cb.HASH]
-        score = -qsearch(
-            P,
-            undo,
-            mv,
-            ms,
-            acc,
-            net,
-            tt_key,
-            tt_val,
-            killers,
-            history,
-            keys,
-            ghist,
-            ctl,
-            ctf,
-            ply + 1,
-            -beta,
-            -alpha,
-        )
+        score = -qsearch(S, ply + 1, -beta, -alpha)
         cb.unmake_move(P, undo, ply)
         if ctl[C_ABORT] != 0:
             return 0
@@ -721,49 +697,21 @@ def qsearch(  # type: ignore[no-untyped-def]
 
 
 @jit
-def negamax(  # type: ignore[no-untyped-def]
-    P,
-    undo,
-    mv,
-    ms,
-    acc,
-    net,
-    tt_key,
-    tt_val,
-    killers,
-    history,
-    keys,
-    ghist,
-    ctl,
-    ctf,
-    ply,
-    depth,
-    alpha,
-    beta,
-    do_null,
-):
+def negamax(S, ply, depth, alpha, beta):  # type: ignore[no-untyped-def]
     if depth <= 0:
-        return qsearch(
-            P,
-            undo,
-            mv,
-            ms,
-            acc,
-            net,
-            tt_key,
-            tt_val,
-            killers,
-            history,
-            keys,
-            ghist,
-            ctl,
-            ctf,
-            ply,
-            alpha,
-            beta,
-        )
+        return qsearch(S, ply, alpha, beta)
+    P = S[X_P]
+    undo = S[X_UNDO]
+    acc = S[X_ACC]
+    net = S[X_NET]
+    tt_key = S[X_TT_KEY]
+    tt_val = S[X_TT_VAL]
+    killers = S[X_KILLERS]
+    history = S[X_HISTORY]
+    keys = S[X_KEYS]
+    ctl = S[X_CTL]
     ctl[C_NODES] += 1
-    check_clock(ctl, ctf)
+    check_clock(ctl, S[X_CTF])
     if ctl[C_ABORT] != 0:
         return 0
     if ply > ctl[C_SELDEPTH]:
@@ -773,8 +721,10 @@ def negamax(  # type: ignore[no-untyped-def]
 
     pv_node = beta - alpha > 1
     root = ply == 0
+    # a null move may not answer a null move (and the root never makes one)
+    do_null = ctl[C_NULL_PLY] != ply
     if not root:
-        if is_draw(P, keys, ply, ghist, ctl):
+        if is_draw(P, keys, ply, S[X_GHIST], ctl):
             return 0
         # mate distance pruning
         if alpha < -MATE + ply:
@@ -818,27 +768,9 @@ def negamax(  # type: ignore[no-untyped-def]
                 if ctl[C_USE_NNUE] != 0:
                     nnue.copy_acc(acc, ply)
                 keys[ply + 1] = P[cb.HASH]
-                score = -negamax(
-                    P,
-                    undo,
-                    mv,
-                    ms,
-                    acc,
-                    net,
-                    tt_key,
-                    tt_val,
-                    killers,
-                    history,
-                    keys,
-                    ghist,
-                    ctl,
-                    ctf,
-                    ply + 1,
-                    depth - 1 - r,
-                    -beta,
-                    -beta + 1,
-                    False,
-                )
+                ctl[C_NULL_PLY] = ply + 1
+                score = -negamax(S, ply + 1, depth - 1 - r, -beta, -beta + 1)
+                ctl[C_NULL_PLY] = -1
                 cb.unmake_null(P, undo, ply)
                 if ctl[C_ABORT] != 0:
                     return 0
@@ -848,25 +780,7 @@ def negamax(  # type: ignore[no-untyped-def]
                     return score
             # razoring
             if (depth <= 2) & (stat + 300 * depth < alpha):
-                score = qsearch(
-                    P,
-                    undo,
-                    mv,
-                    ms,
-                    acc,
-                    net,
-                    tt_key,
-                    tt_val,
-                    killers,
-                    history,
-                    keys,
-                    ghist,
-                    ctl,
-                    ctf,
-                    ply,
-                    alpha,
-                    beta,
-                )
+                score = qsearch(S, ply, alpha, beta)
                 if score < alpha:
                     return score
 
@@ -874,9 +788,9 @@ def negamax(  # type: ignore[no-untyped-def]
     if (ttmv == 0) & (depth >= 5) & pv_node:
         depth -= 1
 
-    moves = mv[ply]
-    scores = ms[ply]
-    n = cb.gen_moves(P, moves, False)
+    moves = S[X_MV][ply]
+    scores = S[X_MS][ply]
+    n = cb.gen_moves(P, moves, cb.ALL_MOVES)
     score_moves(P, moves, scores, n, ttmv, killers, history, ply)
 
     best = -INF
@@ -902,31 +816,13 @@ def negamax(  # type: ignore[no-untyped-def]
         keys[ply + 1] = P[cb.HASH]
         gives_check = cb.in_check(P)
         new_depth = depth - 1
-        score = 0
-        if legal == 1:
-            score = -negamax(
-                P,
-                undo,
-                mv,
-                ms,
-                acc,
-                net,
-                tt_key,
-                tt_val,
-                killers,
-                history,
-                keys,
-                ghist,
-                ctl,
-                ctf,
-                ply + 1,
-                new_depth,
-                -beta,
-                -alpha,
-                True,
-            )
-        else:
-            r = 0
+        # PVS with late move reductions: the first move gets the full window at full depth;
+        # later moves get a zero window, possibly reduced, and are re-searched at full depth
+        # and then with the full window when they beat alpha.
+        r = 0
+        lo = -beta
+        if legal > 1:
+            lo = -alpha - 1
             if is_quiet & (depth >= 3) & (legal > 3) & (not incheck) & (not gives_check):
                 r = LMR_TABLE[min(depth, MAX_DEPTH), min(legal, 63)]
                 if pv_node:
@@ -937,71 +833,18 @@ def negamax(  # type: ignore[no-untyped-def]
                     r = 0
                 if r > new_depth - 1:
                     r = max(0, new_depth - 1)
-            score = -negamax(
-                P,
-                undo,
-                mv,
-                ms,
-                acc,
-                net,
-                tt_key,
-                tt_val,
-                killers,
-                history,
-                keys,
-                ghist,
-                ctl,
-                ctf,
-                ply + 1,
-                new_depth - r,
-                -alpha - 1,
-                -alpha,
-                True,
-            )
-            if (score > alpha) & (r > 0):
-                score = -negamax(
-                    P,
-                    undo,
-                    mv,
-                    ms,
-                    acc,
-                    net,
-                    tt_key,
-                    tt_val,
-                    killers,
-                    history,
-                    keys,
-                    ghist,
-                    ctl,
-                    ctf,
-                    ply + 1,
-                    new_depth,
-                    -alpha - 1,
-                    -alpha,
-                    True,
-                )
-            if (score > alpha) & (score < beta):
-                score = -negamax(
-                    P,
-                    undo,
-                    mv,
-                    ms,
-                    acc,
-                    net,
-                    tt_key,
-                    tt_val,
-                    killers,
-                    history,
-                    keys,
-                    ghist,
-                    ctl,
-                    ctf,
-                    ply + 1,
-                    new_depth,
-                    -beta,
-                    -alpha,
-                    True,
-                )
+        d = new_depth - r
+        score = 0
+        while True:
+            score = -negamax(S, ply + 1, d, lo, -alpha)
+            if (legal == 1) | (score <= alpha) | (ctl[C_ABORT] != 0):
+                break
+            if d < new_depth:
+                d = new_depth  # the reduced search beat alpha: full depth, zero window
+            elif (lo == -alpha - 1) & (score < beta):
+                lo = -beta  # full window
+            else:
+                break
         cb.unmake_move(P, undo, ply)
         if ctl[C_ABORT] != 0:
             return 0
@@ -1035,48 +878,13 @@ def negamax(  # type: ignore[no-untyped-def]
 
 
 @jit
-def search_root(  # type: ignore[no-untyped-def]
-    P,
-    undo,
-    mv,
-    ms,
-    acc,
-    net,
-    tt_key,
-    tt_val,
-    killers,
-    history,
-    keys,
-    ghist,
-    ctl,
-    ctf,
-    depth,
-    alpha,
-    beta,
-):
-    keys[0] = P[cb.HASH]
+def search_root(S, depth, alpha, beta):  # type: ignore[no-untyped-def]
+    P = S[X_P]
+    ctl = S[X_CTL]
+    S[X_KEYS][0] = P[cb.HASH]
     ctl[C_ROOT_MOVES_DONE] = 0
-    return negamax(
-        P,
-        undo,
-        mv,
-        ms,
-        acc,
-        net,
-        tt_key,
-        tt_val,
-        killers,
-        history,
-        keys,
-        ghist,
-        ctl,
-        ctf,
-        0,
-        depth,
-        alpha,
-        beta,
-        False,
-    )
+    ctl[C_NULL_PLY] = 0
+    return negamax(S, np.int64(0), depth, alpha, beta)
 
 
 @jit
@@ -1091,7 +899,7 @@ def extract_pv(P, undo, mv, tt_key, tt_val, out, max_len):  # type: ignore[no-un
         if m == 0:
             break
         # verify the move is legal here
-        cnt = cb.gen_moves(P, mv[n], False)
+        cnt = cb.gen_moves(P, mv[n], cb.ALL_MOVES)
         found = False
         for i in range(cnt):
             if mv[n, i] == m:
@@ -1206,7 +1014,7 @@ class Searcher:
                 alpha, beta = best_score - window, best_score + window
             while True:
                 self.ctl[C_ROOT_MOVE] = 0
-                score = int(search_root(*args, depth, alpha, beta))
+                score = int(search_root(args, depth, alpha, beta))
                 if self.ctl[C_ABORT]:
                     break
                 if score <= alpha:

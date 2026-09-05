@@ -25,11 +25,11 @@ Move encoding (int64): from | to << 6 | promo << 12 | flags << 16
 from __future__ import annotations
 
 import numpy as np
-from llvmlite import ir
+from llvmlite import ir  # type: ignore[import-untyped]
 from numba import types
 from numba.extending import intrinsic
 
-from jitconf import jit
+from jitconf import jit, jit_inline
 
 # ----------------------------------------------------------------------------- constants
 
@@ -218,6 +218,21 @@ WK_EMPTY = _u((1 << F1) | (1 << G1))
 WQ_EMPTY = _u((1 << B1) | (1 << C1) | (1 << D1))
 BK_EMPTY = _u((1 << F8) | (1 << G8))
 BQ_EMPTY = _u((1 << B8) | (1 << C8) | (1 << D8))
+# one row per castling: rights bit, squares that must be empty, rook square, rook piece,
+# king square, the square the king crosses, the square the king lands on
+CASTLE_TAB = np.array(
+    [
+        [CASTLE_WK, WK_EMPTY, H1, WR, E1, F1, G1],
+        [CASTLE_WQ, WQ_EMPTY, A1, WR, E1, D1, C1],
+        [CASTLE_BK, BK_EMPTY, H8, BR, E8, F8, G8],
+        [CASTLE_BQ, BQ_EMPTY, A8, BR, E8, D8, C8],
+    ],
+    dtype=np.int64,
+)
+# gen_moves flag values as int64 scalars: a Python bool/int at a call site is a *literal* to
+# numba and would compile a second specialisation of the generator
+ALL_MOVES = np.int64(0)
+CAPTURES_ONLY = np.int64(1)
 
 # ----------------------------------------------------------------------------- bit helpers
 
@@ -258,7 +273,7 @@ def piece_type(piece):  # type: ignore[no-untyped-def]
     return piece - 6 if piece >= 7 else piece
 
 
-@jit
+@jit_inline
 def make_piece(color, ptype):  # type: ignore[no-untyped-def]
     return ptype + 6 * color
 
@@ -303,24 +318,24 @@ def slider_attacks_dir(sq, occ, d):  # type: ignore[no-untyped-def]
     return att
 
 
+# The direction is passed from a loop variable rather than as a literal: a literal argument
+# makes numba compile one specialisation of the callee per distinct value.
+
+
 @jit
 def bishop_attacks(sq, occ):  # type: ignore[no-untyped-def]
-    return (
-        slider_attacks_dir(sq, occ, 1)
-        | slider_attacks_dir(sq, occ, 3)
-        | slider_attacks_dir(sq, occ, 5)
-        | slider_attacks_dir(sq, occ, 7)
-    )
+    att = np.int64(0)
+    for d in range(1, 8, 2):
+        att |= slider_attacks_dir(sq, occ, d)
+    return att
 
 
 @jit
 def rook_attacks(sq, occ):  # type: ignore[no-untyped-def]
-    return (
-        slider_attacks_dir(sq, occ, 0)
-        | slider_attacks_dir(sq, occ, 2)
-        | slider_attacks_dir(sq, occ, 4)
-        | slider_attacks_dir(sq, occ, 6)
-    )
+    att = np.int64(0)
+    for d in range(0, 8, 2):
+        att |= slider_attacks_dir(sq, occ, d)
+    return att
 
 
 @jit
@@ -624,13 +639,13 @@ def unmake_null(P, undo, ply):  # type: ignore[no-untyped-def]
 # ----------------------------------------------------------------------------- movegen
 
 
-@jit
+@jit_inline
 def _add(out, n, frm, to, promo, flags):  # type: ignore[no-untyped-def]
     out[n] = np.int64(frm) | (np.int64(to) << 6) | (np.int64(promo) << 12) | (np.int64(flags) << 16)
     return n + 1
 
 
-@jit
+@jit_inline
 def _add_promos(out, n, frm, to, flags, captures_only):  # type: ignore[no-untyped-def]
     n = _add(out, n, frm, to, QUEEN, flags)
     if not captures_only:
@@ -749,20 +764,12 @@ def _castle_ok(P, rights_bit, empty_mask, rook_sq, rook_pc, ksq, s1, s2, them): 
 def _gen_castling(P, out, n):  # type: ignore[no-untyped-def]
     side = P[SIDE]
     them = 1 - side
-    if side == WHITE:
-        if P[KSQ] != E1:
+    for c in range(2 * side, 2 * side + 2):
+        row = CASTLE_TAB[c]
+        if P[KSQ + side] != row[4]:
             return n
-        if _castle_ok(P, CASTLE_WK, WK_EMPTY, H1, WR, E1, F1, G1, them):
-            n = _add(out, n, E1, G1, 0, F_CASTLE)
-        if _castle_ok(P, CASTLE_WQ, WQ_EMPTY, A1, WR, E1, D1, C1, them):
-            n = _add(out, n, E1, C1, 0, F_CASTLE)
-    else:
-        if P[KSQ + 1] != E8:
-            return n
-        if _castle_ok(P, CASTLE_BK, BK_EMPTY, H8, BR, E8, F8, G8, them):
-            n = _add(out, n, E8, G8, 0, F_CASTLE)
-        if _castle_ok(P, CASTLE_BQ, BQ_EMPTY, A8, BR, E8, D8, C8, them):
-            n = _add(out, n, E8, C8, 0, F_CASTLE)
+        if _castle_ok(P, row[0], row[1], row[2], row[3], row[4], row[5], row[6], them):
+            n = _add(out, n, row[4], row[6], 0, F_CASTLE)
     return n
 
 
@@ -771,7 +778,7 @@ def gen_moves(P, out, captures_only):  # type: ignore[no-untyped-def]
     """Pseudo-legal moves into ``out``; returns the count.  Castling is generated fully legal
     (rights, empty path, no attacked transit squares).  With ``captures_only`` only captures and
     queen promotions are generated."""
-    n = _gen_pawns(P, out, 0, captures_only)
+    n = _gen_pawns(P, out, ALL_MOVES, captures_only)
     n = _gen_pieces(P, out, n, captures_only)
     if not captures_only:
         n = _gen_castling(P, out, n)
@@ -780,7 +787,7 @@ def gen_moves(P, out, captures_only):  # type: ignore[no-untyped-def]
 
 @jit
 def perft(P, undo, moves, ply, depth):  # type: ignore[no-untyped-def]
-    n = gen_moves(P, moves[ply], False)
+    n = gen_moves(P, moves[ply], ALL_MOVES)
     if depth == 1:
         cnt = 0
         for i in range(n):
@@ -798,7 +805,7 @@ def perft(P, undo, moves, ply, depth):  # type: ignore[no-untyped-def]
 
 @jit
 def has_legal_move(P, undo, moves, ply):  # type: ignore[no-untyped-def]
-    n = gen_moves(P, moves[ply], False)
+    n = gen_moves(P, moves[ply], ALL_MOVES)
     for i in range(n):
         ok = make_move(P, undo, ply, moves[ply, i])
         unmake_move(P, undo, ply)
