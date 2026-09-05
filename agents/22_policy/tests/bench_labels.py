@@ -8,7 +8,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 import chess  # noqa: E402
-
 from bench_search import POSITIONS  # noqa: E402
 from pn_search import Searcher  # noqa: E402
 
@@ -25,5 +24,10 @@ for depth in (2, 3):
         total += r.stats.nodes
         best = max(r.root_scores.values())
         exact = sum(1 for v in r.root_scores.values() if v >= best - 300)
-        print(f"  depth {depth} nodes {r.stats.nodes:6d} moves {len(r.root_scores):2d} exact {exact:2d}")
-    print(f"depth {depth}: total nodes {total} cpu {cpu:.2f}s -> {cpu/len(POSITIONS):.2f}s/position")
+        print(
+            f"  depth {depth} nodes {r.stats.nodes:6d} "
+            f"moves {len(r.root_scores):2d} exact {exact:2d}"
+        )
+    print(
+        f"depth {depth}: total nodes {total} cpu {cpu:.2f}s -> {cpu / len(POSITIONS):.2f}s/position"
+    )

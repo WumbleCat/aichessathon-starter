@@ -14,10 +14,8 @@ import math
 import os
 import time
 
-import numpy as np
-
 import chess
-
+import numpy as np
 from pn_encoding import NUM_MOVE_PLANES, encode_board, move_to_index
 
 
@@ -38,9 +36,15 @@ class NumpyPolicy:
         pad[:, 1:9, 1:9] = x
         cols = np.stack(
             [
-                pad[:, 0:8, 0:8], pad[:, 0:8, 1:9], pad[:, 0:8, 2:10],
-                pad[:, 1:9, 0:8], pad[:, 1:9, 1:9], pad[:, 1:9, 2:10],
-                pad[:, 2:10, 0:8], pad[:, 2:10, 1:9], pad[:, 2:10, 2:10],
+                pad[:, 0:8, 0:8],
+                pad[:, 0:8, 1:9],
+                pad[:, 0:8, 2:10],
+                pad[:, 1:9, 0:8],
+                pad[:, 1:9, 1:9],
+                pad[:, 1:9, 2:10],
+                pad[:, 2:10, 0:8],
+                pad[:, 2:10, 1:9],
+                pad[:, 2:10, 2:10],
             ]
         )  # (9, Cin, 8, 8)
         cols = cols.reshape(-1, 64)
@@ -116,7 +120,7 @@ def _prior_from_logits(board: chess.Board, logits: np.ndarray) -> dict[chess.Mov
     m = float(vals.max())
     e = np.exp(vals - m)
     e /= e.sum()
-    return dict(zip(moves, e.tolist()))
+    return dict(zip(moves, e.tolist(), strict=True))
 
 
 def benchmark(policy: object, board: chess.Board, n: int = 200) -> float:
@@ -151,7 +155,10 @@ def load_policy(npz_path: str, prefer: str | None = None):
         t_np = benchmark(numpy_policy, board, 30)
         t_ox = benchmark(onnx_policy, board, 30)
         chosen = onnx_policy if t_ox < t_np else numpy_policy
-        print(f"policy backend: numpy {t_np*1000:.2f} ms, onnx {t_ox*1000:.2f} ms -> {type(chosen).__name__}")
+        print(
+            f"policy backend: numpy {t_np * 1000:.2f} ms, onnx {t_ox * 1000:.2f} ms "
+            f"-> {type(chosen).__name__}"
+        )
         return chosen
     return onnx_policy or numpy_policy
 
@@ -160,4 +167,4 @@ def logit_entropy(p: dict[chess.Move, float]) -> float:
     return -sum(v * math.log(v) for v in p.values() if v > 0)
 
 
-__all__ = ["NumpyPolicy", "OnnxPolicy", "load_policy", "benchmark", "NUM_MOVE_PLANES"]
+__all__ = ["NUM_MOVE_PLANES", "NumpyPolicy", "OnnxPolicy", "benchmark", "load_policy"]

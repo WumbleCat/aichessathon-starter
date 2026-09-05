@@ -1,6 +1,6 @@
 """Numpy / onnx inference must match torch, and be fast enough at batch 1.
 
-    python tests/test_policy_inference.py [channels] [blocks]
+python tests/test_policy_inference.py [channels] [blocks]
 """
 
 import os
@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.join(ROOT, "training"))
 import chess  # noqa: E402
 import numpy as np  # noqa: E402
 import torch  # noqa: E402
-
 from model import PolicyNet, count_params, export_numpy, export_onnx  # noqa: E402
 from pn_encoding import encode_board  # noqa: E402
 from pn_policy import NumpyPolicy, OnnxPolicy, benchmark  # noqa: E402
@@ -47,7 +46,7 @@ try:
 except Exception as error:
     print("onnx export failed:", repr(error))
     have_onnx = False
-print(f"npz size {os.path.getsize(npz)/1e6:.2f} MB")
+print(f"npz size {os.path.getsize(npz) / 1e6:.2f} MB")
 
 np_policy = NumpyPolicy(npz)
 boards = [
@@ -73,9 +72,9 @@ for b in boards:
 b = boards[1]
 p = np_policy.prior(b)
 assert abs(sum(p.values()) - 1.0) < 1e-4 and set(p) == set(b.legal_moves)
-print(f"numpy prior median {benchmark(np_policy, b, 100)*1000:.2f} ms")
+print(f"numpy prior median {benchmark(np_policy, b, 100) * 1000:.2f} ms")
 if have_onnx:
-    print(f"onnx  prior median {benchmark(OnnxPolicy(onnx_path), b, 100)*1000:.2f} ms")
+    print(f"onnx  prior median {benchmark(OnnxPolicy(onnx_path), b, 100) * 1000:.2f} ms")
 x = encode_board(b)
 xt = torch.from_numpy(x[None])
 with torch.no_grad():
@@ -85,5 +84,5 @@ with torch.no_grad():
         model(xt)
         ts.append(time.perf_counter() - t0)
 ts.sort()
-print(f"torch forward median {ts[50]*1000:.2f} ms")
+print(f"torch forward median {ts[50] * 1000:.2f} ms")
 print("ok")

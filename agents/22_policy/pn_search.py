@@ -16,7 +16,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import chess
-
 from pn_eval import MATE, MATE_BOUND, PIECE_VALUE, evaluate
 
 Prior = Callable[[chess.Board], dict[chess.Move, float]]
@@ -192,7 +191,9 @@ class Searcher:
             if self.clocked and elapsed > time_budget * 0.55:
                 break
         elapsed = time.perf_counter() - started
-        return SearchResult(best_move, best_score, completed_depth, pv, elapsed, self.stats, root_scores)
+        return SearchResult(
+            best_move, best_score, completed_depth, pv, elapsed, self.stats, root_scores
+        )
 
     # ---------------------------------------------------------------- root
     def _root(
@@ -362,7 +363,9 @@ class Searcher:
                 s = hist[frm * 64 + to]
             if prior is not None:
                 # quiet move: the policy prior dominates, killers and history break ties
-                s = int(prior.get(move, 0.0) * 1_000_000) + (30_000 if s >= 2_900_000 else min(s, 9_999))
+                s = int(prior.get(move, 0.0) * 1_000_000) + (
+                    30_000 if s >= 2_900_000 else min(s, 9_999)
+                )
             scored.append((s, move, True))
         scored.sort(key=_first, reverse=True)
         return scored
@@ -435,7 +438,9 @@ class Searcher:
                     reduction = 2 + depth // 4
                     b.push(chess.Move.null())
                     try:
-                        score = -self._negamax(b, depth - 1 - reduction, -beta, -beta + 1, ply + 1, False, False)
+                        score = -self._negamax(
+                            b, depth - 1 - reduction, -beta, -beta + 1, ply + 1, False, False
+                        )
                     finally:
                         b.pop()
                     if score >= beta:
@@ -501,9 +506,13 @@ class Searcher:
                 if i == 0:
                     score = -self._negamax(b, new_depth, -beta, -alpha, ply + 1, pv_node, True)
                 else:
-                    score = -self._negamax(b, new_depth - reduction, -alpha - 1, -alpha, ply + 1, False, True)
+                    score = -self._negamax(
+                        b, new_depth - reduction, -alpha - 1, -alpha, ply + 1, False, True
+                    )
                     if score > alpha and reduction > 0:
-                        score = -self._negamax(b, new_depth, -alpha - 1, -alpha, ply + 1, False, True)
+                        score = -self._negamax(
+                            b, new_depth, -alpha - 1, -alpha, ply + 1, False, True
+                        )
                     if score > alpha and score < beta and pv_node:
                         score = -self._negamax(b, new_depth, -beta, -alpha, ply + 1, True, True)
             finally:
@@ -594,7 +603,9 @@ class Searcher:
             if stand_pat + gain + DELTA_MARGIN <= alpha:
                 continue
             # skip obviously losing captures
-            if PIECE_VALUE[victim] < PIECE_VALUE[attacker] and b.is_attacked_by(opp, move.to_square):
+            if PIECE_VALUE[victim] < PIECE_VALUE[attacker] and b.is_attacked_by(
+                opp, move.to_square
+            ):
                 continue
             captures.append((PIECE_VALUE[victim] * 8 - attacker, move))
         # queen promotions without capture

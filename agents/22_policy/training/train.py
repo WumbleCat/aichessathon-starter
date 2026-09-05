@@ -22,7 +22,7 @@ import time
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+from torch.nn import functional as fn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -77,7 +77,7 @@ class Data:
         starts = self.offsets[idx]
         counts = self.n_moves[idx]
         rows = np.repeat(np.arange(n), counts)
-        flat = np.concatenate([np.arange(s, s + c) for s, c in zip(starts, counts)])
+        flat = np.concatenate([np.arange(s, s + c) for s, c in zip(starts, counts, strict=True)])
         actions = self.l_action[flat]
         scores = self.l_score[flat]
         # per-row softmax of scores / T
@@ -110,16 +110,21 @@ def evaluate(model: PolicyNet, data: Data, idx: np.ndarray, temperature: float, 
             planes, target, legal, best, value = data.batch(idx[s : s + batch], temperature)
             logits, v = model(planes)
             logits = logits.masked_fill(~legal, -1e9)
-            logp = F.log_softmax(logits, dim=1)
+            logp = fn.log_softmax(logits, dim=1)
             loss = -(target * logp).sum(1)
             top = logits.topk(3, dim=1).indices
             tot_loss += loss.sum().item()
             tot_top1 += (top[:, 0] == best).float().sum().item()
             tot_top3 += (top == best[:, None]).any(1).float().sum().item()
-            tot_vloss += F.mse_loss(v, value, reduction="sum").item()
+            tot_vloss += fn.mse_loss(v, value, reduction="sum").item()
             n += len(best)
     model.train()
-    return {"loss": tot_loss / n, "top1": tot_top1 / n, "top3": tot_top3 / n, "vloss": tot_vloss / n}
+    return {
+        "loss": tot_loss / n,
+        "top1": tot_top1 / n,
+        "top3": tot_top3 / n,
+        "vloss": tot_vloss / n,
+    }
 
 
 def main() -> None:
@@ -136,10 +141,14 @@ def main() -> None:
     parser.add_argument("--value-weight", type=float, default=0.25)
     parser.add_argument("--val-fraction", type=float, default=0.05)
     parser.add_argument("--threads", type=int, default=4)
-    parser.add_argument("--time-limit-min", type=float, default=0.0, help="stop after this many minutes")
+    parser.add_argument(
+        "--time-limit-min", type=float, default=0.0, help="stop after this many minutes"
+    )
     parser.add_argument("--resume", default="")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--min-depth", type=int, default=1, help="drop positions whose teacher depth is lower")
+    parser.add_argument(
+        "--min-depth", type=int, default=1, help="drop positions whose teacher depth is lower"
+    )
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -173,8 +182,18 @@ def main() -> None:
         opt, max_lr=args.lr, total_steps=total_steps, pct_start=0.1, anneal_strategy="cos"
     )
     log_path = os.path.join(args.out, "train_log.txt")
-    log = open(log_path, "a")
-    log.write(json.dumps({"args": vars(args), "params": count_params(model), "train": len(train), "val": len(val)}) + "\n")
+    log = open(log_path, "a")  # noqa: SIM115  (open for the whole run, closed at the end)
+    log.write(
+        json.dumps(
+            {
+                "args": vars(args),
+                "params": count_params(model),
+                "train": len(train),
+                "val": len(val),
+            }
+        )
+        + "\n"
+    )
     started = time.time()
     step = 0
     val_idx = np.arange(len(val))
@@ -190,9 +209,9 @@ def main() -> None:
             planes, target, legal, best, value = train.batch(idx, args.temperature)
             logits, v = model(planes)
             logits = logits.masked_fill(~legal, -1e9)
-            logp = F.log_softmax(logits, dim=1)
+            logp = fn.log_softmax(logits, dim=1)
             ploss = -(target * logp).sum(1).mean()
-            vloss = F.mse_loss(v, value)
+            vloss = fn.mse_loss(v, value)
             loss = ploss + args.value_weight * vloss
             opt.zero_grad(set_to_none=True)
             loss.backward()
@@ -206,7 +225,8 @@ def main() -> None:
             if step % 200 == 0:
                 el = (time.time() - started) / 60
                 print(
-                    f"ep {epoch} step {step}/{total_steps} loss {run_loss/run_n:.4f} top1 {run_top1/run_n:.3f} "
+                    f"ep {epoch} step {step}/{total_steps} loss {run_loss / run_n:.4f} "
+                    f"top1 {run_top1 / run_n:.3f} "
                     f"lr {sched.get_last_lr()[0]:.2e} {el:.1f} min",
                     flush=True,
                 )

@@ -15,7 +15,6 @@ sys.path.insert(0, os.path.join(ROOT, "training"))
 
 import chess  # noqa: E402
 import torch  # noqa: E402
-
 from model import PolicyNet, count_params, export_numpy  # noqa: E402
 from pn_encoding import encode_board  # noqa: E402
 from pn_policy import NumpyPolicy  # noqa: E402
@@ -45,10 +44,11 @@ for channels, blocks in [(32, 3), (48, 4), (64, 4), (64, 5), (96, 5)]:
     export_numpy(model, tmp)
     npp = NumpyPolicy(tmp)
     with torch.no_grad():
-        t_cpu, t_wall = cpu_ms(lambda: model(xt))
-    n_cpu, n_wall = cpu_ms(lambda: npp.logits(x))
-    p_cpu, p_wall = cpu_ms(lambda: npp.prior(board))
+        t_cpu, t_wall = cpu_ms(lambda m=model: m(xt))
+    n_cpu, n_wall = cpu_ms(lambda p=npp: p.logits(x))
+    p_cpu, p_wall = cpu_ms(lambda p=npp: p.prior(board))
     print(
-        f"C{channels} B{blocks} params {count_params(model):7,}  torch cpu {t_cpu:.2f} ms (wall {t_wall:.2f})  "
+        f"C{channels} B{blocks} params {count_params(model):7,}  "
+        f"torch cpu {t_cpu:.2f} ms (wall {t_wall:.2f})  "
         f"numpy cpu {n_cpu:.2f} ms (wall {n_wall:.2f})  numpy prior cpu {p_cpu:.2f} ms"
     )

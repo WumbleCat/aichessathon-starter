@@ -19,9 +19,8 @@ Actions: 64 from-squares x 73 move planes = 4672 (AlphaZero-style)
 
 from __future__ import annotations
 
-import numpy as np
-
 import chess
+import numpy as np
 
 NUM_PLANES = 18
 NUM_MOVE_PLANES = 73
@@ -163,7 +162,7 @@ def board_to_codes(board: chess.Board) -> tuple[np.ndarray, int]:
     for sq, piece in board.piece_map().items():
         codes[sq] = piece.piece_type + (0 if piece.color else 6)
     cr = board.castling_rights
-    meta = (1 if board.turn else 0)
+    meta = 1 if board.turn else 0
     meta |= (1 if cr & chess.BB_H1 else 0) << 1
     meta |= (1 if cr & chess.BB_A1 else 0) << 2
     meta |= (1 if cr & chess.BB_H8 else 0) << 3

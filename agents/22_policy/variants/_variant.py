@@ -20,7 +20,9 @@ def load_main(**env: str) -> ModuleType:
         os.environ[key] = value
     if MAIN_DIR not in sys.path:
         sys.path.insert(0, MAIN_DIR)
-    spec = importlib.util.spec_from_file_location("pn_main_agent", os.path.join(MAIN_DIR, "agent.py"))
+    spec = importlib.util.spec_from_file_location(
+        "pn_main_agent", os.path.join(MAIN_DIR, "agent.py")
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["pn_main_agent"] = module

@@ -5,7 +5,8 @@ random short lines from the start position generated with a fixed seed so that r
 comparable. Engine stderr lines of the form ``depth D ... nodes N ... t Ts`` are parsed to
 report average depth, nodes and move time for the agent under test.
 
-    python tests/paired_arena.py --agent agents/22_policy --opponent agents/22_policy/variants/nopolicy \
+    python tests/paired_arena.py --agent agents/22_policy \
+        --opponent agents/22_policy/variants/nopolicy \
         --pairs 20 --base-ms 10000 --increment-ms 100 --jobs 4 --out results/x.json
 """
 
@@ -30,7 +31,10 @@ import chess  # noqa: E402
 from harness.referee import play_match  # noqa: E402
 from harness.sandbox import local  # noqa: E402
 
-LINE = re.compile(r"depth (\d+) sel (\d+) score (-?\d+) nodes (\d+) q (\d+) tt (\d+) pol (\d+) nps (\d+) t ([\d.]+)s")
+LINE = re.compile(
+    r"depth (\d+) sel (\d+) score (-?\d+) nodes (\d+) q (\d+) tt (\d+) pol (\d+) "
+    r"nps (\d+) t ([\d.]+)s"
+)
 
 
 def openings(n: int, seed: int) -> list[str]:
@@ -57,6 +61,11 @@ def parse_stats(text: str) -> dict:
         pols.append(int(m.group(7)))
         times.append(float(m.group(9)))
     return {"moves": len(depths), "depth": depths, "nodes": nodes, "time": times, "pol": pols}
+
+
+def _line(i: int, n: int, r: dict) -> str:
+    colour = "white" if r["agent_white"] else "black"
+    return f"game {i}/{n}: {r['result']} by {r['termination']} (agent {colour})"
 
 
 def play_one(job: tuple) -> dict:
@@ -117,12 +126,18 @@ def main() -> None:
         with ProcessPoolExecutor(args.jobs) as pool:
             for r in pool.map(play_one, jobs):
                 results.append(r)
-                print(f"game {len(results)}/{len(jobs)}: {r['result']} by {r['termination']} (agent {'white' if r['agent_white'] else 'black'})", flush=True)
+                print(
+                    _line(len(results), len(jobs), r),
+                    flush=True,
+                )
     else:
         for job in jobs:
             r = play_one(job)
             results.append(r)
-            print(f"game {len(results)}/{len(jobs)}: {r['result']} by {r['termination']} (agent {'white' if r['agent_white'] else 'black'})", flush=True)
+            print(
+                _line(len(results), len(jobs), r),
+                flush=True,
+            )
 
     wins = sum(1 for r in results if r["score"] == 1.0)
     draws = sum(1 for r in results if r["score"] == 0.5)

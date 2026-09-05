@@ -44,14 +44,18 @@ if USE_POLICY:
     try:
         from pn_policy import load_policy
 
-        policy_net = load_policy(os.environ.get("PN_MODEL_PATH", os.path.join(HERE, "models", "policy.npz")))
+        policy_net = load_policy(
+            os.environ.get("PN_MODEL_PATH", os.path.join(HERE, "models", "policy.npz"))
+        )
         if policy_net is not None:
             prior = policy_net.prior
     except Exception as error:  # the engine must still play without the network
         print(f"policy unavailable: {error!r}")
         prior = None
 
-searcher = Searcher(prior=prior, policy_min_depth=POLICY_MIN_DEPTH, policy_root=POLICY_ROOT, policy_lmr=POLICY_LMR)
+searcher = Searcher(
+    prior=prior, policy_min_depth=POLICY_MIN_DEPTH, policy_root=POLICY_ROOT, policy_lmr=POLICY_LMR
+)
 
 _last_fullmove = -1
 _last_key: object = None
@@ -83,9 +87,11 @@ def fallback_move(board: chess.Board) -> chess.Move:
 def _track_game(board: chess.Board) -> None:
     """Keep repetition memory across calls; reset it when a new game appears to have begun."""
     global _last_fullmove, _last_key
-    if board.fullmove_number < _last_fullmove or _last_fullmove < 0:
-        searcher.new_game()
-    elif _last_fullmove >= 0 and board.fullmove_number - _last_fullmove > 3:
+    if (
+        board.fullmove_number < _last_fullmove
+        or _last_fullmove < 0
+        or (_last_fullmove >= 0 and board.fullmove_number - _last_fullmove > 3)
+    ):
         searcher.new_game()
     _last_fullmove = board.fullmove_number
     _last_key = board._transposition_key()

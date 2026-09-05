@@ -38,7 +38,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 import chess  # noqa: E402
-
 from pn_encoding import board_to_codes, move_to_index  # noqa: E402
 from pn_search import Searcher  # noqa: E402
 
@@ -48,7 +47,9 @@ ADJUDICATE_PLIES = 4
 MAX_PLIES = 240
 
 
-def _sample_move(scores: dict[chess.Move, int], temperature: float, rng: random.Random) -> chess.Move:
+def _sample_move(
+    scores: dict[chess.Move, int], temperature: float, rng: random.Random
+) -> chess.Move:
     moves = list(scores)
     best = max(scores.values())
     weights = [math.exp(max(-30.0, (scores[m] - best) / temperature)) for m in moves]
@@ -104,7 +105,7 @@ class ShardWriter:
             self.n_moves.append(len(rec["labels"]))
             self.best.append(rec["best"])
             self.value.append(rec["value"])
-            self.result.append(int(round(stm_result)))
+            self.result.append(round(stm_result))
             self.ply.append(rec["ply"])
             self.depth.append(rec["depth"])
             for action, score in rec["labels"]:
@@ -230,7 +231,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--depth", type=int, default=4, help="teacher max depth")
     parser.add_argument("--nodes", type=int, default=3500, help="teacher node limit per position")
-    parser.add_argument("--time", type=float, default=3.0, help="teacher wall time cap per position")
+    parser.add_argument(
+        "--time", type=float, default=3.0, help="teacher wall time cap per position"
+    )
     parser.add_argument("--shard-size", type=int, default=2000)
     parser.add_argument("--temp", type=float, default=40.0)
     parser.add_argument("--temp-opening", type=float, default=80.0)
@@ -255,7 +258,7 @@ def main() -> None:
             elapsed = time.time() - started
             rate = (total - last) / 30.0
             last = total
-            print(f"[{elapsed/60:6.1f} min] positions {total:8d}  ({rate:5.1f}/s)", flush=True)
+            print(f"[{elapsed / 60:6.1f} min] positions {total:8d}  ({rate:5.1f}/s)", flush=True)
     except KeyboardInterrupt:
         stop_flag.value = 1
     for p in procs:

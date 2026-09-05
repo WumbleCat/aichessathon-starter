@@ -11,9 +11,10 @@ import chess
 MATE = 100_000
 MATE_BOUND = MATE - 1_000  # scores beyond this are mates
 
-MG_VALUE = {chess.PAWN: 82, chess.KNIGHT: 337, chess.BISHOP: 365, chess.ROOK: 477, chess.QUEEN: 1025, chess.KING: 0}
-EG_VALUE = {chess.PAWN: 94, chess.KNIGHT: 281, chess.BISHOP: 297, chess.ROOK: 512, chess.QUEEN: 936, chess.KING: 0}
-PHASE_WEIGHT = {chess.PAWN: 0, chess.KNIGHT: 1, chess.BISHOP: 1, chess.ROOK: 2, chess.QUEEN: 4, chess.KING: 0}
+_PIECES = (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN, chess.KING)
+MG_VALUE = dict(zip(_PIECES, (82, 337, 365, 477, 1025, 0), strict=True))
+EG_VALUE = dict(zip(_PIECES, (94, 281, 297, 512, 936, 0), strict=True))
+PHASE_WEIGHT = dict(zip(_PIECES, (0, 1, 1, 2, 4, 0), strict=True))
 TOTAL_PHASE = 24
 
 # Tables are written from WHITE's point of view with rank 8 on the first row (as a diagram),
@@ -187,7 +188,8 @@ ISOLATED = 10
 
 _FILE_MASKS = [chess.BB_FILES[f] for f in range(8)]
 _ADJ_FILE_MASKS = [
-    (chess.BB_FILES[f - 1] if f > 0 else 0) | (chess.BB_FILES[f + 1] if f < 7 else 0) for f in range(8)
+    (chess.BB_FILES[f - 1] if f > 0 else 0) | (chess.BB_FILES[f + 1] if f < 7 else 0)
+    for f in range(8)
 ]
 # squares in front of a white pawn on `sq` (same and adjacent files, higher ranks)
 _FRONT_SPAN_W = [0] * 64

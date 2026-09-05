@@ -9,7 +9,6 @@ sys.path.insert(0, os.path.dirname(HERE))
 
 import chess  # noqa: E402
 import numpy as np  # noqa: E402
-
 from pn_encoding import (  # noqa: E402
     NUM_ACTIONS,
     board_to_codes,
@@ -51,10 +50,20 @@ def test_move_roundtrip() -> None:
     # promotions of every kind
     b = chess.Board("1n2k3/P7/8/8/8/8/8/4K3 w - - 0 1")
     for m in b.legal_moves:
-        assert index_to_move(move_to_index(m, False), False, b.piece_type_at(m.from_square) == chess.PAWN) == m
+        assert (
+            index_to_move(
+                move_to_index(m, False), False, b.piece_type_at(m.from_square) == chess.PAWN
+            )
+            == m
+        )
     b = chess.Board("4k3/8/8/8/8/8/p7/1N2K3 b - - 0 1")
     for m in b.legal_moves:
-        assert index_to_move(move_to_index(m, True), True, b.piece_type_at(m.from_square) == chess.PAWN) == m
+        assert (
+            index_to_move(
+                move_to_index(m, True), True, b.piece_type_at(m.from_square) == chess.PAWN
+            )
+            == m
+        )
     print("move roundtrip ok, distinct indices seen:", len(seen))
 
 

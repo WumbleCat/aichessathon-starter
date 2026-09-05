@@ -17,13 +17,22 @@ import agent  # noqa: E402
 CASES = {
     "normal move": ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", None),
     "capture available": ("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2", None),
-    "free queen capture": ("rnb1kbnr/pppp1ppp/8/4p3/4P2q/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3", "f3h4"),
+    "free queen capture": (
+        "rnb1kbnr/pppp1ppp/8/4p3/4P2q/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3",
+        "f3h4",
+    ),
     "give check": ("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", None),
     "check evasion": ("4k3/8/8/8/8/8/4r3/4K3 w - - 0 1", None),
     "mate in one": ("6k1/5ppp/8/8/8/8/8/R5K1 w - - 0 1", "a1a8"),
-    "mate in one (queen)": ("r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4", "h5f7"),
+    "mate in one (queen)": (
+        "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+        "h5f7",
+    ),
     "kingside castling": ("r3k2r/pppq1ppp/2npbn2/4p3/4P3/2NPBN2/PPPQ1PPP/R3K2R w KQkq - 0 1", None),
-    "queenside castling": ("r3k2r/pppq1ppp/2npbn2/4p3/4P3/2NPBN2/PPPQ1PPP/R3K2R b KQkq - 0 1", None),
+    "queenside castling": (
+        "r3k2r/pppq1ppp/2npbn2/4p3/4P3/2NPBN2/PPPQ1PPP/R3K2R b KQkq - 0 1",
+        None,
+    ),
     "en passant": ("8/8/8/3pP3/8/8/8/K6k w - d6 0 1", None),
     "queen promotion": ("8/P7/8/8/8/8/8/K6k w - - 0 1", "a7a8q"),
     "promotion with capture": ("1n5k/P7/8/8/8/8/8/K7 w - - 0 1", None),
@@ -46,7 +55,7 @@ def run_case(name: str, fen: str, expected: str | None, ms: int = 1500) -> None:
     if expected is not None:
         note = "expected " + expected + (" OK" if uci == expected else " MISMATCH")
         assert uci == expected, f"{name}: got {uci}, expected {expected}"
-    print(f"  {name:28s} {uci:6s} {el*1000:7.0f} ms {note}")
+    print(f"  {name:28s} {uci:6s} {el * 1000:7.0f} ms {note}")
 
 
 def test_special_moves() -> None:
@@ -91,7 +100,9 @@ def test_clock() -> None:
         el = (time.perf_counter() - t0) * 1000
         assert chess.Move.from_uci(uci) in board.legal_moves
         limit = ms + 400  # the referee's grace is 500 ms
-        print(f"  time_left {ms:7d} ms -> {uci} in {el:7.0f} ms {'OK' if el < limit else 'TOO SLOW'}")
+        print(
+            f"  time_left {ms:7d} ms -> {uci} in {el:7.0f} ms {'OK' if el < limit else 'TOO SLOW'}"
+        )
         assert el < limit, f"took {el:.0f} ms with {ms} ms left"
 
 

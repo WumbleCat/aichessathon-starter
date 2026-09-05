@@ -85,12 +85,16 @@ def export_numpy(model: PolicyNet, path: str) -> None:
     def put3(name: str, conv: nn.Conv2d, bn: nn.BatchNorm2d | None) -> None:
         w, b = _fold(conv, bn)
         cout, cin = w.shape[0], w.shape[1]
-        arrays[name + "_w"] = np.ascontiguousarray(w.transpose(0, 2, 3, 1).reshape(cout, 9 * cin)).astype(np.float32)
+        arrays[name + "_w"] = np.ascontiguousarray(
+            w.transpose(0, 2, 3, 1).reshape(cout, 9 * cin)
+        ).astype(np.float32)
         arrays[name + "_b"] = b.astype(np.float32)
 
     def put1(name: str, conv: nn.Conv2d, bn: nn.BatchNorm2d | None) -> None:
         w, b = _fold(conv, bn)
-        arrays[name + "_w"] = np.ascontiguousarray(w.reshape(w.shape[0], w.shape[1])).astype(np.float32)
+        arrays[name + "_w"] = np.ascontiguousarray(w.reshape(w.shape[0], w.shape[1])).astype(
+            np.float32
+        )
         arrays[name + "_b"] = b.astype(np.float32)
 
     put3("stem", model.stem, model.stem_bn)
