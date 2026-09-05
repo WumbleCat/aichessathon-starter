@@ -19,7 +19,8 @@ Entry point: `agent.py` — `get_move(fen, time_left_ms) -> uci`.
 | `training/gen_data.py` | teacher self-play labelling (this project's own search scores every legal move) |
 | `training/train.py` | supervised training on soft targets, exports `models/policy.npz` |
 | `training/model.py` | PyTorch network definition and export |
-| `tests/` | legality/special-move/clock tests, encoding tests, inference equivalence, benchmarks, paired arena |
+| `tests/` | legality/special-move/clock tests, encoding tests, inference equivalence, benchmarks, paired arenas (`paired_arena.py` through the harness, `cpu_match.py` in-process on CPU time), offline policy metrics (`eval_policy.py`), submission check (`check_submission.py`) |
+| `STATUS.md`, `RESULTS.md` | on-disk checkpoint for the next session; measurements |
 | `variants/` | one-line agent directories that run the same engine under different policy settings for A/B arenas |
 
 All modules use a `pn_` prefix so nothing in the zip can shadow a standard library or
@@ -48,7 +49,8 @@ Environment switches (for experiments; defaults are the shipped configuration):
 Input 18 planes (own/opponent P N B R Q K, four castling flags, en passant, ones).
 Residual CNN: 3x3 stem, N residual blocks of two 3x3 convolutions with batch-norm, a policy head
 (3x3 conv, 1x1 conv to 73 planes -> 4672 logits) and an auxiliary value head (used only during
-training). Sizes trained are listed in `RESULTS.md`. Batch-norm is folded into the convolutions
+training). The shipped net has 48 channels and 4 blocks (215k parameters, 0.87 MB, about 2.3 ms
+of CPU per prior call); `RESULTS.md` has the numbers behind that choice. Batch-norm is folded into the convolutions
 at export; inference is an im2col matmul per convolution in numpy with BLAS pinned to one
 thread.
 
@@ -68,10 +70,20 @@ the training log is in `models/train_log.txt`.
 
 ```
 python training/gen_data.py --workers 8 --positions 300000 --seed 3 --depth 3 --nodes 6000
-python training/train.py --channels 64 --blocks 5 --epochs 8
+python training/train.py --min-depth 2 --channels 48 --blocks 4 --epochs 6 --threads 1
+python tests/eval_policy.py                      # top-k accuracy, cp lost, by phase
 python tests/test_agent.py
+python tests/cpu_match.py --a policy --b nopolicy --pairs 10 --budget 0.35
 python tests/paired_arena.py --agent agents/22_policy --opponent agents/22_policy/variants/nopolicy --pairs 20
+python tests/check_submission.py                 # zip, size, import time, probe moves
 ```
+
+On a shared, saturated machine use `--threads 1` for training (torch with 4 threads was 12x
+slower per step through oversubscription) and `cpu_match.py` rather than wall-clock arenas:
+`Searcher` accepts a `clock` callable and the match runs both sides on `time.process_time`.
+
+The zip is built from this directory with `python -m harness.package --include models`
+(`check_submission.py` does that and verifies the result).
 
 ## Contest checklist
 

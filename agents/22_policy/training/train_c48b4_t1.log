@@ -1,0 +1,34 @@
+shards: train 213 val 11
+positions: train 177,653 val 9,290  labels 4,299,298
+model: channels 48 blocks 4 params 215,650
+ep 0 step 200/4158 loss 2.9717 top1 0.171 lr 9.86e-04 2.9 min
+ep 0 step 400/4158 loss 2.8646 top1 0.265 lr 1.99e-03 5.9 min
+ep 0 step 600/4158 loss 2.7845 top1 0.311 lr 1.99e-03 9.3 min
+VAL {"loss": 2.780954005772126, "top1": 0.32432723358449944, "top3": 0.5714747039827772, "vloss": 0.184018499807598, "epoch": 0, "step": 693, "minutes": 11.20653504927953}
+exported models/policy.npz
+ep 1 step 800/4158 loss 2.7434 top1 0.327 lr 1.95e-03 13.2 min
+ep 1 step 1000/4158 loss 2.7182 top1 0.341 lr 1.88e-03 17.1 min
+ep 1 step 1200/4158 loss 2.7060 top1 0.347 lr 1.79e-03 20.9 min
+VAL {"loss": 2.7178487081702225, "top1": 0.34940796555435955, "top3": 0.6271259418729817, "vloss": 0.08449853706154552, "epoch": 1, "step": 1386, "minutes": 24.877235221862794}
+exported models/policy.npz
+ep 2 step 1400/4158 loss 2.6632 top1 0.371 lr 1.68e-03 25.1 min
+ep 2 step 1600/4158 loss 2.6699 top1 0.363 lr 1.54e-03 29.6 min
+ep 2 step 1800/4158 loss 2.6593 top1 0.369 lr 1.40e-03 34.9 min
+ep 2 step 2000/4158 loss 2.6543 top1 0.374 lr 1.24e-03 40.8 min
+VAL {"loss": 2.6956655693259512, "top1": 0.3681377825618945, "top3": 0.6372443487621098, "vloss": 0.06156351656138705, "epoch": 2, "step": 2079, "minutes": 42.78157883485158}
+exported models/policy.npz
+ep 3 step 2200/4158 loss 2.6128 top1 0.387 lr 1.07e-03 45.1 min
+ep 3 step 2400/4158 loss 2.6277 top1 0.386 lr 9.04e-04 49.1 min
+ep 3 step 2600/4158 loss 2.6215 top1 0.392 lr 7.39e-04 53.0 min
+VAL {"loss": 2.6738080865471945, "top1": 0.3705059203444564, "top3": 0.6526372443487621, "vloss": 0.07729293435202476, "epoch": 3, "step": 2772, "minutes": 56.40634621779124}
+exported models/policy.npz
+ep 4 step 2800/4158 loss 2.5881 top1 0.418 lr 5.82e-04 56.9 min
+ep 4 step 3000/4158 loss 2.5868 top1 0.408 lr 4.36e-04 60.5 min
+ep 4 step 3200/4158 loss 2.5904 top1 0.406 lr 3.06e-04 64.1 min
+ep 4 step 3400/4158 loss 2.5790 top1 0.411 lr 1.95e-04 67.3 min
+VAL {"loss": 2.6619786897952897, "top1": 0.38266953713670615, "top3": 0.6654467168998923, "vloss": 0.05487622680910437, "epoch": 4, "step": 3465, "minutes": 68.60281700293223}
+exported models/policy.npz
+ep 5 step 3600/4158 loss 2.5584 top1 0.423 lr 1.07e-04 70.8 min
+ep 5 step 3800/4158 loss 2.5526 top1 0.423 lr 4.46e-05 74.3 min
+ep 5 step 4000/4158 loss 2.5643 top1 0.422 lr 8.68e-06 77.9 min
+VAL {"loss": 2.66209801713925, "top1": 0.3831001076426265, "top3": 0.6659849300322928, "vloss": 0.05311487437064476, "epoch": 5, "step": 4158, "minutes": 81.07554600636165}

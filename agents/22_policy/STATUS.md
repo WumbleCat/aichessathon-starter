@@ -38,3 +38,11 @@ Updated: 2026-09-05 03:50 (session 2)
 - 04:17 training relaunched with `--threads 1`: on this saturated box torch with 4 threads took
   12 s per step (thread oversubscription), 1 thread takes 0.9 s. Log: `training/train_c48b4_t1.log`.
   Expected: ~10 min per epoch, 6 epochs, exports models/policy.npz on every val improvement.
+- 04:31-05:20 training progress (val, 9,290 positions): ep0 top1 .324 top3 .571 | ep1 .349/.627 |
+  ep2 .368/.637 | ep3 .371/.653. Offline `tests/eval_policy.py` on the ep0 model: top1 .334 vs
+  hand-crafted ordering .218, cp lost vs teacher 127 vs 230.
+- 05:00 `pn_search.Searcher` got a `clock` argument (default perf_counter). `tests/cpu_match.py`
+  plays paired in-process matches on `time.process_time` so A/B results do not depend on the
+  machine load (wall-clock arenas were meaningless: python startup 5 s, `import numpy` 29 s).
+- Lint cleanup committed to `feature/agent-22-policy` as 852b44c (throwaway index, working tree
+  untouched). Not yet committed: pn_search clock, tests/cpu_match.py, models/policy.npz, results.

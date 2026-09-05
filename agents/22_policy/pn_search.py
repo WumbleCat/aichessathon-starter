@@ -85,8 +85,10 @@ class Searcher:
         policy_min_depth: int = 4,
         policy_root: bool = True,
         policy_lmr: bool = True,
+        clock: Callable[[], float] = time.perf_counter,
     ) -> None:
         self.prior = prior
+        self.clock = clock  # time.process_time makes budgets independent of machine load
         self.policy_min_depth = policy_min_depth
         self.policy_root = policy_root
         self.policy_lmr = policy_lmr
@@ -127,7 +129,7 @@ class Searcher:
         want_root_scores: bool = False,
         node_limit: int = 0,
     ) -> SearchResult:
-        started = time.perf_counter()
+        started = self.clock()
         self.deadline = started + time_budget
         self.node_limit = node_limit
         self.board = board.copy(stack=False)
@@ -187,10 +189,10 @@ class Searcher:
                 alpha, beta = -INF, INF
             depth += 1
             # do not start an iteration that is very unlikely to finish
-            elapsed = time.perf_counter() - started
+            elapsed = self.clock() - started
             if self.clocked and elapsed > time_budget * 0.55:
                 break
-        elapsed = time.perf_counter() - started
+        elapsed = self.clock() - started
         return SearchResult(
             best_move, best_score, completed_depth, pv, elapsed, self.stats, root_scores
         )
@@ -271,7 +273,7 @@ class Searcher:
     # ---------------------------------------------------------------- helpers
     def _check_time(self) -> None:
         if self.clocked and (
-            time.perf_counter() >= self.deadline
+            self.clock() >= self.deadline
             or (self.node_limit and self.stats.nodes >= self.node_limit)
         ):
             raise OutOfTime()
