@@ -36,10 +36,10 @@ def test_normal_move() -> None:
 
 
 def test_capture_free_queen() -> None:
-    # Black queen hanging on d5, white to move: the search must take it.
+    # Black queen hanging on d5, white to move: the search must take it (knight or pawn).
     fen = "rnb1kbnr/pppp1ppp/8/3qp3/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 3"
     move = legal(fen)
-    assert move.uci() == "c3d5"
+    assert move.uci() in ("c3d5", "e4d5")
 
 
 def test_gives_check_and_is_legal() -> None:
@@ -167,13 +167,15 @@ def test_rook_promotion_when_queen_stalemates() -> None:
 
 
 def test_knight_promotion_mate() -> None:
-    # Promotion to knight gives immediate mate; queen does not.
-    fen = "7R/4P1k1/4K3/7P/8/8/8/7R w - - 0 1"
+    # Only the knight promotion mates (e8=N+ hits the king on d6; every escape square is
+    # covered by the pawns, the bishop on h3 and the rook on e1). A queen gives no check.
+    fen = "8/4P3/3k4/1P6/1PP5/7B/8/K3R3 w - - 0 1"
     board = chess.Board(fen)
     for promo in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT):
         m = chess.Move(chess.E7, chess.E8, promotion=promo)
         assert m in board.legal_moves
     move = legal(fen, 5000)
+    assert move.uci() == "e7e8n"
     board.push(move)
     assert board.is_checkmate()
 
