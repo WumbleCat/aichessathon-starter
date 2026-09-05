@@ -38,8 +38,10 @@ both colours per random 8-ply opening.
 | net | code | nodes/move | games | result (NNUE) | score | Elo | nps NNUE | nps PSQT |
 |---|---|---|---|---|---|---|---|---|
 | h256 epoch 4 | old nnue.py | 20,000 | 40 | +28 =3 -9 | 73.8% | +179 | 46.8k | 724k |
+| h256 epoch 12 | row-view nnue.py | 20,000 | 40 | +28 =4 -8 | 75.0% | +191 | 48.7k | 732k |
 
-The 15x node-rate gap of the old `evaluate` is what the rewrite targets; rerun pending.
+The node-rate gap did not move with the `evaluate`/`update` rewrite, so the 15x per-node cost
+of the NNUE path lies elsewhere in the search; profiling in progress (see IMPLEMENTATION.md).
 
 `harness.play` vs `baselines/greedy` at 120 s + 0.5 s: draw by threefold repetition, played
 entirely by the python fallback (the compile outlasted the game on this box). The fallback now

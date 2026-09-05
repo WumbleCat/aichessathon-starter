@@ -1,4 +1,4 @@
-"""Node-limited paired self-play: NNUE evaluation vs the PSQT fallback, same search.
+"""Node-limited paired self-play: NNUE evaluation vs the PSQT fallback (or vs another net).
 
 Everything runs in one process, so numba compiles once and the result does not depend on how
 loaded the machine is (each side gets the same node budget per move, not wall time).  Each
@@ -6,6 +6,7 @@ opening is played twice with colours swapped.
 
     python tools/selfplay_ab.py --games 40 --nodes 20000 --out results/ab_nnue_vs_psqt.txt
     python tools/selfplay_ab.py --games 40 --movetime 0.2   # equal wall time per move
+    python tools/selfplay_ab.py --games 40 --weights-b models/other.safetensors  # net A vs net B
 """
 
 from __future__ import annotations
@@ -111,12 +112,17 @@ def main() -> None:
     parser.add_argument("--ply-cap", type=int, default=240)
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--weights", default=nnue.default_weights_path())
+    parser.add_argument("--weights-b", default="", help="opponent net; default is the PSQT eval")
     parser.add_argument("--out", default=os.path.join(ROOT, "results", "ab_nnue_vs_psqt.txt"))
     args = parser.parse_args()
 
     net = nnue.load_net(args.weights)
     a = csearch.Searcher(net, use_nnue=True)  # NNUE
-    b = csearch.Searcher(None, use_nnue=False)  # PSQT
+    if args.weights_b:
+        b = csearch.Searcher(nnue.load_net(args.weights_b), use_nnue=True)
+    else:
+        b = csearch.Searcher(None, use_nnue=False)  # PSQT
+    b_name = os.path.basename(args.weights_b) if args.weights_b else "psqt"
     rng = random.Random(args.seed)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     t_start = time.perf_counter()
@@ -126,7 +132,8 @@ def main() -> None:
     tot = {"nnue_nodes": 0.0, "nnue_time": 0.0, "psqt_nodes": 0.0, "psqt_time": 0.0}
     with open(args.out, "a", encoding="utf-8") as out:
         out.write(
-            f"\n# {time.strftime('%Y-%m-%d %H:%M')} nnue={os.path.basename(args.weights)} "
+            f"\n# {time.strftime('%Y-%m-%d %H:%M')} "
+            f"nnue={os.path.basename(args.weights)} vs {b_name} "
             f"nodes={args.nodes} movetime={args.movetime} games={args.games} seed={args.seed}\n"
         )
         for pair in range(args.games // 2):
@@ -162,7 +169,7 @@ def main() -> None:
         nps_n = tot["nnue_nodes"] / max(1e-9, tot["nnue_time"])
         nps_p = tot["psqt_nodes"] / max(1e-9, tot["psqt_time"])
         summary = (
-            f"TOTAL nnue vs psqt: +{wins} ={draws} -{losses} "
+            f"TOTAL {os.path.basename(args.weights)} vs {b_name}: +{wins} ={draws} -{losses} "
             f"score {score / n:.1%} elo {elo(score, n)} | "
             f"nps nnue {nps_n:,.0f} psqt {nps_p:,.0f} | wall {time.perf_counter() - t_start:.0f}s "
             f"cpu {time.process_time() - c_start:.0f}s"
