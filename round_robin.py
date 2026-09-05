@@ -380,8 +380,27 @@ def score_for(record: dict[str, Any], name: str) -> float:
     return 1.0 if won_as_white == was_white else 0.0
 
 
-def report(path: Path, names: list[str]) -> None:
+def searched(record: dict[str, Any], floor_s: float) -> bool:
+    """Did both sides actually search? A median move under the floor means one did not.
+
+    An agent whose jit never compiled can return a move without searching at all, and such a
+    game says nothing about how strong it is.
+    """
+    health = record.get("health")
+    if not health:
+        return floor_s <= 0.0  # games recorded before health was measured
+    return all(pair[1] >= floor_s for pair in health.values())
+
+
+def report(path: Path, names: list[str], floor_s: float = 0.0) -> None:
     records = [r for r in load(path) if r["left"] in names and r["right"] in names]
+    total = len(records)
+    if floor_s > 0.0:
+        records = [r for r in records if searched(r, floor_s)]
+        print(
+            f"keeping {len(records)} of {total} games where both sides spent at least"
+            f" {floor_s:.2f}s on a median move"
+        )
     if not records:
         print("no games played yet")
         return
@@ -495,6 +514,13 @@ def main() -> None:
     parser.add_argument(
         "--health", action="store_true", help="print per agent import and move times, and exit"
     )
+    parser.add_argument(
+        "--min-move-s",
+        type=float,
+        default=0.0,
+        help="drop games where a side's median move was faster than this, so a ranking can skip"
+        " games an agent played without searching; 0.05 catches an agent whose jit never landed",
+    )
     parser.add_argument("--only", default="", help="comma separated agent names, for a smoke test")
     parser.add_argument(
         "--compile-slots",
@@ -517,10 +543,10 @@ def main() -> None:
         health_report(arguments.results, names)
         return
     if arguments.report:
-        report(arguments.results, names)
+        report(arguments.results, names, arguments.min_move_s)
         return
     run(names, arguments.games, arguments.workers, arguments.results, arguments)
-    report(arguments.results, names)
+    report(arguments.results, names, arguments.min_move_s)
 
 
 if __name__ == "__main__":

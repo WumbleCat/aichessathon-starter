@@ -228,3 +228,48 @@ class PlyCountTest(unittest.TestCase):
                 board.push(chess.Move.from_uci(uci))
             pgn = str(chess.pgn.Game.from_board(board))
             self.assertEqual(count_plies(pgn), len(moves), pgn)
+
+
+class HealthFilterTest(unittest.TestCase):
+    def test_a_game_where_a_side_never_searched_is_dropped(self) -> None:
+        from round_robin import searched
+
+        played = {"health": {"a": [4.0, 0.30], "b": [61.0, 0.28]}}
+        idle = {"health": {"a": [4.0, 0.30], "b": [61.0, 0.00]}}
+        self.assertTrue(searched(played, 0.05))
+        self.assertFalse(searched(idle, 0.05))
+        # with no floor asked for, every game counts, health data or not
+        self.assertTrue(searched(idle, 0.0))
+        self.assertTrue(searched({}, 0.0))
+        self.assertFalse(searched({}, 0.05))
+
+    def test_the_filter_shrinks_the_table(self) -> None:
+        import io
+        import json
+        import tempfile
+        from contextlib import redirect_stdout
+
+        import round_robin
+
+        rows = []
+        for game in range(4):
+            median = 0.0 if game == 3 else 0.3
+            rows.append(
+                {
+                    "left": "a",
+                    "right": "b",
+                    "game": game,
+                    "white": "a" if game % 2 == 0 else "b",
+                    "result": "white",
+                    "termination": "checkmate",
+                    "health": {"a": [1.0, 0.3], "b": [1.0, median]},
+                }
+            )
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "games.jsonl"
+            path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+            for floor, expected in ((0.0, "4 games played"), (0.05, "3 games played")):
+                buffer = io.StringIO()
+                with redirect_stdout(buffer):
+                    round_robin.report(path, ["a", "b"], floor)
+                self.assertIn(expected, buffer.getvalue())
