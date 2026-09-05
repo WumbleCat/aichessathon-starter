@@ -35,5 +35,5 @@ built with a throwaway index (`GIT_INDEX_FILE`), never by checking the branch ou
    roughly 5x the labelling cost.
 4. Search speed: the Python search loop dominates; packing the bitboards into one uint64
    array per call (what an earlier session started) trims call overhead only marginally.
-5. Merge `feature/agent-30-giraffe` into main with `--no-ff` once the harness run is
-   recorded (the branch is merge-ready otherwise).
+5. Done: `feature/agent-30-giraffe` was merged into main (`--no-ff` equivalent, merge
+   commit a94c672) and deleted. New work goes on a fresh `feature/agent-30-<topic>` branch.
