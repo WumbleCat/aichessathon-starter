@@ -1,0 +1,57 @@
+{
+ "summary": {
+  "agent": "agents/22_policy/variants/nopolicy",
+  "opponent": "baselines/greedy",
+  "games": 2,
+  "wins": 2,
+  "draws": 0,
+  "losses": 0,
+  "score": 1.0,
+  "elo_diff": null,
+  "terminations": {
+   "checkmate": 2
+  },
+  "agent_failures": 0,
+  "avg_depth": null,
+  "avg_nodes": null,
+  "avg_move_time_s": null,
+  "avg_policy_calls": null,
+  "base_ms": 5000,
+  "increment_ms": 100,
+  "minutes": 0.5092811028162638
+ },
+ "games": [
+  {
+   "fen": "r1bqkb1r/ppppppp1/n6n/7p/6P1/5N1P/PPPPPP2/RNBQKB1R w KQkq - 1 4",
+   "agent_white": true,
+   "result": "white",
+   "termination": "checkmate",
+   "score": 1.0,
+   "my_failure": false,
+   "plies": 29,
+   "stats": {
+    "moves": 0,
+    "depth": [],
+    "nodes": [],
+    "time": [],
+    "pol": []
+   }
+  },
+  {
+   "fen": "r1bqkb1r/ppppppp1/n6n/7p/6P1/5N1P/PPPPPP2/RNBQKB1R w KQkq - 1 4",
+   "agent_white": false,
+   "result": "black",
+   "termination": "checkmate",
+   "score": 1.0,
+   "my_failure": false,
+   "plies": 8,
+   "stats": {
+    "moves": 0,
+    "depth": [],
+    "nodes": [],
+    "time": [],
+    "pol": []
+   }
+  }
+ ]
+}
