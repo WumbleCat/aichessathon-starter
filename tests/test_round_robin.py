@@ -38,6 +38,16 @@ def simulate(true_elo: Mapping[str, float], games: int, seed: int) -> list[dict[
     return records
 
 
+def faults_from(text: str) -> dict[str, int]:
+    """Read the agent name and the faults column out of a printed standings table."""
+    found: dict[str, int] = {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) == 10 and parts[0].isdigit():
+            found[parts[1]] = int(parts[-1])
+    return found
+
+
 class EloFitTest(unittest.TestCase):
     def test_recovers_spread_ratings(self) -> None:
         true_elo = {f"a{i}": value for i, value in enumerate([-600, -300, -100, 0, 150, 400, 700])}
@@ -153,11 +163,9 @@ class ReportTest(unittest.TestCase):
                 round_robin.report(path, ["a", "b", "c"])
         text = buffer.getvalue()
         self.assertIn("5 games played", text)
-        # game 1 was won by white, who was b, so a flagged; game 4 was won by black, who was b,
-        # so the crash was c's
-        line_a = next(line for line in text.splitlines() if line.strip().endswith(" 1"))
-        self.assertIn(" a ", line_a)
         self.assertIn("flag 1", text)
+        # a flagged, c crashed, and both_failed is charged to both b and c
+        self.assertEqual(faults_from(text), {"a": 1, "b": 1, "c": 2})
 
     def test_faults_land_on_the_agent_that_failed(self) -> None:
         import io
@@ -188,12 +196,7 @@ class ReportTest(unittest.TestCase):
             buffer = io.StringIO()
             with redirect_stdout(buffer):
                 round_robin.report(path, ["a", "b"])
-        rows_out = [
-            line for line in buffer.getvalue().splitlines() if " a " in line or " b " in line
-        ]
-        faulted = [line for line in rows_out if line.rstrip().endswith("3")]
-        self.assertEqual(len(faulted), 1, buffer.getvalue())
-        self.assertIn("b", faulted[0].split()[1])
+        self.assertEqual(faults_from(buffer.getvalue()), {"a": 0, "b": 3})
 
 
 class ErrorBarTest(unittest.TestCase):
@@ -210,3 +213,18 @@ class ErrorBarTest(unittest.TestCase):
         for value in errors.values():
             self.assertGreater(value, 0.0)
             self.assertTrue(math.isfinite(value))
+
+
+class PlyCountTest(unittest.TestCase):
+    def test_counts_half_moves(self) -> None:
+        import chess
+        import chess.pgn
+
+        from round_robin import count_plies
+
+        for moves in ([], ["e2e4"], ["e2e4", "e7e5", "g1f3"], ["f2f3", "e7e5", "g2g4", "d8h4"]):
+            board = chess.Board()
+            for uci in moves:
+                board.push(chess.Move.from_uci(uci))
+            pgn = str(chess.pgn.Game.from_board(board))
+            self.assertEqual(count_plies(pgn), len(moves), pgn)

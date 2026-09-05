@@ -39,6 +39,9 @@ RUNNER = REPO / "harness" / "runner.py"
 BASE_MS = 10_000
 INCREMENT_MS = 100
 
+# terminations that mean an agent failed rather than lost a game of chess
+FAULTS = frozenset({"flag", "crash", "illegal", "init", "both_failed"})
+
 
 class WarmAgent(Agent):
     """An agent whose process can be started before the referee asks for it.
@@ -108,21 +111,40 @@ def play_one(payload: tuple[str, str, int, int, int, int]) -> dict[str, Any]:
         warmer.start()
     for warmer in warmers:
         warmer.join()
+    plies = 0
     try:
         outcome = play_match(white, black, base_ms, increment_ms, ply_cap=ply_cap)
         result, termination = outcome.result, outcome.termination
+        plies = count_plies(outcome.pgn)
     except Exception as error:  # a harness fault must not take the pool down
         result, termination = "void", f"harness_error:{type(error).__name__}"
-    return {
+    record: dict[str, Any] = {
         "left": left,
         "right": right,
         "game": game,
         "white": task.white,
         "result": result,
         "termination": termination,
+        "plies": plies,
         "seconds": round(time.monotonic() - started, 1),
         "finished": round(time.time(), 1),  # lets throughput be measured over any window later
     }
+    if termination in FAULTS or termination.startswith("harness_error"):
+        # a flag or a crash is worth explaining, and the agent's own stderr usually explains it
+        loser = black if result == "white" else white
+        record["stderr"] = loser.stderr_tail[-600:]
+    return record
+
+
+def count_plies(pgn: str) -> int:
+    """Count half moves in a PGN, without paying to parse it back into a board."""
+    movetext = pgn.rsplit("\n\n", 1)[-1]
+    skip = {"1-0", "0-1", "1/2-1/2", "*"}
+    return sum(
+        1
+        for token in movetext.split()
+        if token not in skip and not token.rstrip(".").isdigit() and not token.startswith("{")
+    )
 
 
 def schedule(names: list[str], games: int) -> list[Task]:
@@ -317,9 +339,13 @@ def report(path: Path, names: list[str]) -> None:
             else:
                 losses[name] += 1
             cross.setdefault((name, other), []).append(share)
-        if record["termination"] in ("crash", "illegal", "flag", "init"):
+        if record["termination"] in FAULTS:
             black = record["right"] if record["white"] == record["left"] else record["left"]
-            faults[black if record["result"] == "white" else record["white"]] += 1
+            if record["termination"] == "both_failed":
+                faults[record["white"]] += 1  # neither side started, so both are at fault
+                faults[black] += 1
+            else:
+                faults[black if record["result"] == "white" else record["white"]] += 1
 
     ratings, errors = bradley_terry(records, names)
     played = {name: wins[name] + draws[name] + losses[name] for name in names}
