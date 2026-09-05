@@ -1,0 +1,16 @@
+game 1/10: draw by threefold_repetition
+game 2/10: black by checkmate
+game 3/10: draw by threefold_repetition
+game 4/10: black by checkmate
+game 5/10: white by checkmate
+game 6/10: draw by threefold_repetition
+game 7/10: draw by threefold_repetition
+game 8/10: draw by threefold_repetition
+game 9/10: white by checkmate
+game 10/10: black by flag
+
+my-agents\02_alpha_beta_pruning vs baselines\numba over 10 games
++5 =5 -0, score 75.0%
+terminations: threefold_repetition 5, checkmate 4, flag 1
+
+your agent failed to finish a game: flag 1

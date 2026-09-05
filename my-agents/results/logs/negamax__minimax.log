@@ -1,0 +1,16 @@
+game 1/10: black by flag
+game 2/10: white by flag
+game 3/10: black by flag
+game 4/10: white by flag
+game 5/10: white by flag
+game 6/10: white by flag
+game 7/10: black by flag
+game 8/10: white by flag
+game 9/10: white by checkmate
+game 10/10: draw by threefold_repetition
+
+my-agents\negamax vs baselines\minimax over 10 games
++2 =1 -7, score 25.0%
+terminations: flag 8, checkmate 1, threefold_repetition 1
+
+your agent failed to finish a game: flag 8

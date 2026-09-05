@@ -1,0 +1,15 @@
+game 1/10: white by checkmate
+game 2/10: draw by threefold_repetition
+game 3/10: draw by threefold_repetition
+game 4/10: black by checkmate
+game 5/10: draw by threefold_repetition
+game 6/10: draw by threefold_repetition
+game 7/10: draw by threefold_repetition
+game 8/10: black by checkmate
+game 9/10: white by checkmate
+game 10/10: draw by threefold_repetition
+
+my-agents\02_alpha_beta_pruning vs baselines\minimax over 10 games
++4 =6 -0, score 70.0%
+terminations: checkmate 4, threefold_repetition 6
+

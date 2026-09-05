@@ -1,0 +1,1500 @@
+{
+  "ranking": [
+    "03_handcrafted_evaluation",
+    "02_alpha_beta_pruning",
+    "01_negamax",
+    "04_quiescence_search",
+    "05_iterative_deepening",
+    "06_move_ordering",
+    "07_transposition_table_zobrist",
+    "08_killer_heuristic",
+    "09_history_heuristic",
+    "10_principal_variation_search",
+    "11_null_move_pruning",
+    "12_late_move_reductions",
+    "13_static_exchange_evaluation",
+    "14_futility_pruning_and_razoring",
+    "15_selective_extensions",
+    "negamax"
+  ],
+  "stats": {
+    "01_negamax": {
+      "wins": 1,
+      "draws": 69,
+      "losses": 86,
+      "games": 156,
+      "white_wins": 1,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "02_alpha_beta_pruning": {
+      "wins": 30,
+      "draws": 69,
+      "losses": 1,
+      "games": 100,
+      "white_wins": 23,
+      "black_wins": 7,
+      "flags": 0,
+      "failures": 0
+    },
+    "03_handcrafted_evaluation": {
+      "wins": 56,
+      "draws": 0,
+      "losses": 0,
+      "games": 56,
+      "white_wins": 28,
+      "black_wins": 28,
+      "flags": 0,
+      "failures": 0
+    },
+    "04_quiescence_search": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "05_iterative_deepening": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "06_move_ordering": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "07_transposition_table_zobrist": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "08_killer_heuristic": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "09_history_heuristic": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "10_principal_variation_search": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "11_null_move_pruning": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "12_late_move_reductions": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "13_static_exchange_evaluation": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "14_futility_pruning_and_razoring": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "15_selective_extensions": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    },
+    "negamax": {
+      "wins": 0,
+      "draws": 0,
+      "losses": 0,
+      "games": 0,
+      "white_wins": 0,
+      "black_wins": 0,
+      "flags": 0,
+      "failures": 0
+    }
+  },
+  "head_to_head": {
+    "01_negamax": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 1,
+        "d": 69,
+        "l": 30
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 56
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "02_alpha_beta_pruning": {
+      "01_negamax": {
+        "w": 30,
+        "d": 69,
+        "l": 1
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "03_handcrafted_evaluation": {
+      "01_negamax": {
+        "w": 56,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "04_quiescence_search": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "05_iterative_deepening": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "06_move_ordering": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "07_transposition_table_zobrist": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "08_killer_heuristic": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "09_history_heuristic": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "10_principal_variation_search": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "11_null_move_pruning": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "12_late_move_reductions": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "13_static_exchange_evaluation": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "14_futility_pruning_and_razoring": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "15_selective_extensions": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    },
+    "negamax": {
+      "01_negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "02_alpha_beta_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "03_handcrafted_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "04_quiescence_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "05_iterative_deepening": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "06_move_ordering": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "07_transposition_table_zobrist": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "08_killer_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "09_history_heuristic": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "10_principal_variation_search": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "11_null_move_pruning": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "12_late_move_reductions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "13_static_exchange_evaluation": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "14_futility_pruning_and_razoring": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "15_selective_extensions": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      },
+      "negamax": {
+        "w": 0,
+        "d": 0,
+        "l": 0
+      }
+    }
+  },
+  "terminations": {
+    "threefold_repetition": 69,
+    "checkmate": 87
+  }
+}

@@ -1,0 +1,16 @@
+game 1/10: black by flag
+game 2/10: white by flag
+game 3/10: black by flag
+game 4/10: white by flag
+game 5/10: black by flag
+game 6/10: black by checkmate
+game 7/10: white by checkmate
+game 8/10: black by checkmate
+game 9/10: white by checkmate
+game 10/10: white by flag
+
+my-agents\negamax vs baselines\numba over 10 games
++4 =0 -6, score 40.0%
+terminations: flag 6, checkmate 4
+
+your agent failed to finish a game: flag 6

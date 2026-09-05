@@ -1,0 +1,16 @@
+game 1/10: white by flag
+game 2/10: black by checkmate
+game 3/10: white by checkmate
+game 4/10: black by checkmate
+game 5/10: white by checkmate
+game 6/10: black by checkmate
+game 7/10: white by checkmate
+game 8/10: black by checkmate
+game 9/10: white by checkmate
+game 10/10: black by checkmate
+
+my-agents\14_futility_pruning_and_razoring vs baselines\numba over 10 games
++10 =0 -0, score 100.0%
+terminations: flag 1, checkmate 9
+
+your agent failed to finish a game: flag 1

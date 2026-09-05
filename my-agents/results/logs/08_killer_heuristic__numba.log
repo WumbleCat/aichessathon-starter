@@ -1,0 +1,16 @@
+game 1/10: white by checkmate
+game 2/10: black by flag
+game 3/10: white by flag
+game 4/10: black by flag
+game 5/10: white by flag
+game 6/10: black by flag
+game 7/10: white by checkmate
+game 8/10: black by flag
+game 9/10: white by flag
+game 10/10: draw by threefold_repetition
+
+my-agents\08_killer_heuristic vs baselines\numba over 10 games
++9 =1 -0, score 95.0%
+terminations: checkmate 2, flag 7, threefold_repetition 1
+
+your agent failed to finish a game: flag 7

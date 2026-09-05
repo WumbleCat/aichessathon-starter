@@ -1,0 +1,16 @@
+game 1/10: white by checkmate
+game 2/10: white by flag
+game 3/10: white by checkmate
+game 4/10: black by checkmate
+game 5/10: white by checkmate
+game 6/10: black by checkmate
+game 7/10: white by checkmate
+game 8/10: white by flag
+game 9/10: white by checkmate
+game 10/10: black by checkmate
+
+my-agents\negamax vs baselines\greedy over 10 games
++8 =0 -2, score 80.0%
+terminations: checkmate 8, flag 2
+
+your agent failed to finish a game: flag 2
