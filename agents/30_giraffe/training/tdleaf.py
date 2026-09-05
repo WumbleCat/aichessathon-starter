@@ -48,7 +48,7 @@ def trajectory(
     board = chess.Board(fen)
     searcher = Searcher(evaluator)
     values: list[float] = []  # V_t from white's point of view
-    leaves: list[tuple[np.ndarray, bool] | None] = []
+    leaves: list[tuple[np.ndarray, bool, int] | None] = []  # features, side to move, static score
     for _ in range(plies):
         if board.is_game_over(claim_draw=True):
             break
@@ -61,7 +61,7 @@ def trajectory(
         leaf_score = score if leaf.turn == board.turn else -score
         usable = abs(score) < MATE_BOUND and not leaf.is_check() and abs(evaluator(leaf) - leaf_score) <= LEAF_MISMATCH_CP
         values.append(float(max(-VALUE_CLAMP, min(VALUE_CLAMP, score if board.turn == chess.WHITE else -score))))
-        leaves.append((ge.board_features(leaf), leaf.turn) if usable else None)
+        leaves.append((ge.board_features(leaf), leaf.turn, ge.hce_eval(leaf)) if usable else None)
         board.push(move)
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
@@ -78,9 +78,10 @@ def trajectory(
         for k in range(t, len(values) - 1):
             target += weight * (values[k + 1] - values[k])
             weight *= lam
-        x, leaf_turn = leaf_info
+        x, leaf_turn, static = leaf_info
         xs.append(x)
-        ys.append(target if leaf_turn == chess.WHITE else -target)
+        # the network fits the residual over the static score, from the leaf's side to move
+        ys.append((target if leaf_turn == chess.WHITE else -target) - static)
     return xs, ys
 
 
@@ -110,7 +111,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--init", type=Path, default=AGENT_DIR / "models" / "giraffe.npz")
     parser.add_argument("--out", type=Path, default=AGENT_DIR / "models" / "giraffe_tdleaf.npz")
-    parser.add_argument("--data", type=Path, default=HERE / "data" / "bootstrap.npz")
+    parser.add_argument("--data", type=Path, default=HERE / "data" / "search_d2.npz")
     parser.add_argument("--iterations", type=int, default=40)
     parser.add_argument("--positions", type=int, default=256, help="start positions per iteration")
     parser.add_argument("--plies", type=int, default=12)
@@ -127,7 +128,7 @@ def main() -> None:
     parser.add_argument("--gate-depth", type=int, default=0, help="fixed depth for the gate arena (0 = use --gate-budget)")
     parser.add_argument("--checkpoints", type=Path, default=HERE / "data" / "tdleaf", help="per-iteration weight dumps")
     parser.add_argument("--workers", type=int, default=6)
-    parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--threads", type=int, default=1, help="torch threads; more than one spin-waits on a loaded machine")
     parser.add_argument("--seed", type=int, default=0)
     arguments = parser.parse_args()
 
@@ -136,7 +137,9 @@ def main() -> None:
     data = np.load(arguments.data)
     fens = data["fens"]
     boot_x = data["features"]
-    boot_y = cp_to_target(data["labels"])
+    if "static" not in data:
+        raise SystemExit("tdleaf needs a residual dataset with a 'static' array (training/relabel.py)")
+    boot_y = cp_to_target(data["labels"].astype(np.float32) - data["static"].astype(np.float32))
 
     accepted = load_weights(arguments.init)
     weights = accepted.copy()

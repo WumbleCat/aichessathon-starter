@@ -11,8 +11,8 @@ agents/30_giraffe/
   giraffe_eval.py     numba feature extractor, network forward pass, handcrafted control eval
   giraffe_search.py   iterative-deepening PVS with TT, ordering, NMP, LMR, quiescence
   models/giraffe.npz  the shipped flat float32 weight vector (48,705 parameters, ~190 KB)
-  training/           model.py (torch twin), gen_positions.py, bootstrap.py, tdleaf.py,
-                      selfplay_arena.py (same search, two evaluators)
+  training/           model.py (torch twin), gen_positions.py, relabel.py, bootstrap.py,
+                      tdleaf.py, selfplay_arena.py (same search, two evaluators)
   tests/              rules/legality/clock/symmetry/parity tests
   bench.py            latency, nodes/s, depth
   IMPLEMENTATION.md   plan;  RESULTS.md  measurements
@@ -34,8 +34,18 @@ Everything is computed in one numba pass over the bitboards a `chess.Board` alre
 
 **Network.** Giraffe's first hidden layer is split per feature group (16 / 128 / 64 units),
 then merged through 64 and 32 ReLU units into a `tanh` output scaled to centipawns
-(`1200 * tanh(z)`). The forward pass is a numba loop over a flat weight vector, so a
+(`600 * tanh(z)`). The forward pass is a numba loop over a flat weight vector, so a
 board-to-score evaluation costs roughly 30-50 us on one core.
+
+**Residual design.** The evaluation the search sees is `static + network`, where `static`
+is the handcrafted material + piece-square score computed exactly, and the network only
+predicts the *residual*: what a deeper search knows about a quiet position that the static
+score does not. This is the adaptation of Giraffe's "learn the evaluation" idea that
+survived the controlled experiment. The first version, a network trained to replace the
+static score outright (labels from a quiescence-resolved static evaluation), had a mean
+error of about 100 cp even on quiet positions and lost 4-20 to the static score with the
+identical search. Keeping material exact and learning only the correction removes that
+failure mode; whether the correction adds strength is then a clean A/B test.
 
 **Search.** Plain python-chess move generation, iterative deepening with principal
 variation search, a transposition table that survives between moves, MVV-LVA + killer +
@@ -51,13 +61,17 @@ before any search starts. Under 120 ms the fallback goes out untouched.
 **Training (Giraffe's three stages, adapted).**
 
 1. `training/gen_positions.py` — noisy self-play between one-ply handcrafted players gives
-   diverse positions, labelled with the quiescence-resolved handcrafted evaluation.
-2. `training/bootstrap.py` — supervised pretraining of the torch twin on those labels
+   240k diverse positions. `training/relabel.py` keeps the quiet ones (not in check, no
+   capture that changes the value) and labels each with a depth-2 alpha-beta search of the
+   handcrafted evaluator, storing the static score alongside so `label - static` is the
+   residual target. No engine other than this one labels anything.
+2. `training/bootstrap.py` — supervised pretraining of the torch twin on the residuals
    (MSE in tanh space), exported as the flat weight file.
 3. `training/tdleaf.py` — TD-Leaf(lambda) self-play: fixed-depth searches with the current
-   network, principal-variation leaves trained towards discounted temporal differences of
-   the search scores, terminal values from the rules, a replay buffer, a slice of the
-   bootstrap data as an anchor, and arena gating of checkpoints against the last accepted one.
+   evaluator, principal-variation leaves trained towards discounted temporal differences of
+   the search scores (minus the leaf's static score, so the network keeps fitting the
+   residual), terminal values from the rules, a replay buffer, a slice of the supervised
+   data as an anchor, and fixed-depth arena gating of checkpoints against the last accepted one.
 
 `training/selfplay_arena.py` plays the identical search with two evaluators from paired
 random openings, which is the controlled experiment the architecture brief asks for.
@@ -70,9 +84,10 @@ All commands use the project interpreter from this directory.
 python -m unittest discover -s tests           # 30 tests: rules, clocks, symmetry, parity
 python bench.py                                # latency / nodes/s / depth
 python training/gen_positions.py --positions 240000 --workers 6
-python training/bootstrap.py --epochs 40 --threads 1 --out models/giraffe_boot.npz
-python training/tdleaf.py --init models/giraffe_boot.npz --iterations 30
-python training/selfplay_arena.py --a models/giraffe.npz --b hce --pairs 20 --budget 0.2
+python training/relabel.py --data training/data/bootstrap.npz --depth 2 --workers 4
+python training/bootstrap.py --data training/data/search_d2.npz --epochs 30 --out models/giraffe.npz
+python training/tdleaf.py --init models/giraffe.npz --iterations 20 --gate-depth 3
+python training/selfplay_arena.py --a models/giraffe.npz --b hce --pairs 20 --budget 1e9 --depth 3
 GIRAFFE_EVAL=hce ...                           # run the same agent with the control evaluator
 ```
 

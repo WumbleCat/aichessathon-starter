@@ -1,9 +1,11 @@
-"""Supervised pretraining of the Giraffe network on handcrafted-evaluation labels.
+"""Supervised pretraining of the Giraffe network (stage 2).
 
-    python training/bootstrap.py --data training/data/bootstrap.npz --epochs 30 --out models/giraffe.npz
+    python training/bootstrap.py --data training/data/search_d2.npz --epochs 30 --out models/giraffe.npz
 
-Loss is mean squared error in the network's tanh output space (targets are
-``tanh(cp / OUT_SCALE)``). Ten percent of the data is held out for validation; the
+The network predicts the residual ``label - static`` where ``static`` is the handcrafted
+score the evaluator adds back at play time; a data file without a ``static`` array is
+treated as absolute labels (the legacy bootstrap set). Loss is mean squared error in the
+network's tanh output space (targets are ``tanh(cp / OUT_SCALE)``). Ten percent of the data is held out for validation; the
 checkpoint with the best validation loss is exported as the flat weight file the numba
 evaluator loads.
 """
@@ -103,16 +105,20 @@ def main() -> None:
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)
-    parser.add_argument("--weight-decay", type=float, default=1e-6)
-    parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--weight-decay", type=float, default=1e-4)
+    parser.add_argument("--threads", type=int, default=1, help="torch threads; more than one spin-waits on a loaded machine")
     parser.add_argument("--seed", type=int, default=0)
     arguments = parser.parse_args()
 
     torch.set_num_threads(arguments.threads)
     data = np.load(arguments.data)
     features = data["features"]
-    labels = data["labels"]
-    print(f"{len(labels)} positions, label std {labels.std():.0f} cp")
+    labels = data["labels"].astype(np.float32)
+    if "static" in data:
+        labels = labels - data["static"].astype(np.float32)
+        print(f"{len(labels)} positions, residual (label - static) mean {labels.mean():.0f} std {labels.std():.0f} cp")
+    else:
+        print(f"{len(labels)} positions, absolute label std {labels.std():.0f} cp")
     model = GiraffeNet()
     if arguments.init is not None:
         model.load_flat(load_weights(arguments.init))

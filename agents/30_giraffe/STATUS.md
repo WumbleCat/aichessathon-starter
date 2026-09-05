@@ -19,22 +19,31 @@ refinement) was started by an earlier session but never produced an accepted che
 - `bench.py` at 1.5 s/move on the loaded shared machine: net 35 us/eval, ~9.5k nodes/s,
   mean depth 4.2; hce 4.7 us/eval, ~7.2k nodes/s, mean depth 3.8.
 
+## Finding and redesign (this session)
+
+The controlled experiment at fixed depth 3 (`results/selfplay_net_vs_hce_depth3.txt`):
+the bootstrap net lost 4-20 (-280 Elo) to the handcrafted static score with the identical
+search. Probe on 400 positions: mean |net - label| was 103 cp on quiet positions (p90
+317 cp), 162 cp on tactical ones. A net that misjudges material by a pawn or more is worse
+than counting it exactly.
+
+Redesign, already in the code: `net_eval = hce static + network residual`
+(`giraffe_eval.net_eval_bb`, `OUT_SCALE` 600). The residual is trained on quiet positions
+towards `depth-2 search score - static` (`training/relabel.py` builds
+`training/data/search_d2.npz` incrementally; `bootstrap.py` and `tdleaf.py` subtract the
+`static` array). Tests pass. **The shipped `models/giraffe.npz` is still the OLD absolute
+net and must be replaced by a residual net before anything ships** (until then the agent
+plays hce + a bogus residual; still legal, but weak).
+
 ## Open items (in priority order)
 
-1. Controlled experiment net vs hce with the identical search, fixed depth
-   (`training/selfplay_arena.py --budget 1e9 --depth 3`). Result file:
-   `results/selfplay_net_vs_hce_depth3.txt`.
-2. TD-Leaf refinement (`training/tdleaf.py`) with arena gating; ship only if it beats the
-   bootstrap net in the controlled arena. Keep workers low, the machine is shared.
-3. Harness games against `baselines/minimax` and `baselines/greedy` (earlier runs with the
-   hce evaluator lost games to `init` and `flag` because the machine was saturated, not
-   because of the agent; re-run when load allows and record in RESULTS.md).
-4. Write RESULTS.md, then merge the branch into main with `--no-ff`.
-
-## Ideas not yet tried
-
-- Pack the bitboards into one uint64 array per call (what the earlier session was doing)
-  to trim Python-to-numba call overhead; the evaluator is only ~30% of search time, so
-  the python-chess search itself is the bigger cost.
-- Increase `H_P` or add pawn-structure features; the bootstrap validation error (36 cp)
-  is dominated by tactical positions where the label came from quiescence.
+1. Let `relabel.py` finish or reach ~50k positions (it saves every 10 chunks; the machine
+   runs ~90 python processes, so a chunk of 1000 takes minutes). Log: `results/relabel_d2.log`.
+2. `bootstrap.py --data training/data/search_d2.npz --out models/giraffe.npz --epochs 30`.
+3. Controlled arena at fixed depth 3, net (static + residual) vs hce, 12+ pairs. Ship the
+   net only if it scores >= 50%; otherwise ship with `GIRAFFE_EVAL=hce` semantics (make
+   the default evaluator hce in agent.py) and say so in RESULTS.md.
+4. TD-Leaf (`tdleaf.py --gate-depth 3`) if time allows.
+5. Harness games vs `baselines/minimax` and `baselines/greedy`, RESULTS.md, commit on
+   `feature/agent-30-giraffe` (throwaway-index workflow; other sessions share the tree),
+   `--no-ff` merge into main.

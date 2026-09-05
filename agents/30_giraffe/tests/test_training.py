@@ -38,8 +38,11 @@ class TorchNumbaParity(unittest.TestCase):
         with torch.no_grad():
             torch_cp = model(torch.from_numpy(xs)).numpy() * ge.OUT_SCALE
         for fen, expected in zip(fens, torch_cp, strict=True):
-            numba_cp = ge.net_eval_bb(*ge._bitboards(chess.Board(fen)), evaluator.weights, evaluator.scratch)
-            self.assertAlmostEqual(float(numba_cp), float(expected), delta=0.5, msg=fen)
+            board = chess.Board(fen)
+            total = ge.net_eval_bb(*ge._bitboards(board), evaluator.weights, evaluator.scratch)
+            residual = float(total) - ge.hce_eval(board)  # the network only predicts the residual
+            self.assertAlmostEqual(residual, float(expected), delta=0.5, msg=fen)
+            self.assertAlmostEqual(evaluator.residual(board), float(expected), delta=0.5, msg=fen)
 
     def test_target_transform(self) -> None:
         cp = np.array([0.0, 100.0, -100.0, 5000.0], dtype=np.float32)

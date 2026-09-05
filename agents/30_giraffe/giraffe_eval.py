@@ -14,9 +14,11 @@ Feature layout (335 floats), following the three groups of Lai's Giraffe:
   each side; surplus promoted pieces still count in the other groups;
 * square-centric (64 x 2): lowest-valued attacker of each square by us and by them.
 
-Two evaluators share this representation: ``net_eval`` runs the learned network and
-``hce_eval`` is the handcrafted material + piece-square control evaluator that the network
-is first bootstrapped from. Both return centipawns for the side to move.
+Two evaluators share this representation. ``hce_eval`` is the handcrafted material +
+piece-square control evaluator. ``net_eval`` returns that exact static score plus a learned
+residual: the network never has to re-learn material, it is trained on what a deeper
+search knows that the static score does not (see ``training/``). Both return centipawns
+for the side to move.
 """
 
 from __future__ import annotations
@@ -76,7 +78,7 @@ H_S = 64
 H_MERGED = H_G + H_P + H_S  # 208
 H_2 = 64
 H_3 = 32
-OUT_SCALE = 1200.0  # centipawns = OUT_SCALE * tanh(z)
+OUT_SCALE = 600.0  # residual centipawns = OUT_SCALE * tanh(z), added to the static score
 
 LAYERS = (
     ("g", H_G, N_GLOBAL),
@@ -406,7 +408,7 @@ def _dense_relu(
 
 @njit("float64(float32[::1], float32[::1])", cache=CACHE, fastmath=True)
 def forward(w: np.ndarray, x: np.ndarray) -> float:
-    """Network output in centipawns for the feature vector ``x``."""
+    """Network output (the residual, in centipawns) for the feature vector ``x``."""
     h1 = np.empty(H_MERGED, dtype=np.float32)
     _dense_relu(w, OFF_WG, OFF_BG, x, 0, N_GLOBAL, h1, 0, H_G)
     _dense_relu(w, OFF_WP, OFF_BP, x, N_GLOBAL, N_PIECE, h1, H_G, H_P)
@@ -419,28 +421,6 @@ def forward(w: np.ndarray, x: np.ndarray) -> float:
     for i in range(H_3):
         z += w[OFF_WO + i] * h3[i]
     return OUT_SCALE * math.tanh(z)
-
-
-@njit("float64(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, boolean, uint64, int64, float32[::1], float32[::1])", cache=CACHE)
-def net_eval_bb(
-    pawns: np.uint64,
-    knights: np.uint64,
-    bishops: np.uint64,
-    rooks: np.uint64,
-    queens: np.uint64,
-    kings: np.uint64,
-    occ_w: np.uint64,
-    occ_b: np.uint64,
-    white_to_move: bool,
-    castling: np.uint64,
-    ep_square: int,
-    w: np.ndarray,
-    scratch: np.ndarray,
-) -> float:
-    features(
-        pawns, knights, bishops, rooks, queens, kings, occ_w, occ_b, white_to_move, castling, ep_square, scratch
-    )
-    return forward(w, scratch)
 
 
 # ---------------------------------------------------------------------------------------
@@ -505,6 +485,30 @@ def hce_eval_bb(
     return score if white_to_move else -score
 
 
+@njit("float64(uint64, uint64, uint64, uint64, uint64, uint64, uint64, uint64, boolean, uint64, int64, float32[::1], float32[::1])", cache=CACHE)
+def net_eval_bb(
+    pawns: np.uint64,
+    knights: np.uint64,
+    bishops: np.uint64,
+    rooks: np.uint64,
+    queens: np.uint64,
+    kings: np.uint64,
+    occ_w: np.uint64,
+    occ_b: np.uint64,
+    white_to_move: bool,
+    castling: np.uint64,
+    ep_square: int,
+    w: np.ndarray,
+    scratch: np.ndarray,
+) -> float:
+    """Static handcrafted score plus the network residual, centipawns for the side to move."""
+    features(
+        pawns, knights, bishops, rooks, queens, kings, occ_w, occ_b, white_to_move, castling, ep_square, scratch
+    )
+    static = hce_eval_bb(pawns, knights, bishops, rooks, queens, kings, occ_w, occ_b, white_to_move)
+    return float(static) + forward(w, scratch)
+
+
 # ---------------------------------------------------------------------------------------
 # Python-facing wrappers
 # ---------------------------------------------------------------------------------------
@@ -545,6 +549,11 @@ class NetEvaluator:
     def __call__(self, board) -> int:  # type: ignore[no-untyped-def]
         p, n, b, r, q, k, ow, ob, turn, castling, ep = _bitboards(board)
         return int(net_eval_bb(p, n, b, r, q, k, ow, ob, turn, castling, ep, self.weights, self.scratch))
+
+    def residual(self, board) -> float:  # type: ignore[no-untyped-def]
+        """The learned correction alone (what ``training/`` fits), in centipawns."""
+        features(*_bitboards(board), self.scratch)
+        return float(forward(self.weights, self.scratch))
 
 
 def hce_eval(board) -> int:  # type: ignore[no-untyped-def]
