@@ -157,3 +157,8 @@ starved process can overrun the 500 ms grace at a 10 s clock. Nothing flagged on
 
 Contest control (120 s + 0.5 s), harness arena: **+2 =0 -0 vs baselines/minimax, both by
 checkmate**, no flag, while five other arena processes and a training run shared the box.
+
+Move-time profile (`training/clock_profile.py`, self-play, 60 plies at 120 s + 0.5 s, loaded
+box): import 1.0 s; **median 2.4 s, p95 4.2 s, p99 4.4 s, max 4.4 s** per move; both sides
+had 59 s left after 30 moves each. The budget is deliberately conservative (about 1/28 of the
+remaining time in the middlegame) because the clock is wall time and a flag loses the game.

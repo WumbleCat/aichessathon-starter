@@ -27,7 +27,7 @@ def main() -> None:
     args = parser.parse_args()
 
     t0 = time.perf_counter()
-    import agent  # noqa: E402  (import time is part of the report)
+    import agent
 
     init_s = time.perf_counter() - t0
     board = chess.Board()
