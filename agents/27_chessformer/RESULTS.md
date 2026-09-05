@@ -116,3 +116,44 @@ At depth 5 the prior still saves nothing; at depth 6 it saves 10 % of the nodes,
 calls per position cost more than that. The trend says the prior pays off only when the
 subtrees below the consulted nodes are large, i.e. deeper searches with the network confined
 to the top plies. Benchmarked next: depth 6 and 7 with the network within one ply of the root.
+
+### Depth 6-7, network within one ply of the root (tiny_v2, min depth 4)
+
+| depth | positions | raw nodes | charged | calls/pos | same best move |
+|---|---|---|---|---|---|
+| 6 | 16 | 1.08x | 1.16x | 32 | 11/16 |
+| 7 | 8 | 1.00x | 1.03x | 27 | 5/8 |
+
+So the 0.90x at depth 6 above was tree-shape noise; across depths 5-7 and every consultation
+policy the prior leaves the node count unchanged (0.99-1.08x) and only adds its own cost.
+
+### Value head vs static eval (held-out shard `s2039`, 1500 positions, target tanh(depth-3 score / 500))
+
+| predictor | MSE | corr |
+|---|---|---|
+| static eval `cf_eval.evaluate` | 0.034 | 0.966 |
+| network value head (tiny_v2) | 0.047 | 0.952 |
+| least-squares blend 0.79 static + 0.21 net | 0.032 | |
+
+The network is distilled from searches that use the static eval as leaf evaluator, so it
+cannot beat that eval at predicting them; the blend gains 7 % MSE, not enough to pay for a
+forward pass at leaves. Top-1 agreement with the teacher on the held-out shard: 35.7 %.
+
+### Shipped configuration and wall-clock checks (tiny_v2 weights, network at the root only)
+
+`agent.py` defaults: `CF_POLICY_REL_DEPTH=0`, `CF_POLICY_MIN_DEPTH=3` (2-3 network calls per
+move). 41/41 unit tests pass. Harness arena at the fast control (10 s + 0.1 s), five arenas
+running concurrently on the loaded box:
+
+| Opponent | Games | Result | Terminations |
+|---|---|---|---|
+| baselines/greedy | 4 | +4 =0 -0 | 4 checkmate |
+| baselines/minimax | 2 | +2 =0 -0 | 2 flag (minimax) |
+| baselines/numba | 2 | +2 =0 -0 | 2 flag (numba) |
+| variants/nomodel (same engine, network off) | 4 | +2 =1 -1 | 2 checkmate, 1 insufficient material, 1 flag (the variant) |
+
+The flags are the opponents' (including our own no-model variant once): on this machine a
+starved process can overrun the 500 ms grace at a 10 s clock. Nothing flagged on our side.
+
+Contest control (120 s + 0.5 s), harness arena: **+2 =0 -0 vs baselines/minimax, both by
+checkmate**, no flag, while five other arena processes and a training run shared the box.
