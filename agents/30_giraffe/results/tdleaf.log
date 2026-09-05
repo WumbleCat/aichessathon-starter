@@ -1,0 +1,1 @@
+tdleaf start init=models\giraffe_boot.npz iterations=2 depth=1 plies=6 lam=0.7
