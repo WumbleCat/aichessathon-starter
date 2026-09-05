@@ -63,6 +63,11 @@ class Searcher:
         self.policy_calls = 0
         self.seldepth = 0
         self.policy_cache: dict[object, dict[chess.Move, float]] = {}
+        # node-budget mode (for load-independent A/B matches): the search stops after this many
+        # nodes, and every network call is charged policy_node_cost nodes so that the cost of
+        # consulting the network is part of the budget
+        self.node_limit = float("inf")
+        self.policy_node_cost = 0
         # harvesting of exact nodes for training data (list of (fen, best_uci, score, depth))
         self.harvest: list[tuple[str, str, int, int]] | None = None
         self.harvest_min_depth = 2
@@ -74,11 +79,20 @@ class Searcher:
         self.game_history.add(board._transposition_key())
 
     def search(
-        self, board: chess.Board, budget_s: float, max_depth: int = 64, verbose: bool = False
+        self,
+        board: chess.Board,
+        budget_s: float,
+        max_depth: int = 64,
+        verbose: bool = False,
+        max_nodes: int | None = None,
     ) -> SearchResult:
-        """Iterative deepening. Depth 1 is never interrupted, so a legal move always results."""
+        """Iterative deepening. Depth 1 is never interrupted, so a legal move always results.
+
+        The search stops at the earlier of budget_s seconds and max_nodes nodes (if given).
+        """
         start = time.perf_counter()
         self.deadline = start + budget_s
+        node_budget = float(max_nodes) if max_nodes else float("inf")
         self.nodes = 0
         self.qnodes = 0
         self.tt_hits = 0
@@ -104,8 +118,10 @@ class Searcher:
             self.root_moves_done = 0
             if depth == 1:
                 self.deadline = float("inf")
+                self.node_limit = float("inf")
             else:
                 self.deadline = start + budget_s
+                self.node_limit = node_budget
             try:
                 if depth >= 4:
                     score = self._aspiration(board, depth, prev_score)
@@ -130,7 +146,7 @@ class Searcher:
             if abs(score) >= MATE_BOUND and depth >= 3:
                 break
             # a further iteration usually costs 2-4x the last one; do not start one we cannot end
-            if elapsed > budget_s * 0.45:
+            if elapsed > budget_s * 0.45 or self.nodes > node_budget * 0.45:
                 break
         result.nodes = self.nodes
         result.qnodes = self.qnodes
@@ -208,7 +224,9 @@ class Searcher:
         in_check: bool,
     ) -> int:
         self.nodes += 1
-        if (self.nodes & NODE_CHECK_MASK) == 0 and time.perf_counter() > self.deadline:
+        if (self.nodes & NODE_CHECK_MASK) == 0 and (
+            self.nodes > self.node_limit or time.perf_counter() > self.deadline
+        ):
             raise OutOfTime
         if ply > self.seldepth:
             self.seldepth = ply
@@ -380,7 +398,9 @@ class Searcher:
     def _qsearch(self, board: chess.Board, alpha: int, beta: int, ply: int, qply: int) -> int:
         self.nodes += 1
         self.qnodes += 1
-        if (self.nodes & NODE_CHECK_MASK) == 0 and time.perf_counter() > self.deadline:
+        if (self.nodes & NODE_CHECK_MASK) == 0 and (
+            self.nodes > self.node_limit or time.perf_counter() > self.deadline
+        ):
             raise OutOfTime
         if ply > self.seldepth:
             self.seldepth = ply
@@ -467,6 +487,7 @@ class Searcher:
             priors = self.policy_cache.get(key)
             if priors is None:
                 self.policy_calls += 1
+                self.nodes += self.policy_node_cost
                 priors = self.policy_fn(board)
                 self.policy_cache[key] = priors
             self._priors_cache = priors
