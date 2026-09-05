@@ -118,19 +118,23 @@ def refresh(acc, ply, P, W1, B1):  # type: ignore[no-untyped-def]
     """Full recompute of both perspectives at ``ply`` from the board in ``P``."""
     H = W1.shape[1]
     for persp in range(2):
+        row = acc[ply, persp]
         for i in range(H):
-            acc[ply, persp, i] = B1[i]
+            row[i] = B1[i]
         for sq in range(64):
             pc = P[sq]
             if pc != 0:
-                f = feature_index(persp, pc, sq)
+                w = W1[feature_index(persp, pc, sq)]
                 for i in range(H):
-                    acc[ply, persp, i] += W1[f, i]
+                    row[i] += w[i]
 
 
 @jit
 def update(acc, ply, P, W1):  # type: ignore[no-untyped-def]
-    """acc[ply+1] = acc[ply] patched with the move recorded in P[LAST_*]."""
+    """acc[ply+1] = acc[ply] patched with the move recorded in P[LAST_*].
+
+    Rows are taken as 1-D views so the inner loops are plain contiguous adds (they
+    vectorise); the arithmetic is exact int16 like a full refresh."""
     H = W1.shape[1]
     pc = P[cb.LAST_PIECE]
     frm = P[cb.LAST_FROM]
@@ -139,55 +143,46 @@ def update(acc, ply, P, W1):  # type: ignore[no-untyped-def]
     promo = P[cb.LAST_PROMO]
     rfrom = P[cb.LAST_ROOK_FROM]
     for persp in range(2):
-        f_rem = feature_index(persp, pc, frm)
-        f_add = feature_index(persp, promo if promo != 0 else pc, to)
+        src = acc[ply, persp]
+        dst = acc[ply + 1, persp]
+        w_rem = W1[feature_index(persp, pc, frm)]
+        w_add = W1[feature_index(persp, promo if promo != 0 else pc, to)]
         if cap != 0:
-            f_cap = feature_index(persp, cap, P[cb.LAST_CAPSQ])
+            w_cap = W1[feature_index(persp, cap, P[cb.LAST_CAPSQ])]
             for i in range(H):
-                acc[ply + 1, persp, i] = (
-                    acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i] - W1[f_cap, i]
-                )
+                dst[i] = src[i] - w_rem[i] + w_add[i] - w_cap[i]
         elif rfrom >= 0:
             rook = cb.make_piece(cb.piece_color(pc), cb.ROOK)
-            f_rr = feature_index(persp, rook, rfrom)
-            f_ra = feature_index(persp, rook, P[cb.LAST_ROOK_TO])
+            w_rr = W1[feature_index(persp, rook, rfrom)]
+            w_ra = W1[feature_index(persp, rook, P[cb.LAST_ROOK_TO])]
             for i in range(H):
-                acc[ply + 1, persp, i] = (
-                    acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i] - W1[f_rr, i] + W1[f_ra, i]
-                )
+                dst[i] = src[i] - w_rem[i] + w_add[i] - w_rr[i] + w_ra[i]
         else:
             for i in range(H):
-                acc[ply + 1, persp, i] = acc[ply, persp, i] - W1[f_rem, i] + W1[f_add, i]
+                dst[i] = src[i] - w_rem[i] + w_add[i]
 
 
 @jit
 def copy_acc(acc, ply):  # type: ignore[no-untyped-def]
     """acc[ply+1] = acc[ply] (null move)."""
-    H = acc.shape[2]
-    for persp in range(2):
-        for i in range(H):
-            acc[ply + 1, persp, i] = acc[ply, persp, i]
+    acc[ply + 1] = acc[ply]
 
 
 @jit
 def evaluate(acc, ply, side, W2, B2):  # type: ignore[no-untyped-def]
     """Centipawns from the side-to-move's point of view."""
     H = acc.shape[2]
+    us = acc[ply, side]
+    them = acc[ply, 1 - side]
+    w_us = W2[:H]
+    w_them = W2[H:]
     s = np.int64(0)
     for i in range(H):
-        v = np.int64(acc[ply, side, i])
-        if v < 0:
-            v = np.int64(0)
-        elif v > QA:
-            v = np.int64(QA)
-        s += v * W2[i]
+        v = min(max(np.int64(us[i]), 0), QA)
+        s += v * w_us[i]
     for i in range(H):
-        v = np.int64(acc[ply, 1 - side, i])
-        if v < 0:
-            v = np.int64(0)
-        elif v > QA:
-            v = np.int64(QA)
-        s += v * W2[H + i]
+        v = min(max(np.int64(them[i]), 0), QA)
+        s += v * w_them[i]
     s += B2[0]
     return (s * SCALE) // (QA * QB)
 
