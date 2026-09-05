@@ -113,9 +113,13 @@ class EngineAgent:
         self._read_until("readyok", deadline)
 
     def move(self, fen: str, time_left_ms: int) -> str:
+        # never spend more than a slice of the remaining clock: the referee charges the engine
+        # wall time too, and a fixed movetime large enough to matter will flag it in a long
+        # game, which hands the agent free wins and measures nothing
+        budget = max(20, min(self.movetime_ms, time_left_ms // 30))
         self._send(f"position fen {fen}")
-        self._send(f"go movetime {self.movetime_ms}")
-        deadline = time.monotonic() + self.movetime_ms / 1000.0 + 30.0
+        self._send(f"go movetime {budget}")
+        deadline = time.monotonic() + budget / 1000.0 + 30.0
         return self._read_until("bestmove", deadline).split()[1]
 
     def stop(self) -> None:
@@ -236,8 +240,12 @@ def play_one(job: Job, engine_path: Path, args: argparse.Namespace) -> dict[str,
         result, termination, plies = ("black" if plays_white else "white"), f"error:{error!r}", 0
     # whatever went wrong, the agent's own stderr is the only thing that explains it
     detail = ""
-    if termination.startswith(("error", "crash", "illegal", "flag", "init")):
+    failed_side = ""
+    if termination.startswith(FAILURE_PREFIXES):
         detail = (agent_side.stderr_tail or "")[-1500:]
+        # the side that failed is the side that lost the game by failing
+        agent_lost = (result == "white") != plays_white
+        failed_side = "agent" if agent_lost else "engine"
     if result == "draw" or result == "void":
         points = 0.5
     elif (result == "white") == plays_white:
@@ -256,6 +264,7 @@ def play_one(job: Job, engine_path: Path, args: argparse.Namespace) -> dict[str,
         "points": points,
         "plies": plies,
         "seconds": round(time.monotonic() - started, 1),
+        "failed_side": failed_side,
         "stderr": detail,
     }
 
@@ -287,7 +296,21 @@ FAILURE_PREFIXES = ("error", "crash", "illegal", "flag", "init")
 
 
 def is_failure(entry: dict[str, object]) -> bool:
+    """Did this game end by someone failing rather than by a chess result?
+
+    Either side failing makes the game useless as a strength measurement: an engine that
+    flags on its own clock hands the agent a free win just as an agent that crashes hands one
+    to the engine.
+    """
     return str(entry["termination"]).startswith(FAILURE_PREFIXES)
+
+
+def agent_failed(entry: dict[str, object]) -> bool:
+    """Was the *agent* the side that failed? Older records have no field, so fall back."""
+    side = entry.get("failed_side")
+    if side is not None and side != "":
+        return bool(side == "agent")
+    return is_failure(entry) and float(entry["points"]) == 0.0  # type: ignore[arg-type]
 
 
 def load_results(path: Path) -> dict[str, dict[str, object]]:
@@ -329,14 +352,18 @@ def report(
         rows = by_elo[elo]
         scored = "decided games only" if exclude_failures else "all games"
         lines.append(f"\n### vs Stockfish UCI_Elo {elo} ({scored})\n")
-        lines.append("| # | agent | games | W | D | L | score | implied Elo | failures |")
-        lines.append("|---|---|---|---|---|---|---|---|---|")
+        lines.append(
+            "| # | agent | games | W | D | L | score | implied Elo | agent failed | "
+            "engine failed |"
+        )
+        lines.append("|---|---|---|---|---|---|---|---|---|---|")
         table = []
         for agent in agents:
             all_games = rows.get(agent.label)
             if not all_games:
                 continue
-            bad_count = sum(1 for g in all_games if is_failure(g))
+            bad_count = sum(1 for g in all_games if agent_failed(g))
+            engine_bad = sum(1 for g in all_games if is_failure(g) and not agent_failed(g))
             games = [g for g in all_games if not is_failure(g)] if exclude_failures else all_games
             if not games:
                 continue
@@ -346,13 +373,14 @@ def report(
             losses = n - wins - draws
             score = sum(float(g["points"]) for g in games) / n
             rating, half = elo_of(score, n, elo)
-            table.append((rating, agent, n, wins, draws, losses, score, half, bad_count))
-        for rating, agent, n, wins, draws, losses, score, half, bad in sorted(
+            table.append((rating, agent, n, wins, draws, losses, score, half, bad_count,
+                          engine_bad))
+        for rating, agent, n, wins, draws, losses, score, half, bad, ebad in sorted(
             table, key=lambda t: -t[0]
         ):
             lines.append(
                 f"| {agent.number} | {agent.name} | {n} | {wins} | {draws} | {losses} | "
-                f"{score:.1%} | {rating:.0f} ± {half:.0f} | {bad or ''} |"
+                f"{score:.1%} | {rating:.0f} ± {half:.0f} | {bad or ''} | {ebad or ''} |"
             )
     return "\n".join(lines)
 

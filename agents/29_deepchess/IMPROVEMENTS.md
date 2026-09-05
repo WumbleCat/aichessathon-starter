@@ -69,4 +69,45 @@ instead of starting from random weights.
 
 ## Results
 
-See RESULTS.md for the shipped model's numbers and the table below for this session's.
+All matches: paired openings from `agents/31_tdleaf/training/openings.txt` (42 positions,
+each played twice with the colours swapped), Stockfish at a fixed `UCI_Elo` with 100 ms a
+move, agent on a 70 s clock with no increment, which makes a game last about 80 s. The two
+arms of each A/B are interleaved by the runner, so they share the machine's load.
+
+| test | arm | games | +W =D -L | score |
+|---|---|---|---|---|
+| search/eval changes, vs SF 2200 | with (flags on) | 40 | +26 =6 -8 | **72.5 %** |
+| | without (`variants/base`) | 40 | +21 =10 -9 | 65.0 % |
+| v2 network, vs SF 2200 | v2 (shipped) | 24 | +19 =5 -0 | **89.6 %** |
+| | v1 (`variants/v1model`) | 24 | +17 =1 -6 | 72.9 % |
+
+The v2 network is the larger of the two effects and it lost no game in 24. Both arms of that
+test run the same search with the same flags, so the difference is the weights alone.
+
+Held-out metrics of the fine-tune (`train_v2_gpu.log`), 1.4M positions, 8 epochs, lr 3e-4:
+
+| metric | v1 | v2 |
+|---|---|---|
+| pairwise accuracy | 0.9290 | **0.9408** |
+| Spearman vs teacher | 0.9543 | **0.9643** |
+| MAE after calibration | 96.6 cp | **85.8 cp** |
+
+## Training on the GPU
+
+`train.py --device auto|cpu|cuda`. The same 8-epoch fine-tune takes 196 s on the CPU and
+24 s on the RTX 3060, with the metrics unchanged.
+
+The GPU run needs a CUDA build of torch, and the repository's `.venv` is deliberately pinned
+to `2.13.0+cpu` (it mirrors the platform, which has no GPU) and is shared by every other
+agent session, so replacing torch there would be both wrong and disruptive. Training uses a
+separate `.venv-cuda` with `torch==2.13.0+cu126` instead:
+
+```powershell
+C:\Python314\python.exe -m venv .venv-cuda
+.venv-cuda\Scripts\python.exe -m pip install --index-url https://download.pytorch.org/whl/cu126 torch==2.13.0+cu126 numpy
+.venv-cuda\Scripts\python.exe training/train.py --data "data/*.npz" --init models/deepchess_v1.pt --out models/deepchess_v2.npz --epochs 8 --lr 3e-4 --device cuda
+```
+
+The agent, the tests and the harness keep using `.venv`, and the shipped weights are a
+device-independent `.npz`, so nothing about the submission depends on the GPU. `.venv-cuda`
+is git-ignored.
