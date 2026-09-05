@@ -87,13 +87,10 @@ session; the six `shard_d3_s2000..2005` shards, 24.5k positions, survived). Sess
 
 ### Status: complete (2026-09-05)
 
-- `models/chessformer.npz` = tiny_v3 (val top-1 38.9 %, top-3 64.3 %); 41/41 tests; zip 2.85 MB
-  unzipped; wall-clock arenas and the contest-clock profile are in RESULTS.md.
+- `models/chessformer.npz` = tiny_v4 (all 29 shards; val top-1 39.3 %, top-3 65.9 %); 41/41 tests;
+  zip 2.85 MB unzipped; wall-clock arenas and the contest-clock profile are in RESULTS.md.
 - Data generation was stopped at 29 shards / 119.5k positions (`training/data/`, git-ignored).
   Resume with `powershell -File training/launch_gen.ps1` (it skips finished shards).
-- If `models/tiny_v4.npz` (all 29 shards) exists and its log shows a better validation policy
-  loss than 2.31, copy it over `models/chessformer.npz`, re-run `tests/run_tests.py` and update
-  RESULTS.md.
 - Ideas not pursued, in order of expected value: a stronger teacher (deeper self-play search or
   an external engine if one becomes available), policy-based late-move pruning at cut nodes,
   and a numba port of the move loop (the search, not the network, is the bottleneck).

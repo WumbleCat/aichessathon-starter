@@ -163,7 +163,7 @@ box): import 1.0 s; **median 2.4 s, p95 4.2 s, p99 4.4 s, max 4.4 s** per move; 
 had 59 s left after 30 moves each. The budget is deliberately conservative (about 1/28 of the
 remaining time in the middlegame) because the clock is wall time and a flag loses the game.
 
-## Shipped model: tiny_v3
+## Final model: tiny_v3 (superseded by tiny_v4 below)
 
 64/2/4, MLP ratio 2, smolgen 16/32, policy dim 64; 0.69 M parameters; `models/chessformer.npz`
 2.79 MB. Trained 6 epochs on 22 shards / 90,288 positions (5 % held out), mirror augmentation,
@@ -180,13 +180,26 @@ box. Best epoch = 6:
 | 6 | **2.31** | **38.9 %** | **64.3 %** | **0.072** |
 
 (tiny_v1 on 40k positions without augmentation: 31 % / 51 %; tiny_v2 on 57k: 34.5 % / 59 %.
-Data is the lever: the curve has not flattened. 29 shards / 119.5k positions exist now; a
-`tiny_v4` run on all of them is in `results/train_tiny_v4.log` if it finished.)
+Data is the lever: the curve has not flattened.)
 
 Submission: `python -m harness.package --include models/chessformer.npz` from the agent
 directory -> 2,595,390 bytes zipped, **2,848,897 bytes unzipped** (limit 50 MB); the zip's
 contents import in 1.6 s without torch, load the model and play. 41/41 tests pass with these
 weights.
+
+## Shipped model: tiny_v4
+
+Same architecture and recipe, trained on all 29 shards / 119,501 positions (68 minutes on the
+loaded box). Best epoch = 5: **val policy loss 2.217, top-1 39.3 %, top-3 65.9 %, value MSE
+0.068** (epoch 6: 2.225 / 39.3 % / 66.2 % / 0.067). `models/chessformer.npz` = tiny_v4, 2.79 MB.
+41/41 tests pass with it; the submission zip is 2,848,897 bytes unzipped.
+
+| positions | model | val policy loss | top-1 | top-3 |
+|---|---|---|---|---|
+| 40.8k | tiny_v1 (no augmentation) | 3.06 | 31.0 % | 51.6 % |
+| 57.3k | tiny_v2 | 2.57 | 34.5 % | 59.2 % |
+| 90.3k | tiny_v3 | 2.31 | 38.9 % | 64.3 % |
+| 119.5k | tiny_v4 | 2.22 | 39.3 % | 65.9 % |
 
 ## Summary
 
