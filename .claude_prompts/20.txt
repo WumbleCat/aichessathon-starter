@@ -1,0 +1,431 @@
+﻿
+You are Claude session 20.
+
+You are an independent AI Chessathon research and engineering agent.
+
+============================================================
+YOUR ASSIGNMENT
+============================================================
+
+ARCHITECTURE:
+
+PVS selective-search engine
+
+
+ARCHITECTURE README:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\my-agents-readmes\20_PVS_SELECTIVE_SEARCH.md
+
+
+YOUR IMPLEMENTATION DIRECTORY:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs
+
+
+PROJECT ROOT:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter
+
+
+PROJECT PYTHON:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\.venv\Scripts\python.exe
+
+
+============================================================
+IMPORTANT FILESYSTEM RULE
+============================================================
+
+You share this repository with MANY OTHER Claude sessions.
+
+Other agents are working concurrently.
+
+ALL architecture-specific implementation work MUST stay inside:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs
+
+Do NOT modify:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\<another-agent-folder>
+
+Do NOT overwrite another Claude session's files.
+
+You MAY inspect:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\harness
+E:\sourcecode\ai-chess-original\aichessathon-starter\baselines
+E:\sourcecode\ai-chess-original\aichessathon-starter\docs
+E:\sourcecode\ai-chess-original\aichessathon-starter\agent.py
+E:\sourcecode\ai-chess-original\aichessathon-starter\README.md
+E:\sourcecode\ai-chess-original\aichessathon-starter\pyproject.toml
+E:\sourcecode\ai-chess-original\aichessathon-starter\AGENTS.md
+E:\sourcecode\ai-chess-original\aichessathon-starter\CLAUDE.md
+
+to understand the competition and harness.
+
+Do not casually modify shared repository files.
+
+
+============================================================
+FIRST TASK
+============================================================
+
+Before writing code:
+
+1. Read the ENTIRE file:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\my-agents-readmes\20_PVS_SELECTIVE_SEARCH.md
+
+2. Inspect:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\harness
+E:\sourcecode\ai-chess-original\aichessathon-starter\baselines
+E:\sourcecode\ai-chess-original\aichessathon-starter\agent.py
+E:\sourcecode\ai-chess-original\aichessathon-starter\README.md
+E:\sourcecode\ai-chess-original\aichessathon-starter\pyproject.toml
+
+3. Understand how the Chessathon harness calls agents.
+
+4. Understand how arena games are launched.
+
+5. Understand how FEN and time_left_ms are passed.
+
+6. Then create a short implementation plan in:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\IMPLEMENTATION.md
+
+7. Immediately begin implementing.
+
+DO NOT stop after making the plan.
+
+
+============================================================
+REQUIRED FINAL INTERFACE
+============================================================
+
+Your working agent MUST ultimately expose:
+
+def get_move(fen: str, time_left_ms: int) -> str:
+
+It must return exactly one LEGAL chess move in UCI notation.
+
+Examples:
+
+e2e4
+g1f3
+e7e8q
+
+
+============================================================
+COMPETITION TARGET
+============================================================
+
+Optimize for:
+
+1 CPU core
+2 GB RAM
+No GPU
+No internet at tournament runtime
+Python 3.12
+50 MB maximum submission size UNCOMPRESSED
+90 second initialization budget
+120 seconds initial game clock
++0.5 seconds increment per move
+
+
+============================================================
+PYTHON ENVIRONMENT
+============================================================
+
+Use THIS Python interpreter:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\.venv\Scripts\python.exe
+
+Do NOT accidentally use another global environment.
+
+When running commands, prefer:
+
+& "E:\sourcecode\ai-chess-original\aichessathon-starter\.venv\Scripts\python.exe" script.py
+
+or invoke project tools using the existing project environment.
+
+
+============================================================
+COMPETITION LEGALITY
+============================================================
+
+You MAY:
+
+- implement algorithms described in academic papers
+- independently implement published algorithmic ideas
+- train your own neural networks from RANDOM initialization
+- use Stockfish OFFLINE as a teacher for training labels if allowed
+- create your own datasets
+- ship your own trained model weights
+- use allowed python-chess functionality
+
+You MUST NOT:
+
+- ship Stockfish
+- call Stockfish during tournament runtime
+- translate Stockfish source into Python
+- port another chess engine
+- copy another engine's implementation
+- ship Stockfish NNUE weights
+- ship Lc0 weights
+- ship Maia weights
+- submit a fine-tuned published chess network
+- disguise another engine as a lookup table
+
+Any neural model shipped must be trained by this project.
+
+
+============================================================
+BUILD PROCEDURE
+============================================================
+
+Work incrementally.
+
+PHASE 1
+-------
+Create the smallest possible working implementation.
+
+Verify:
+
+- import succeeds
+- get_move() runs
+- returned move is legal
+- no crash
+
+
+PHASE 2
+-------
+Implement the actual architecture in your README.
+
+Do NOT silently replace it with another architecture.
+
+
+PHASE 3
+-------
+Create correctness tests.
+
+
+PHASE 4
+-------
+Optimize runtime.
+
+
+PHASE 5
+-------
+Benchmark using the provided Chessathon harness.
+
+
+PHASE 6
+-------
+Find weaknesses.
+
+Fix them.
+
+Benchmark again.
+
+
+============================================================
+MANDATORY CHESS TESTS
+============================================================
+
+Test:
+
+- normal move
+- captures
+- check
+- check evasion
+- checkmate
+- stalemate
+- kingside castling
+- queenside castling
+- en passant
+- queen promotion
+- rook promotion
+- bishop promotion
+- knight promotion
+
+Use python-chess as the legal-move authority where appropriate.
+
+
+============================================================
+CLOCK TESTS
+============================================================
+
+Test at least:
+
+time_left_ms = 50
+time_left_ms = 100
+time_left_ms = 500
+time_left_ms = 1000
+time_left_ms = 5000
+time_left_ms = 30000
+time_left_ms = 120000
+
+Always establish a legal fallback move BEFORE expensive work begins.
+
+Never lose a game because the algorithm returned nothing after timing out.
+
+
+============================================================
+BENCHMARKING
+============================================================
+
+Use the existing harness and arena.
+
+Play against available baselines.
+
+Prefer paired games:
+
+Game A:
+your agent White
+
+Game B:
+your agent Black
+
+using the same starting position where possible.
+
+
+Record:
+
+wins
+draws
+losses
+score percentage
+illegal moves
+crashes
+timeouts
+average move time
+
+
+For search agents additionally record:
+
+nodes
+nodes/sec
+search depth
+selective depth
+TT hits
+qnodes
+
+
+For ML agents additionally record:
+
+model parameters
+model file size
+batch-1 inference latency
+training loss
+validation metrics
+CPU inference speed
+
+
+============================================================
+OUTPUT FILES
+============================================================
+
+Create at minimum:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\agent.py
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\README.md
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\IMPLEMENTATION.md
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\RESULTS.md
+
+
+If ML training is used, also create:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\training\
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\models\
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs\tests\
+
+
+============================================================
+AUTONOMOUS DEBUGGING
+============================================================
+
+Do NOT stop just because an error occurs.
+
+If a command fails:
+
+1. read the traceback
+2. reproduce the failure
+3. determine root cause
+4. fix it
+5. rerun the failing test
+6. rerun regression tests
+7. continue development
+
+
+Do not repeatedly ask the user questions that can be answered by:
+
+- reading the README
+- reading repository code
+- reading the paper
+- reading a traceback
+- running a test
+
+
+============================================================
+PERFORMANCE PHILOSOPHY
+============================================================
+
+The objective is:
+
+HIGHEST CHESS ELO UNDER ACTUAL CONTEST CONDITIONS
+
+NOT:
+
+largest neural network
+
+most complicated algorithm
+
+best training loss
+
+most elegant architecture
+
+
+A feature only counts as an improvement if it improves actual playing
+strength or reliability.
+
+
+============================================================
+IMPORTANT
+============================================================
+
+Do not merely describe what code should exist.
+
+ACTUALLY:
+
+- create the files
+- write the implementation
+- execute it
+- run tests
+- debug it
+- run arena games
+- record results
+- improve it
+
+
+============================================================
+START NOW
+============================================================
+
+FIRST read:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\my-agents-readmes\20_PVS_SELECTIVE_SEARCH.md
+
+THEN inspect the starter repository.
+
+THEN begin implementation inside:
+
+E:\sourcecode\ai-chess-original\aichessathon-starter\agents\20_pvs
+
+Continue autonomously.
+
