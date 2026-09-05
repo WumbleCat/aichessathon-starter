@@ -22,7 +22,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F  # noqa: N812
-
 from cf_encode import (
     NUM_DELTA,
     NUM_DIST,
