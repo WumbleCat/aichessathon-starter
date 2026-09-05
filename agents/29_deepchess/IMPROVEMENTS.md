@@ -44,8 +44,17 @@ since the phase barely moves inside a tree, so it costs nothing in the hot loop.
 | position | phase | network share |
 |---|---|---|
 | initial / middlegame | 24 | 80 % |
-| rook ending | 8 | 53 % |
-| pawn ending | 0 | 40 % |
+| rook ending | 8 | 70 % |
+| pawn ending | 0 | 65 % |
+
+The endgame endpoint is 0.65 and not lower for a reason worth recording. At 0.40 the agent
+answered K+P vs K (`8/1P4k1/8/8/8/8/8/K7 w`) with a king move instead of promoting until it
+could search 10 plies, and `tests/test_agent.py::test_queen_promotion` caught it. Both moves
+win, but shuffling instead of promoting is how won endings turn into fifty-move draws, and it
+is the opposite of what this change was for. The cause is that the handcrafted evaluation has
+its own endgame bias toward king activity, so pulling too much weight away from the network
+just swaps one distortion for another. At 0.65 the engine promotes at every clock from 500 ms
+up while the network's saturation is still damped.
 
 ### 3. Time given to an unsettled root (`DEEPCHESS_EXTEND_UNSTABLE`, default on)
 
@@ -78,11 +87,48 @@ arms of each A/B are interleaved by the runner, so they share the machine's load
 |---|---|---|---|---|
 | search/eval changes, vs SF 2200 | with (flags on) | 40 | +26 =6 -8 | **72.5 %** |
 | | without (`variants/base`) | 40 | +21 =10 -9 | 65.0 % |
+| search/eval changes, vs SF 2600 | with, blend endpoint 0.65 | 24 | +10 =8 -6 | **58.3 %** |
+| | without (`variants/base`) | 24 | +7 =8 -9 | 45.8 % |
 | v2 network, vs SF 2200 | v2 (shipped) | 24 | +19 =5 -0 | **89.6 %** |
 | | v1 (`variants/v1model`) | 24 | +17 =1 -6 | 72.9 % |
+| v3 network, vs SF 2600 | v3 | 24 | +12 =5 -7 | 60.4 % |
+| | v2 (`variants/v2model`) | 24 | +10 =9 -5 | 60.4 % |
+
+**v3 is not shipped.** A second round added 600k more positions (2M raw, 1.4M kept) and 22
+epochs, and every held-out metric improved again: pairwise accuracy 0.9421 and MAE 79.4 cp
+against v2's 0.9408 and 85.8 cp. Over 24 games a side against Stockfish 2600 the two scored
+*exactly* the same. Its first 15 games read 70 % against 56.7 %, which would have been a
+tempting place to stop; it was noise. Better validation numbers did not become strength, so
+`models/deepchess.npz` stays v2, the version with a measured win, and v3 is kept beside it.
 
 The v2 network is the larger of the two effects and it lost no game in 24. Both arms of that
 test run the same search with the same flags, so the difference is the weights alone.
+
+### Against Stockfish at UCI_Elo 2600
+
+| opponent's thinking time | games | +W =D -L | score | implied Elo |
+|---|---|---|---|---|
+| 100 ms a move (the standard benchmark setting) | 40 | +21 =9 -10 | 63.7 % | 2698 ± 128 |
+| a thirtieth of its clock, ~2.3 s, the same as the agent | 24 | +9 =7 -8 | **52.1 %** | 2614 ± 150 |
+
+The second row is the honest one and the one to quote: both sides think for about the same
+time per move, and no game in either row ended in a failure by either side. The agent is
+level with Stockfish held at 2600, not above it, and it loses roughly a third of the games.
+
+**"Always beat 2600" is not what this shows and is not reachable.** A third of the games are
+losses and another quarter are draws. Chess is drawish between near-equal opponents, and a
+207k-parameter evaluator on one core does not become deterministic against a 2600-strength
+opponent by training harder. Note also that Stockfish's `UCI_Elo` is its own nominal scale,
+not a FIDE rating, so read these as a consistent yardstick rather than an absolute rating.
+
+### An artefact that had to be fixed first
+
+The first equal-time attempt gave 80 % and was wrong. Stockfish was asking for a fixed 1500 ms
+a move while the referee charged it wall time from a 70 s clock, so it flagged in 12 of 20
+games and every one was scored as an agent win. `tools/engine_bench.py` now caps the engine
+at a thirtieth of its remaining clock and records which side failed, so an engine flag can
+never again be read as agent strength. The 32-agent sweep was unaffected: 100 ms a move
+against a 10 s clock never approaches the budget.
 
 Held-out metrics of the fine-tune (`train_v2_gpu.log`), 1.4M positions, 8 epochs, lr 3e-4:
 

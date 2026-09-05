@@ -761,7 +761,11 @@ def _move_code(board: chess.Board, move: chess.Move) -> int:
 
 ADAPTIVE_BLEND = os.environ.get("DEEPCHESS_ADAPTIVE_BLEND", "1") != "0"
 BLEND_MG = float(os.environ.get("DEEPCHESS_BLEND_MG", "0.80"))
-BLEND_EG = float(os.environ.get("DEEPCHESS_BLEND_EG", "0.40"))
+# 0.65 rather than something lower: the handcrafted evaluation has its own endgame bias, it
+# rewards king activity enough that at 40-50 % network the engine answers K+P vs K with a king
+# move instead of promoting until it searches 10 plies. 0.65 still pulls the saturating network
+# back in simplified positions and promotes at every clock (tests/test_agent.py).
+BLEND_EG = float(os.environ.get("DEEPCHESS_BLEND_EG", "0.65"))
 
 
 def _game_phase(board: chess.Board) -> int:

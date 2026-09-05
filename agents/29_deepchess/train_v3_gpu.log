@@ -1,0 +1,98 @@
+﻿loaded data\chunk_00_0000.npz: kept 34836/50001
+loaded data\chunk_00_0001.npz: kept 34779/50098
+loaded data\chunk_00_0002.npz: kept 34791/50008
+loaded data\chunk_00_0003.npz: kept 34811/50130
+loaded data\chunk_01_0000.npz: kept 35204/50133
+loaded data\chunk_01_0001.npz: kept 34766/50043
+loaded data\chunk_01_0002.npz: kept 34674/50058
+loaded data\chunk_01_0003.npz: kept 35047/50087
+loaded data\chunk_02_0000.npz: kept 34822/50061
+loaded data\chunk_02_0001.npz: kept 35213/50058
+loaded data\chunk_02_0002.npz: kept 34812/50055
+loaded data\chunk_02_0003.npz: kept 34767/50104
+loaded data\chunk_03_0000.npz: kept 35052/50019
+loaded data\chunk_03_0001.npz: kept 35040/50067
+loaded data\chunk_03_0002.npz: kept 34906/50041
+loaded data\chunk_03_0003.npz: kept 34928/50074
+loaded data\chunk_04_0000.npz: kept 34754/50094
+loaded data\chunk_04_0001.npz: kept 34770/50013
+loaded data\chunk_04_0002.npz: kept 34980/50121
+loaded data\chunk_04_0003.npz: kept 34556/50083
+loaded data\eg_00_0000.npz: kept 13826/20085
+loaded data\eg_00_0001.npz: kept 14173/20078
+loaded data\eg_00_0002.npz: kept 13967/20014
+loaded data\eg_00_0003.npz: kept 13870/19884
+loaded data\eg_01_0000.npz: kept 14357/20143
+loaded data\eg_01_0001.npz: kept 14088/20042
+loaded data\eg_01_0002.npz: kept 14227/20080
+loaded data\eg_01_0003.npz: kept 13721/19837
+loaded data\eg_02_0000.npz: kept 14154/20095
+loaded data\eg_02_0001.npz: kept 14053/20041
+loaded data\eg_02_0002.npz: kept 13746/20005
+loaded data\eg_02_0003.npz: kept 13877/19928
+loaded data\eg_03_0000.npz: kept 13896/20015
+loaded data\eg_03_0001.npz: kept 14211/20061
+loaded data\eg_03_0002.npz: kept 14316/20151
+loaded data\eg_03_0003.npz: kept 13811/19790
+loaded data\eg_04_0000.npz: kept 14038/20000
+loaded data\eg_04_0001.npz: kept 13978/20010
+loaded data\eg_04_0002.npz: kept 14180/20035
+loaded data\eg_04_0003.npz: kept 14048/19971
+loaded data\r2_00_0000.npz: kept 20827/30055
+loaded data\r2_00_0001.npz: kept 21127/30084
+loaded data\r2_00_0002.npz: kept 20693/30016
+loaded data\r2_00_0003.npz: kept 20727/29861
+loaded data\r2_01_0000.npz: kept 20980/30072
+loaded data\r2_01_0001.npz: kept 21177/30157
+loaded data\r2_01_0002.npz: kept 20904/30087
+loaded data\r2_01_0003.npz: kept 20556/29741
+loaded data\r2_02_0000.npz: kept 21214/30111
+loaded data\r2_02_0001.npz: kept 20922/30062
+loaded data\r2_02_0002.npz: kept 20742/30008
+loaded data\r2_02_0003.npz: kept 20823/29850
+loaded data\r2_03_0000.npz: kept 21098/30023
+loaded data\r2_03_0001.npz: kept 21037/30017
+loaded data\r2_03_0002.npz: kept 20697/30059
+loaded data\r2_03_0003.npz: kept 20709/29917
+loaded data\r2_04_0000.npz: kept 21256/30076
+loaded data\r2_04_0001.npz: kept 21039/30045
+loaded data\r2_04_0002.npz: kept 20825/30015
+loaded data\r2_04_0003.npz: kept 21327/29930
+1396725 positions, 54407 games, 71536 validation positions
+initialised from models/deepchess_v1.pt
+parameters: 207458
+device: NVIDIA GeForce RTX 3060 Laptop GPU
+python.exe : E:\sourcecode\ai-chess-original\aichessathon-starter\agents\29_deepchess\training\train.py:180: 
+UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+At line:1 char:394
++ ... = Get-Date; & E:\sourcecode\ai-chess-original\aichessathon-starter\.v ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:\sourcecode\a...ected behavior.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Consider using tensor.detach() first. (Triggered internally at 
+C:\actions-runner\_work\pytorch\pytorch\torch\csrc\autograd\generated\python_variable_methods.cpp:823.)
+  "offset": float(b), "tau": float(tau),
+{"epoch": 1, "train_pair_loss": 0.15939283685654587, "train_value_loss": 0.5558092334996099, "train_pair_acc": 0.9347500960278955, "val_pair_loss": 0.15778803825378418, "val_pair_acc": 0.9364020228385925, "val_pairs": 68194, "val_spearman": 0.9587761456252175, "val_mae_cp": 91.08710152602252, "val_scale": 103.44385777121536, "val_offset": 5.396257444120649, "val_tau": 0.8572023510932922, "elapsed_s": 3.1538116931915283}
+{"epoch": 2, "train_pair_loss": 0.15431098528900503, "train_value_loss": 0.5198982963280648, "train_pair_acc": 0.9368993976841802, "val_pair_loss": 0.15432684123516083, "val_pair_acc": 0.9358938336372375, "val_pairs": 68215, "val_spearman": 0.9597089163010679, "val_mae_cp": 90.04605832903172, "val_scale": 101.91506791026204, "val_offset": -17.41149015686994, "val_tau": 0.8453830480575562, "elapsed_s": 5.736831188201904}
+{"epoch": 3, "train_pair_loss": 0.14803461767501713, "train_value_loss": 0.484488308429718, "train_pair_acc": 0.9399135153486121, "val_pair_loss": 0.15981045365333557, "val_pair_acc": 0.9339954853057861, "val_pairs": 68162, "val_spearman": 0.9595583632304865, "val_mae_cp": 88.73503457934278, "val_scale": 101.13592133661766, "val_offset": 25.51458163290304, "val_tau": 0.8141372203826904, "elapsed_s": 8.797000646591187}
+{"epoch": 4, "train_pair_loss": 0.14508642867114974, "train_value_loss": 0.4687787037088264, "train_pair_acc": 0.9412290124419314, "val_pair_loss": 0.15206238627433777, "val_pair_acc": 0.9388826489448547, "val_pairs": 68213, "val_spearman": 0.9612052020315689, "val_mae_cp": 85.78607482435856, "val_scale": 101.64110274098663, "val_offset": -5.249877588510393, "val_tau": 0.8005645871162415, "elapsed_s": 11.561094284057617}
+{"epoch": 5, "train_pair_loss": 0.13974618421208043, "train_value_loss": 0.4455309143717985, "train_pair_acc": 0.9439552567019966, "val_pair_loss": 0.15216980874538422, "val_pair_acc": 0.9381384253501892, "val_pairs": 68233, "val_spearman": 0.9613943690480957, "val_mae_cp": 84.7824851435392, "val_scale": 100.974248100427, "val_offset": 8.270857273060795, "val_tau": 0.7759589552879333, "elapsed_s": 14.208016395568848}
+{"epoch": 6, "train_pair_loss": 0.1368493110589359, "train_value_loss": 0.43207441945994124, "train_pair_acc": 0.9449824546434864, "val_pair_loss": 0.1531388759613037, "val_pair_acc": 0.9367485642433167, "val_pairs": 68204, "val_spearman": 0.9614883755665133, "val_mae_cp": 84.4152375693771, "val_scale": 101.15190574828658, "val_offset": 8.984438522837277, "val_tau": 0.7638151049613953, "elapsed_s": 16.78874921798706}
+{"epoch": 7, "train_pair_loss": 0.13418768818334023, "train_value_loss": 0.42154136799877473, "train_pair_acc": 0.9464007904810935, "val_pair_loss": 0.1503017097711563, "val_pair_acc": 0.9395397901535034, "val_pairs": 68144, "val_spearman": 0.9618930672552748, "val_mae_cp": 83.54040436961681, "val_scale": 100.45508472014924, "val_offset": 8.924577881986727, "val_tau": 0.744868278503418, "elapsed_s": 19.390825271606445}
+{"epoch": 8, "train_pair_loss": 0.1307788923475313, "train_value_loss": 0.408714524152116, "train_pair_acc": 0.9479644916812826, "val_pair_loss": 0.14701664447784424, "val_pair_acc": 0.9409746527671814, "val_pairs": 68208, "val_spearman": 0.9623136548032282, "val_mae_cp": 82.65882591993648, "val_scale": 100.3803945614102, "val_offset": 0.4778879808897492, "val_tau": 0.729966938495636, "elapsed_s": 21.99909234046936}
+{"epoch": 9, "train_pair_loss": 0.12906396004909315, "train_value_loss": 0.4007213944974153, "train_pair_acc": 0.9486345730212905, "val_pair_loss": 0.15125003457069397, "val_pair_acc": 0.9389950633049011, "val_pairs": 68224, "val_spearman": 0.9625369421549074, "val_mae_cp": 82.3089598419156, "val_scale": 99.92053876995426, "val_offset": -7.012855504498651, "val_tau": 0.7232064008712769, "elapsed_s": 24.518730401992798}
+{"epoch": 10, "train_pair_loss": 0.12677284302363484, "train_value_loss": 0.39060887953509454, "train_pair_acc": 0.9499201911576787, "val_pair_loss": 0.14611947536468506, "val_pair_acc": 0.9417522549629211, "val_pairs": 68243, "val_spearman": 0.9627149386758641, "val_mae_cp": 81.87614944038951, "val_scale": 100.37584376098908, "val_offset": -0.2659775225398128, "val_tau": 0.713363528251648, "elapsed_s": 27.0029935836792}
+{"epoch": 11, "train_pair_loss": 0.1252920850185874, "train_value_loss": 0.38373826286807566, "train_pair_acc": 0.9504291444831754, "val_pair_loss": 0.147532120347023, "val_pair_acc": 0.9413506388664246, "val_pairs": 68219, "val_spearman": 0.9628891872977238, "val_mae_cp": 81.44746275314134, "val_scale": 100.30186446251477, "val_offset": -1.1392815227715338, "val_tau": 0.7070114016532898, "elapsed_s": 29.368027687072754}
+{"epoch": 12, "train_pair_loss": 0.12242753498302483, "train_value_loss": 0.3762819200569058, "train_pair_acc": 0.9520534365813925, "val_pair_loss": 0.14472141861915588, "val_pair_acc": 0.943493127822876, "val_pairs": 68151, "val_spearman": 0.963151855402926, "val_mae_cp": 81.0069263694778, "val_scale": 100.1544146233682, "val_offset": 2.4124271737050518, "val_tau": 0.6943132877349854, "elapsed_s": 31.779548406600952}
+{"epoch": 13, "train_pair_loss": 0.12164715719148979, "train_value_loss": 0.3709788798175243, "train_pair_acc": 0.9521937466556241, "val_pair_loss": 0.14327315986156464, "val_pair_acc": 0.9432226419448853, "val_pairs": 68249, "val_spearman": 0.9633493055482126, "val_mae_cp": 80.56668587347289, "val_scale": 100.10159279858874, "val_offset": -2.758292671784797, "val_tau": 0.6884749531745911, "elapsed_s": 34.184895753860474}
+{"epoch": 14, "train_pair_loss": 0.11951600376123227, "train_value_loss": 0.36552312544413973, "train_pair_acc": 0.9531594381569335, "val_pair_loss": 0.1488966941833496, "val_pair_acc": 0.9411343336105347, "val_pairs": 68325, "val_spearman": 0.963394001949147, "val_mae_cp": 80.32241140942297, "val_scale": 100.15984244506335, "val_offset": 0.601666662647136, "val_tau": 0.6801400780677795, "elapsed_s": 36.61586594581604}
+{"epoch": 15, "train_pair_loss": 0.118876004117246, "train_value_loss": 0.36078389868232774, "train_pair_acc": 0.9534895557054082, "val_pair_loss": 0.1457473337650299, "val_pair_acc": 0.9429559707641602, "val_pairs": 68228, "val_spearman": 0.9636211204808008, "val_mae_cp": 80.09815713496506, "val_scale": 100.04751205698379, "val_offset": -3.9639965005997713, "val_tau": 0.6751210689544678, "elapsed_s": 39.5252525806427}
+{"epoch": 16, "train_pair_loss": 0.11761336963369239, "train_value_loss": 0.3567573000555453, "train_pair_acc": 0.9539721363819904, "val_pair_loss": 0.14730049669742584, "val_pair_acc": 0.9430007934570312, "val_pairs": 68229, "val_spearman": 0.9638165856040316, "val_mae_cp": 79.77974713914148, "val_scale": 99.92762473653048, "val_offset": 0.2495741167507723, "val_tau": 0.6699720025062561, "elapsed_s": 41.933024406433105}
+{"epoch": 17, "train_pair_loss": 0.11721032737574963, "train_value_loss": 0.35361784122745443, "train_pair_acc": 0.9541343265438672, "val_pair_loss": 0.1463346928358078, "val_pair_acc": 0.9419794678688049, "val_pairs": 68200, "val_spearman": 0.9639485441946373, "val_mae_cp": 79.76126031315894, "val_scale": 99.89390190067067, "val_offset": 1.8692949771648308, "val_tau": 0.666845440864563, "elapsed_s": 44.37596368789673}
+{"epoch": 18, "train_pair_loss": 0.11669916391187574, "train_value_loss": 0.35118558521596543, "train_pair_acc": 0.9545593383889761, "val_pair_loss": 0.14268727600574493, "val_pair_acc": 0.9449496865272522, "val_pairs": 68283, "val_spearman": 0.9640034732674507, "val_mae_cp": 79.55442717833252, "val_scale": 99.94774373497494, "val_offset": 0.03522106905242352, "val_tau": 0.6649130582809448, "elapsed_s": 46.88416385650635}
+{"epoch": 19, "train_pair_loss": 0.11612191597312134, "train_value_loss": 0.349004245137576, "train_pair_acc": 0.954756035938026, "val_pair_loss": 0.14391762018203735, "val_pair_acc": 0.943424642086029, "val_pairs": 68263, "val_spearman": 0.9640899197686215, "val_mae_cp": 79.45881412554907, "val_scale": 99.8786591543823, "val_offset": 0.5764381365958725, "val_tau": 0.6640969514846802, "elapsed_s": 49.43092083930969}
+{"epoch": 20, "train_pair_loss": 0.1153844627349273, "train_value_loss": 0.34751554694234954, "train_pair_acc": 0.9550963921576553, "val_pair_loss": 0.14493298530578613, "val_pair_acc": 0.9429709315299988, "val_pairs": 68316, "val_spearman": 0.964068725413432, "val_mae_cp": 79.44095473653898, "val_scale": 99.90237632962038, "val_offset": -0.09928551674660183, "val_tau": 0.663139820098877, "elapsed_s": 52.114917039871216}
+{"epoch": 21, "train_pair_loss": 0.11493094543122356, "train_value_loss": 0.34660079890156387, "train_pair_acc": 0.9552063582846837, "val_pair_loss": 0.1428801715373993, "val_pair_acc": 0.9433586001396179, "val_pairs": 68254, "val_spearman": 0.9640901717261455, "val_mae_cp": 79.37604030889473, "val_scale": 99.89147783087164, "val_offset": 1.4859487520614563, "val_tau": 0.6627635359764099, "elapsed_s": 55.01219391822815}
+{"epoch": 22, "train_pair_loss": 0.1155105818132436, "train_value_loss": 0.3461448627969493, "train_pair_acc": 0.9550649246073658, "val_pair_loss": 0.14705850183963776, "val_pair_acc": 0.942149817943573, "val_pairs": 68228, "val_spearman": 0.9641139379119237, "val_mae_cp": 79.37200683012124, "val_scale": 99.87452860405729, "val_offset": 0.839881976912902, "val_tau": 0.662693440914154, "elapsed_s": 57.61747765541077}
+done
