@@ -29,10 +29,13 @@ for exactly this case (see self-play below).
 
 | engine | nodes/s (cpu) | depth reached at 300k nodes |
 |---|---|---|
-| compiled (`dc_engine` + `dc_search`) | 81,700 | 7 |
+| compiled, first version | 81,700 | 7 |
+| compiled, hidden layers stored transposed | 93,200 | 7 |
+| compiled, plus `fastmath` on the evaluation (vectorised sums) | 208,700 | 7 |
 | python-chess search + numba leaf eval | 13,900 | 5 (at 30k nodes) |
 
-The compiled engine evaluates ~6x more nodes per CPU second. Both engines find the test
+The compiled engine evaluates ~15x more nodes per CPU second. The evaluation is still
+bit-identical to the python path after both changes (`tools/validate_numba.py`). Both engines find the test
 mates (mate in 1, knight-promotion mate, scholar's mate, stalemate avoidance).
 `tests/test_agent.py`: 28/28 pass on the current build (legality in castling, promotion,
 en passant, check evasion, mate and stalemate positions; clocks 50 ms to 120 s never use
@@ -63,8 +66,12 @@ by threefold/50-move/insufficient material, 300 plies to material adjudication.
 | A | B | budget per move | games | A: +W =D -L | A score | notes |
 |---|---|---|---|---|---|---|
 | numba:net | python:net | 300 ms CPU | 20 | +16 =4 -0 | 90 % | same evaluation, compiled search reaches depth 5.2 on average vs 3.1; ~+380 Elo |
-| numba:net | numba:hand | 20,000 nodes | (running) | | | |
-| numba:blend:0.75 | numba:net | 20,000 nodes | (running) | | | |
+| numba:net | numba:hand | 20,000 nodes | 30 | +14 =7 -9 | 58 % | DeepChess scalar vs material + PST at equal nodes: ~+60 Elo (95 % interval +-130) |
+| numba:net | numba:hand | 300 ms CPU | 30 | +6 =7 -17 | 32 % | before the evaluation speedup (93k nodes/s): the cheaper PST eval searched 1.7 plies deeper (7.4 vs 5.7) and won |
+| numba:net | numba:hand | 300 ms CPU | (running, v2) | | | after the speedup (209k nodes/s) |
+| numba:blend:0.75 | numba:net | 20,000 nodes | 30 | +14 =9 -7 | 62 % | 75 % network + 25 % PST fixes the saturation in won positions: ~+80 Elo (+-135); now the default |
+| numba:blend:0.75 | numba:hand | 300 ms CPU | 13 (stopped) | +3 =4 -6 | 38 % | before the speedup, stopped when the faster evaluation landed |
+| numba:blend:0.75 | numba:hand | 300 ms CPU | (running, v2) | | | after the speedup |
 
 Harness games (`harness.arena`, 10 s + 0.1 s, protocol and robustness only under this
 load; the compiled engine is usually not ready for the first moves and the python engine

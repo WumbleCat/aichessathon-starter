@@ -98,13 +98,31 @@ overloaded dev machine allows (wall-clock results there measure load, not streng
 3. Done. `tests/test_agent.py`: move legality, special moves, clocks, repeated calls,
    model sanity (run the file directly; the venv has no pytest). Two tests depend on the
    search reaching depth 2-3 and can fail on the overloaded machine.
-4. In progress. Compiled engine (`dc_engine.py` perft-verified, `dc_search.py` written,
-   driver in `agent.py`), being validated with `tools/validate_numba.py`. Open questions:
-   import/compile time on an idle core, nodes/s, equal-CPU-time match vs the python engine.
-5. Partly. Harness games so far only checked the protocol (wins vs greedy as White, "init"
-   losses as Black from cold numba compiles under load, since fixed by the disk cache).
-   Real arena runs need a quieter machine; results go in `RESULTS.md`.
-6. Open. Handcrafted vs DeepChess scalar vs blend (`tools/selfplay.py`). Known weakness:
-   the network saturates in very lopsided positions (all moves in a K+2R vs K position
-   score +835), so conversions rely on the mate search; a blend with the handcrafted PST
-   is the candidate fix and is what the self-play comparison is for.
+4. Done. Compiled engine (`dc_engine.py` perft-verified, `dc_search.py`, driver in
+   `agent.py`), validated with `tools/validate_numba.py` (perft, evaluation and hash
+   agreement, mates, ~82k nodes/s CPU vs ~14k for the python path). It beat the python
+   engine +16 =4 -0 at equal CPU time. Import compiles ~60 s CPU under machine load;
+   the compile thread with bounded join keeps init safe.
+5. Done as far as this machine allows: harness games vs greedy (+3 =1) and minimax (+4, all
+   by the opponent flagging) with no init, flag, crash or illegal move; submission zip
+   2.6 MB, imports cleanly from its own directory. Numbers in `RESULTS.md`.
+6. Done. Paired self-play at 20k nodes: net beats the handcrafted PST eval +14 =7 -9;
+   blend (75 % net, 25 % PST) beats net +14 =9 -7 because the network saturates in very
+   lopsided positions (all moves in a K+2R vs K position score +835). Blend is the
+   default. Equal-CPU matches of net and blend vs hand were running at the end of the
+   session (`results/numba_*_cpu300`).
+
+## Ideas not done
+
+- Retrain with more data and a wider score range (the v1 set clips at 2000 cp and drops
+  check/capture positions), or add a material head so lopsided positions keep a gradient
+  without the PST blend.
+- Quantise the first layer to int16 and the rest to int8 so the 256x32 layer vectorises
+  better; the leaf evaluation is most of the node cost.
+- Root aspiration windows and a proper root move loop inside numba (the Python root loop
+  costs ~3 compiled calls per root move, negligible now).
+- mypy strict has ~90 complaints, mostly `Hashable` keys from python-chess's
+  `_transposition_key()` in the python engine and untyped numba tuples.
+- Compile time could drop further by trimming `quiesce`/`search` lowering (they re-optimise
+  the whole callee closure) or by shipping with `NUMBA_OPT=2` if a platform run shows the
+  compile does not finish inside the bounded join.

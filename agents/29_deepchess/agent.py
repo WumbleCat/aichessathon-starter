@@ -357,8 +357,11 @@ _MODEL: dict[str, np.ndarray] | None = None
 _ACC = np.zeros(256, dtype=np.float32)
 _H2 = np.zeros(32, dtype=np.float32)
 _H3 = np.zeros(32, dtype=np.float32)
-EVAL_MODE = os.environ.get("DEEPCHESS_EVAL", "auto")  # auto | net | hand | blend
-BLEND_NET_WEIGHT = float(os.environ.get("DEEPCHESS_BLEND", "0.5"))
+# net | hand | blend. The network saturates in very lopsided positions (every move in a
+# K+2R vs K position scores the same), so the default mixes 75 % network score with 25 %
+# material + piece-square score; see RESULTS.md for the paired self-play behind the choice.
+EVAL_MODE = os.environ.get("DEEPCHESS_EVAL", "blend")
+BLEND_NET_WEIGHT = float(os.environ.get("DEEPCHESS_BLEND", "0.75"))
 
 
 def load_model(path: Path = MODEL_PATH) -> dict[str, np.ndarray] | None:
@@ -372,6 +375,10 @@ def load_model(path: Path = MODEL_PATH) -> dict[str, np.ndarray] | None:
     # features so its accumulator update is branch-free (index dc_engine.ZERO_ROW)
     zero_row = np.zeros((1, model["w1"].shape[1]), dtype=np.float32)
     model["w1"] = np.ascontiguousarray(np.vstack([model["w1"], zero_row]))
+    # the compiled evaluation walks the hidden layers with a contiguous inner loop, so it
+    # takes the (out, in) transposes; the python-path kernel keeps the (in, out) layout
+    model["w2t"] = np.ascontiguousarray(model["w2"].T)
+    model["w3t"] = np.ascontiguousarray(model["w3"].T)
     _MODEL = model
     _ACC = np.zeros(model["w1"].shape[1], dtype=np.float32)
     _H2 = np.zeros(model["w2"].shape[1], dtype=np.float32)
@@ -778,7 +785,7 @@ class NumbaSearcher:
         m = self.model
         p = self.pos
         return (p.board, p.state, p.hash, p.undo, p.moves, self.mscore, p.acc, m["w1"], m["b1"],
-                m["w2"], m["b2"], m["w3"], m["b3"], m["w4"], m["b4"], p.hist, self.work, PST,
+                m["w2t"], m["b2"], m["w3t"], m["b3"], m["w4"], m["b4"], p.hist, self.work, PST,
                 self.params, self.stats, self.stop, dc_engine.KNIGHT_T, dc_engine.KING_T,
                 dc_engine.BISHOP_RAYS, dc_engine.ROOK_RAYS, dc_engine.PAWN_ATTACKERS,
                 dc_engine.ZOBRIST, dc_engine.Z_CASTLE, dc_engine.Z_EP, dc_engine.CASTLE_MASK,
@@ -961,18 +968,32 @@ def get_move(fen: str, time_left_ms: int) -> str:
             searcher.history[hk] //= 2
 
     if time_left_ms < 120:
-        best = _quick_move(board, moves)
+        if _compiling():
+            # the compile thread holds the GIL most of the time: even one static
+            # evaluation per move can take tens of milliseconds, so answer at once
+            best = next((m for m in moves if board.is_capture(m)), moves[0])
+        else:
+            best = _quick_move(board, moves)
         _record_stats(board, start, 0, 0, searcher)
         return best.uci()
 
     soft, hard = _time_budget_ms(board, time_left_ms)
+    if _compiling():
+        # The compile thread holds the GIL for long stretches (LLVM), so a python search
+        # here is starved and overshoots its budget. Short clocks get an immediate move;
+        # otherwise wait for the compile for the soft budget, then search with what is left.
+        if time_left_ms < 3000:
+            best = _quick_move(board, moves)  # one static evaluation per move
+            _record_stats(board, start, 0, 0, searcher)
+            return best.uci()
+        assert _compile_thread is not None
+        _compile_thread.join(soft / 1000.0)
     if ENGINE == "numba" and _compiled_ready():
         best = _get_move_numba(board, moves, start, soft, hard)
         if best not in moves:
             best = fallback
         return best.uci()
     if _compiling():
-        # the compile thread shares the GIL with this search: spend less and check often
         soft *= 0.25
         hard *= 0.25
     searcher.deadline = start + hard / 1000.0
@@ -1013,13 +1034,15 @@ def _get_move_numba(board: chess.Board, moves: list[chess.Move], start: float,
     ns = _numba_searcher
     assert ns is not None
     hard_s = hard / 1000.0
+    # budgets count from the start of the call (time may have gone to a compile join)
+    remaining_s = max(0.02, start + hard_s - time.perf_counter())
     # node cap as a backstop should the timer thread be starved
-    ns.prepare(board, max_nodes=int(max(20_000, ns.nps_estimate * hard_s * 3)))
+    ns.prepare(board, max_nodes=int(max(20_000, ns.nps_estimate * remaining_s * 3)))
     root_moves = [(_move_code(board, m), m) for m in moves]
     best = moves[0]
     best_score = 0
     depth_reached = 0
-    timer = threading.Timer(hard_s, ns.stop.__setitem__, (0, 1))
+    timer = threading.Timer(remaining_s, ns.stop.__setitem__, (0, 1))
     timer.daemon = True
     timer.start()
     try:

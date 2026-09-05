@@ -97,9 +97,9 @@ CTX_FIELDS = (
     ("acc_stack", types.Array(float32, 3, "C")),
     ("w1", types.Array(float32, 2, "C")),
     ("b1", types.Array(float32, 1, "C")),
-    ("w2", types.Array(float32, 2, "C")),
+    ("w2t", types.Array(float32, 2, "C")),  # (32, 256): layer 2 weights transposed
     ("b2", types.Array(float32, 1, "C")),
-    ("w3", types.Array(float32, 2, "C")),
+    ("w3t", types.Array(float32, 2, "C")),  # (32, 32): layer 3 weights transposed
     ("b3", types.Array(float32, 1, "C")),
     ("w4", types.Array(float32, 1, "C")),
     ("b4", types.Array(float32, 1, "C")),
@@ -304,7 +304,7 @@ def hand_eval(board, turn, pst):
     return score if turn == 0 else -score
 
 
-@njit(int64(CTX), cache=False, nogil=True)
+@njit(int64(CTX), cache=False, nogil=True, fastmath=True)  # fastmath: vectorised sums
 def evaluate_pos(ctx):
     """Static evaluation in centipawns from the side to move's perspective."""
     state = ctx[C_STATE]
@@ -352,27 +352,27 @@ def evaluate_pos(ctx):
             elif v > 1.0:
                 v = 1.0
             work[j] = v
-        w2 = ctx[C_W2]
+        w2 = ctx[C_W2]  # (out, in): contiguous inner loop
         b2 = ctx[C_B2]
-        n2 = w2.shape[1]
+        n2 = w2.shape[0]
         o2 = 256
         for k in range(n2):
             s = b2[k]
             for j in range(n1):
-                s += work[j] * w2[j, k]
+                s += work[j] * w2[k, j]
             if s < 0.0:
                 s = 0.0
             elif s > 1.0:
                 s = 1.0
             work[o2 + k] = s
-        w3 = ctx[C_W3]
+        w3 = ctx[C_W3]  # (out, in)
         b3 = ctx[C_B3]
-        n3 = w3.shape[1]
+        n3 = w3.shape[0]
         o3 = 256 + 32
         for k in range(n3):
             s = b3[k]
             for j in range(n2):
-                s += work[o2 + j] * w3[j, k]
+                s += work[o2 + j] * w3[k, j]
             if s < 0.0:
                 s = 0.0
             elif s > 1.0:

@@ -19,6 +19,10 @@ sys.path.insert(0, str(AGENT_DIR))
 
 import agent  # noqa: E402
 
+if agent._compile_thread is not None:
+    # test the engine that plays the games, not the fallback used while it compiles
+    agent._compile_thread.join()
+
 
 def legal(fen: str, time_left_ms: int = 2000) -> chess.Move:
     board = chess.Board(fen)
