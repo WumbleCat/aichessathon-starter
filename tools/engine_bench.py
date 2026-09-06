@@ -314,15 +314,70 @@ def agent_failed(entry: dict[str, object]) -> bool:
 
 
 def load_results(path: Path) -> dict[str, dict[str, object]]:
-    """The last line written for a key wins, so a replayed game replaces the earlier one."""
+    """The last line written for a key wins, so a replayed game replaces the earlier one.
+
+    A truncated final line is tolerated: a run killed mid-write leaves one, and losing that
+    game is better than refusing to read the other few thousand.
+    """
     done: dict[str, dict[str, object]] = {}
     if path.exists():
-        with open(path) as fh:
-            for line in fh:
-                if line.strip():
-                    entry = json.loads(line)
-                    done[str(entry["key"])] = entry
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+        for i, line in enumerate(lines):
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                if i == len(lines) - 1:
+                    print(f"warning: ignoring a truncated last line in {path}")
+                    continue
+                raise
+            done[str(entry["key"])] = entry
     return done
+
+
+class RunLock:
+    """Refuse to start a second run against the same results file.
+
+    Two runs sharing an output file both read the same "already played" set, so they play the
+    same games twice and race on the append. This is a guard against my own mistake: chunked
+    runs that overlapped silently duplicated work.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.path = path.with_suffix(path.suffix + ".lock")
+
+    def __enter__(self) -> RunLock:
+        if self.path.exists():
+            try:
+                pid = int(self.path.read_text().strip() or 0)
+            except ValueError:
+                pid = 0
+            if pid and _pid_alive(pid):
+                raise SystemExit(
+                    f"another run (pid {pid}) is already writing {self.path.stem}; wait for it "
+                    f"or delete {self.path} if that process is gone"
+                )
+            print(f"clearing a stale lock from pid {pid}")
+        self.path.write_text(str(os.getpid()))
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.path.unlink(missing_ok=True)
+
+
+def _pid_alive(pid: int) -> bool:
+    if sys.platform == "win32":
+        out = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True
+        ).stdout
+        return str(pid) in out
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
 
 
 def elo_of(score: float, n: int, opponent_elo: int) -> tuple[float, float]:
@@ -479,21 +534,30 @@ def main() -> None:
             pending = pending[: args.max_games]
         print(f"{len(done)} games already played, {remaining} to go, {len(pending)} this run")
         if pending:
-            jobs = iter(pending)
-            lock = threading.Lock()
-            counter = [0]
-            threads = [
-                threading.Thread(
-                    target=worker,
-                    args=(jobs, engine_path, args, args.out, lock, counter, len(pending)),
-                    daemon=True,
+            with RunLock(args.out):
+                jobs = iter(pending)
+                lock = threading.Lock()
+                counter = [0]
+                threads = [
+                    threading.Thread(
+                        target=worker,
+                        args=(jobs, engine_path, args, args.out, lock, counter, len(pending)),
+                        daemon=True,
+                    )
+                    for _ in range(max(1, args.workers))
+                ]
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join()
+            played = counter[0]
+            print(f"played {played} of the {len(pending)} games this run")
+            if played < len(pending):
+                raise SystemExit(
+                    f"only {played} of {len(pending)} games finished; something stopped the run"
                 )
-                for _ in range(max(1, args.workers))
-            ]
-            for thread in threads:
-                thread.start()
-            for thread in threads:
-                thread.join()
+        else:
+            print("nothing to play")
         done = load_results(args.out)
 
     table = report(done, agents, exclude_failures=args.exclude_failures)
