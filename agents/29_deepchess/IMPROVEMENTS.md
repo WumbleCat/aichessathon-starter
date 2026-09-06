@@ -104,6 +104,51 @@ tempting place to stop; it was noise. Better validation numbers did not become s
 The v2 network is the larger of the two effects and it lost no game in 24. Both arms of that
 test run the same search with the same flags, so the difference is the weights alone.
 
+### The headline number, over 100 games
+
+| opponent | games | +W =D -L | score | implied Elo |
+|---|---|---|---|---|
+| Stockfish `UCI_Elo` 2600, 100 ms a move | 100 | **+32 =27 -41** | 45.5 % | 2569 ± 68 |
+
+Quote this one rather than the 24-game samples below it. Those read 58 % and 63 %; at 100
+games with the interval down to ±68 Elo the honest figure is 32 wins, 27 draws and 41 losses,
+slightly behind Stockfish held at 2600. Small samples flattered it, in both directions.
+
+### Where the evaluation is weak, and what did not fix it
+
+`training/analyse.py` splits held-out error by stage, material, and how decided the position
+is. On the shipped network:
+
+| bucket | MAE | sign agreement |
+|---|---|---|
+| won, `|cp| >= 1500` | 2034 cp | 98.9 % |
+| balanced, `|cp| < 50` | 116 cp | **85.7 %** |
+| small edge, 50-150 | 114 cp | **83.2 %** |
+| level material, big score | 303 cp | 86.8 % |
+| simplified, phase 6-11 | 288 cp | 95.6 % |
+
+It is precise about won positions it cannot express and vague about the near-equal ones where
+games are decided. Only 1.3 % of positions repeat, so deduplication is not the issue.
+
+Two literature-backed rounds followed, and **neither produced a measurable strength gain**:
+
+- **v3**: 600k more positions (2M raw), 22 epochs. Held-out MAE 79.4 cp against v2's 85.8.
+  Games: 60.4 % against 60.4 % over 24 a side.
+- **v4**: value head trained in win-probability space with the game's outcome mixed into the
+  target, and the set rebalanced to 53 % inside ±150 cp, both straight from the sources below.
+  It did what the literature predicts on the metric that matters most: sign agreement rose
+  from 85.7 % to 87.5 % in balanced positions, 83.2 % to 86.4 % on small edges, 86.6 % to
+  89.0 % at level material. Games: 56.7 % against 56.7 % over 30 a side.
+
+Both are kept in `models/` and neither is shipped. The reading is that the evaluation is no
+longer what limits this agent at this time control: two different improvements to it, one
+clearly better on held-out data, both landed exactly on the incumbent's score. Search depth
+per move is the more likely constraint, and that is where the next effort should go.
+
+Sources: [NNUE dataset study](https://arxiv.org/html/2412.17948v1),
+[Stockfish nnue-pytorch docs](https://official-stockfish.github.io/docs/nnue-pytorch-wiki/docs/nnue.html),
+[Lc0 WDL rescale](https://lczero.org/blog/2023/07/the-lc0-v0.30.0-wdl-rescale/contempt-implementation/).
+
 ### Against Stockfish at UCI_Elo 2600
 
 | opponent's thinking time | games | +W =D -L | score | implied Elo |
