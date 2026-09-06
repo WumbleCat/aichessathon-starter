@@ -35,3 +35,6 @@ agents/32_auxiliary/tables_ext/
 
 # GPU training environment (training only; the agent and harness use .venv)
 .venv-cuda/
+
+# built submission archives are kept, so an uploaded build can be reproduced exactly
+!submissions/*.zip
