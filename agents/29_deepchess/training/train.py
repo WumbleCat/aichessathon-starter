@@ -80,8 +80,8 @@ def encode_features(boards: np.ndarray, meta: np.ndarray) -> np.ndarray:
 
 
 def load_dataset(pattern: str, exclude_check: bool, exclude_capture: bool,
-                 max_abs_cp: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    feats, scores, turns, games = [], [], [], []
+                 max_abs_cp: int) -> tuple[np.ndarray, ...]:
+    feats, scores, turns, games, results = [], [], [], [], []
     game_offset = 0
     files = sorted(glob.glob(pattern))
     if not files:
@@ -89,20 +89,40 @@ def load_dataset(pattern: str, exclude_check: bool, exclude_capture: bool,
     for f in files:
         with np.load(f) as d:
             boards, meta, sc, g = d["boards"], d["meta"], d["scores"], d["games"]
+            res = d["results"]
         keep = np.abs(sc.astype(np.int64)) <= max_abs_cp
         if exclude_check:
             keep &= meta[:, 3] == 0
         if exclude_capture:
             keep &= meta[:, 4] == 0
-        boards, meta, sc, g = boards[keep], meta[keep], sc[keep], g[keep]
+        boards, meta, sc, g, res = boards[keep], meta[keep], sc[keep], g[keep], res[keep]
         feats.append(encode_features(boards, meta))
         scores.append(sc.astype(np.int16))
         turns.append(meta[:, 0].astype(np.int8))
         games.append(g.astype(np.int64) + game_offset)
+        results.append(res.astype(np.int8))
         game_offset += int(g.max()) + 1 if len(g) else 0
         print(f"loaded {f}: kept {keep.sum()}/{len(keep)}", flush=True)
     return (np.concatenate(feats), np.concatenate(scores), np.concatenate(turns),
-            np.concatenate(games))
+            np.concatenate(games), np.concatenate(results))
+
+
+def rebalance(scores: np.ndarray, cap_cp: int, share: float, seed: int) -> np.ndarray:
+    """Indices that keep every near-equal position and only ``share`` of the decided ones.
+
+    Generated games spend most of their plies in positions that are already decided: in this
+    data only about a third of positions are inside +-150 cp, and the error analysis
+    (training/analyse.py) shows the network spending its capacity on telling "won" from "very
+    won" while getting the sign wrong in 1 balanced position in 7. The NNUE dataset study
+    recommends at least half the set inside +-100 cp for the same reason.
+    """
+    rng = np.random.default_rng(seed)
+    near = np.abs(scores.astype(np.int64)) < cap_cp
+    decided = np.nonzero(~near)[0]
+    keep_decided = decided[rng.random(decided.shape[0]) < share]
+    idx = np.concatenate([np.nonzero(near)[0], keep_decided])
+    idx.sort()
+    return idx
 
 
 # --------------------------------------------------------------------------------- model
@@ -222,6 +242,26 @@ def main() -> None:
         help="a .pt checkpoint to fine-tune from (default: random initialisation)",
     )
     parser.add_argument(
+        "--wdl",
+        action="store_true",
+        help="train the value head in win-probability space instead of centipawns",
+    )
+    parser.add_argument("--wdl-scale", type=float, default=400.0, help="cp per logit unit")
+    parser.add_argument(
+        "--result-weight",
+        type=float,
+        default=0.3,
+        help="how much of the WDL target is the game's actual outcome rather than the "
+        "teacher's score (0 = score only)",
+    )
+    parser.add_argument("--balance-cp", type=int, default=150)
+    parser.add_argument(
+        "--balance-share",
+        type=float,
+        default=1.0,
+        help="keep only this share of positions outside +-balance-cp (1.0 = keep everything)",
+    )
+    parser.add_argument(
         "--device",
         default="auto",
         help="auto (cuda when the installed torch can see a GPU), cpu, or cuda. The shipped "
@@ -234,8 +274,16 @@ def main() -> None:
     torch.set_num_threads(args.threads)
     MODELS.mkdir(exist_ok=True)
 
-    feats, scores, turns, games = load_dataset(
+    feats, scores, turns, games, results = load_dataset(
         args.data, not args.keep_check, not args.keep_capture, args.max_abs_cp)
+    if args.balance_share < 1.0:
+        idx = rebalance(scores, args.balance_cp, args.balance_share, args.seed)
+        before = feats.shape[0]
+        feats, scores, turns = feats[idx], scores[idx], turns[idx]
+        games, results = games[idx], results[idx]
+        near = float((np.abs(scores.astype(np.int64)) < args.balance_cp).mean())
+        print(f"rebalanced {before} -> {feats.shape[0]} positions, "
+              f"{near:.0%} inside +-{args.balance_cp} cp", flush=True)
     n = feats.shape[0]
     # split by game so that neighbouring positions never straddle train/val
     rng = np.random.default_rng(args.seed)
@@ -247,6 +295,7 @@ def main() -> None:
     feats_t = torch.from_numpy(feats.astype(np.int64))
     cp_t = torch.from_numpy(scores.astype(np.float32))
     turn_t = torch.from_numpy(turns.astype(np.float32))
+    result_t = torch.from_numpy(results.astype(np.float32))  # +1/0/-1 from White
     tr = torch.from_numpy(np.nonzero(~is_val)[0])
     va = torch.from_numpy(np.nonzero(is_val)[0])
 
@@ -274,6 +323,7 @@ def main() -> None:
     feats_t = feats_t.to(device)
     cp_t = cp_t.to(device)
     turn_t = turn_t.to(device)
+    result_t = result_t.to(device)
     tr = tr.to(device)
     va = va.to(device)
 
@@ -298,7 +348,20 @@ def main() -> None:
             v = model(x)
             tau = model.log_tau.exp()
             ploss, pacc, _ = pairwise_loss(v * sign, cp * sign, tau, args.margin)
-            vloss = F.smooth_l1_loss(v, cp / 100.0)
+            if args.wdl:
+                # Train in win-probability space rather than centipawns. A +1500 and a +3000
+                # position are both simply "won", so the network stops spending capacity
+                # telling them apart (its worst bucket by far: 2034 cp of error) and sharpens
+                # where games are actually decided. The target mixes the teacher's score with
+                # how the game really ended, which is how Stockfish and Lc0 train.
+                scale = args.wdl_scale / 100.0  # v is in units of 100 cp
+                target = torch.sigmoid(cp / args.wdl_scale)
+                if args.result_weight > 0.0:
+                    outcome = (result_t[idx] * sign + 1.0) / 2.0
+                    target = (1.0 - args.result_weight) * target + args.result_weight * outcome
+                vloss = F.binary_cross_entropy_with_logits(v / scale, target)
+            else:
+                vloss = F.smooth_l1_loss(v, cp / 100.0)
             loss = ploss + args.value_weight * vloss
             opt.zero_grad(set_to_none=True)
             loss.backward()
